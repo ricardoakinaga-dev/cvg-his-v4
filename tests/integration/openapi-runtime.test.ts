@@ -19,6 +19,7 @@ import { parse, stringify } from 'yaml';
  */
 
 const OPENAPI_SPEC_PATH = 'apps/api/src/openapi.yaml';
+const OPENAPI_VALIDATOR_PATH = resolve('scripts/validate-openapi.mjs');
 
 function loadSpec() {
   const content = readFileSync(OPENAPI_SPEC_PATH, 'utf-8');
@@ -79,6 +80,17 @@ function buildCriticalCallbackFixture(
 }
 
 describe('OpenAPI Contract Tests', () => {
+  it('runs the canonical validator without Node module-type warnings', () => {
+    const result = spawnSync(process.execPath, [OPENAPI_VALIDATOR_PATH], {
+      cwd: process.cwd(),
+      encoding: 'utf8'
+    });
+
+    expect(result.status).toBe(0);
+    expect(`${result.stdout}${result.stderr}`).toContain('All structural checks passed');
+    expect(result.stderr).not.toContain('MODULE_TYPELESS_PACKAGE_JSON');
+  });
+
   describe('Static spec structure', () => {
     it('should have openapi 3.x version', () => {
       const spec = loadSpec();
@@ -246,7 +258,7 @@ describe('OpenAPI Contract Tests', () => {
         writeFileSync(fixturePath, stringify(spec));
         const result = spawnSync(
           process.execPath,
-          [resolve('scripts/validate-openapi.js'), fixturePath],
+          [resolve('scripts/validate-openapi.mjs'), fixturePath],
           { cwd: process.cwd(), encoding: 'utf8' }
         );
 
@@ -342,7 +354,7 @@ describe('OpenAPI Contract Tests', () => {
         writeFileSync(fixturePath, falseGuardedSource);
         const result = spawnSync(
           process.execPath,
-          [resolve('scripts/validate-openapi.js'), resolve(OPENAPI_SPEC_PATH), fixturePath],
+          [resolve('scripts/validate-openapi.mjs'), resolve(OPENAPI_SPEC_PATH), fixturePath],
           { cwd: process.cwd(), encoding: 'utf8' }
         );
 
@@ -401,7 +413,7 @@ describe('OpenAPI Contract Tests', () => {
         writeFileSync(fixturePath, reachableSource);
         const result = spawnSync(
           process.execPath,
-          [resolve('scripts/validate-openapi.js'), resolve(OPENAPI_SPEC_PATH), fixturePath],
+          [resolve('scripts/validate-openapi.mjs'), resolve(OPENAPI_SPEC_PATH), fixturePath],
           { cwd: process.cwd(), encoding: 'utf8' }
         );
 

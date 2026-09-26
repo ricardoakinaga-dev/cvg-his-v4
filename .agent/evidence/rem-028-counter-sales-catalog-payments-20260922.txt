@@ -1,0 +1,40 @@
+REM-028 — revalidação candidate-bound de catálogo e pagamentos
+Data: 2026-09-22
+Escopo: integração do CounterSalesWorkbench com as mutações de catálogo/pagamentos mantidas na CounterSalesPage
+Decisão: PASS_WITH_CONDITIONS; validação browser/visual segue aberta
+
+## Contrato observado
+
+`CounterSalesWorkbench.vue` recebe catálogo, formulários e estados de loading por
+props readonly e emite intenções tipadas para adicionar item, alterar quantidade,
+aplicar desconto, remover item, ajustar a comanda, registrar pagamento e fechar a
+comanda. A página continua implementando os handlers, chamando
+`counterSalesService`, atualizando o detalhe selecionado e mantendo seleção,
+server state, URL e mensagens de workflow.
+
+Auditoria estática do componente: nenhum uso runtime de `counterSalesService`,
+`quoteService`, router ou store foi encontrado; os imports de domínio restantes
+são somente type-only para o contrato compilado.
+
+## Verificação executada
+
+Runtime: Node v22.23.2, pnpm 10.33.0, worktree compartilhado dirty preservado.
+
+- teste candidate-bound da integração em `CounterSalesPage.test.ts`: `1` arquivo,
+  `3` testes passados e `9` testes filtrados, exit 0;
+- os três fluxos revalidados cobrem adicionar item do catálogo e pagamento,
+  lançamento por código de barras e ciclo item/pagamento/fechamento;
+- types, lint, build PWA e diff check permanecem current no gate imediatamente
+  anterior do workbench: `.agent/verification.jsonl#VER-REM-028-COUNTER-SALES-WORKBENCH-20260922`.
+
+## Limitações
+
+Não houve nova tentativa de Playwright: o runtime visual local segue bloqueado
+porque `/health` da API respondeu `unhealthy` na tentativa anterior. Nenhum
+snapshot foi atualizado. A suíte SPA integral, reports, agenda, dashboard/layout,
+crítica independente E7 e owners humanos continuam fora deste escopo.
+
+## Próxima ação
+
+Continuar pela matriz de superfícies restantes de REM-028, sem mover workflows,
+server state ou mutações para um store universal.

@@ -1,0 +1,27 @@
+# REM-006 — casos comportamentais para branches descobertos
+
+timestamp_utc=2026-09-21T17:34:00+00:00
+repository=/home/ricardo/cvg-his-v4
+head=ad2f0373f68635f2579253b013a4382219906921
+runtime=node-v22.23.2
+package_manager=pnpm-10.33.0
+
+## Mudança focal
+
+- Startup secrets: ausência de setup token e prontidão de rotação em ambientes production/non-production sem secret anterior.
+- Request body: headers array, declaração inválida, declaração não representável e frontier declarada dentro do limite.
+- Raw request body: headers malformed/array/unsafe e falha de conversão de chunk.
+- Response buffer: writeHead sem headers, set trap para propriedade não relacionada, snapshot sem status message e replay sem status message.
+- Nenhum threshold, exclude ou arquivo de produção foi alterado.
+
+## Verificação
+
+1. `pnpm exec vitest run tests/unit/api/startup-secrets-runtime.test.ts tests/unit/http-command-helpers.test.ts tests/unit/api/raw-request-body.test.ts`: `exit 0`; 3 arquivos, 26 testes, 0 falhas.
+2. `pnpm --filter @cvg-his-v2/api build`: `exit 0` no Node 22.23.2.
+3. `NODE_ENV=test node --test apps/api/dist/helpers/response-buffer.test.js`: `exit 0`; 3 testes, 3 passaram.
+
+## Limites
+
+Esta fatia aumenta a cobertura comportamental de boundaries locais, mas ainda precisa do `pnpm test:coverage` completo para provar os 17 branches faltantes e o residual separado de complexity.
+
+result=PASS

@@ -5,9 +5,9 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
-import type { LgpdService } from '@cvg-his-v2/module-lgpd';
+import { LgpdDsrStateError, type LgpdService } from '@cvg-his-v2/module-lgpd';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
-import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
+import { ConflictError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import { requireBoolean, requireEnum, requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { appendAudit, appendAuditAndWait } from '../helpers/audit-helper.js';
@@ -430,11 +430,8 @@ export async function handleLgpdRoutes(
       const existingRequest = await lgpdSvc.getDsrRequest(principal.user.accountId, requestId);
       if (!existingRequest) throw new NotFoundError('Data subject request not found');
     }
-    const dsrRequest = await lgpdSvc.completeDsrRequest(
-      principal.user.accountId,
-      requestId,
-      principal.user.id,
-      resultJson
+    const dsrRequest = await mapDsrStateError(() =>
+      lgpdSvc.completeDsrRequest(principal.user.accountId, requestId, principal.user.id, resultJson)
     );
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -471,11 +468,8 @@ export async function handleLgpdRoutes(
       const existingRequest = await lgpdSvc.getDsrRequest(principal.user.accountId, requestId);
       if (!existingRequest) throw new NotFoundError('Data subject request not found');
     }
-    const dsrRequest = await lgpdSvc.rejectDsrRequest(
-      principal.user.accountId,
-      requestId,
-      principal.user.id,
-      reason
+    const dsrRequest = await mapDsrStateError(() =>
+      lgpdSvc.rejectDsrRequest(principal.user.accountId, requestId, principal.user.id, reason)
     );
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -525,4 +519,16 @@ export async function handleLgpdRoutes(
   }
 
   return false;
+}
+
+/** DSR state violations are client-visible conflicts, not server failures. */
+async function mapDsrStateError<T>(operation: () => Promise<T>): Promise<T> {
+  try {
+    return await operation();
+  } catch (error) {
+    if (error instanceof LgpdDsrStateError) {
+      throw new ConflictError(error.message, { code: error.code });
+    }
+    throw error;
+  }
 }

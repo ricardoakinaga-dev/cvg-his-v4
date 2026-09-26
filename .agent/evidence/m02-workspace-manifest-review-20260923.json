@@ -1,0 +1,224 @@
+{
+  "evidence_id": "M02-WORKSPACE-MANIFEST-REVIEW-20260923-01",
+  "observed_at": "2026-09-23T05:51:18.354068Z",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "environment": {
+    "runtime": "Node.js v22.23.2",
+    "package_manager": "pnpm 10.33.0",
+    "platform": "Linux local workspace"
+  },
+  "review_method": "Compared all package.json paths in the inventory to origin/main, reviewed lint/typecheck routing and focused tests, and ran local workspace lint/typecheck plus narrow package tests. No candidate worktree or overlay was created.",
+  "package_json_summary": {
+    "paths_reviewed": 69,
+    "changed_only_top_level_key": "scripts",
+    "paths_matching_inventory_hash": 69,
+    "paths_with_other_top_level_changes": []
+  },
+  "focused_file_hashes": [
+    {
+      "path": ".eslintrc.semantic.cjs",
+      "current_sha256": "e02d3c9f043192b6df13005f665af1ff135dbceeeac0d268e00a1698122cea52",
+      "inventory_sha256": "e02d3c9f043192b6df13005f665af1ff135dbceeeac0d268e00a1698122cea52",
+      "sha_matches_inventory": true,
+      "reviewed_for_this_record": true
+    },
+    {
+      "path": "scripts/run-semantic-lint.mjs",
+      "current_sha256": "520064ed8d4e3eac9f79e27ad94f2b6e5e3e764dc3cb0c0d3883ddcbc656c2a8",
+      "inventory_sha256": "520064ed8d4e3eac9f79e27ad94f2b6e5e3e764dc3cb0c0d3883ddcbc656c2a8",
+      "sha_matches_inventory": true,
+      "reviewed_for_this_record": true
+    },
+    {
+      "path": "tests/unit/infra/lint-contract.test.ts",
+      "current_sha256": "1e1acefceb521d6494993f32b7108bcb58da2761dbbfb4df8d7d85f3c033ed7f",
+      "inventory_sha256": "1e1acefceb521d6494993f32b7108bcb58da2761dbbfb4df8d7d85f3c033ed7f",
+      "sha_matches_inventory": true,
+      "reviewed_for_this_record": true
+    },
+    {
+      "path": "packages/chaos/src/chaos-engine.test.ts",
+      "current_sha256": "ccbb028913b0fc7a3a585479d8c30bb39212c1a87e7d4f8d3f799f32c1ff9715",
+      "inventory_sha256": "ccbb028913b0fc7a3a585479d8c30bb39212c1a87e7d4f8d3f799f32c1ff9715",
+      "sha_matches_inventory": true,
+      "reviewed_for_this_record": true
+    },
+    {
+      "path": "packages/chaos/src/experiments.test.ts",
+      "current_sha256": "73c37023a5d7f615ca1f0f8a790c2fcca589032ed42418b168f061eaf030ad53",
+      "inventory_sha256": "73c37023a5d7f615ca1f0f8a790c2fcca589032ed42418b168f061eaf030ad53",
+      "sha_matches_inventory": true,
+      "reviewed_for_this_record": true
+    },
+    {
+      "path": "packages/chaos/src/faults.test.ts",
+      "current_sha256": "f5fc5ac286e4de13a9b161f36b092d791f7aabfdbb5e5e8d95da2d4bda9af1c8",
+      "inventory_sha256": "f5fc5ac286e4de13a9b161f36b092d791f7aabfdbb5e5e8d95da2d4bda9af1c8",
+      "sha_matches_inventory": true,
+      "reviewed_for_this_record": true
+    },
+    {
+      "path": "packages/contracts/src/__tests__/integration.test.ts",
+      "current_sha256": "5ff4516bc7c40d258426a29933e40b655d202008b0a2708ee556ddd74fe24574",
+      "inventory_sha256": "5ff4516bc7c40d258426a29933e40b655d202008b0a2708ee556ddd74fe24574",
+      "sha_matches_inventory": true,
+      "reviewed_for_this_record": true
+    },
+    {
+      "path": "packages/shared/contracts/src/upload-limits.test.ts",
+      "current_sha256": "c240d02130a551decf5446b51d42e6f5aee90ecdeb90e828d463d820a8950aae",
+      "inventory_sha256": "c240d02130a551decf5446b51d42e6f5aee90ecdeb90e828d463d820a8950aae",
+      "sha_matches_inventory": true,
+      "reviewed_for_this_record": true
+    },
+    {
+      "path": "packages/shared/types/src/event-envelope.test.ts",
+      "current_sha256": "f288ee3745fcd96a28e7b1d8204531df572c4a8567e0b69014864e87bbcbef69",
+      "inventory_sha256": "f288ee3745fcd96a28e7b1d8204531df572c4a8567e0b69014864e87bbcbef69",
+      "sha_matches_inventory": true,
+      "reviewed_for_this_record": true
+    },
+    {
+      "path": "packages/shared/types/src/types.test.ts",
+      "current_sha256": "1a47ebf7c5d66aafd9b440f97380a91a18cfe7fc7065992d6a9f92488a27c3a9",
+      "inventory_sha256": null,
+      "sha_matches_inventory": false,
+      "reviewed_for_this_record": true
+    }
+  ],
+  "verification_results": [
+    {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run tests/unit/infra/lint-contract.test.ts --config vitest.config.ts --reporter=dot",
+      "observed_start": "2026-09-23T05:43:21.828032Z",
+      "observed_end": "2026-09-23T05:43:32.483337Z",
+      "result": "PASS",
+      "exit_status": 0,
+      "tests": "3/3",
+      "limitation": "Vitest setup reported that the explicit cvg_his_v2 database was preserved and reset, migrations, seed, and grants were skipped."
+    },
+    {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm typecheck",
+      "observed_start": "2026-09-23T05:43:32.483559Z",
+      "observed_end": "2026-09-23T05:44:53.193393Z",
+      "result": "PASS",
+      "exit_status": 0,
+      "scope": "68 of 69 pnpm recursive projects; root package excluded by workspace filters.",
+      "limitation": "API, SPA, and worker typecheck scripts build package dependencies with tsc -b --force before noEmit validation, so ignored build output may be produced."
+    },
+    {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm lint",
+      "observed_start": "2026-09-23T05:44:53.193730Z",
+      "observed_end": "2026-09-23T05:45:18.168598Z",
+      "result": "PASS",
+      "exit_status": 0,
+      "scope": "68 of 69 pnpm recursive projects; root package excluded by workspace filters.",
+      "warnings": {
+        "diagnostic_count": 164,
+        "workspaces_with_warnings": 14,
+        "error_count": 0,
+        "rule": "@typescript-eslint/no-explicit-any is configured as warning"
+      },
+      "limitation": "A passing lint exit does not close the separate M-44 any-warning reduction acceptance."
+    },
+    {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm --filter @cvg-his-v2/chaos test",
+      "observed_start": "2026-09-23T05:48:32.014110Z",
+      "observed_end": "2026-09-23T05:48:32.956324Z",
+      "result": "PASS",
+      "exit_status": 0,
+      "scope": "Synthetic unit tests for chaos engine, experiments and faults; no external dependencies."
+    },
+    {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm --filter @cvg-his-v2/shared-contracts test",
+      "observed_start": "2026-09-23T05:48:32.956565Z",
+      "observed_end": "2026-09-23T05:48:34.084319Z",
+      "result": "PASS",
+      "exit_status": 0,
+      "scope": "Pure upload-limit boundary test."
+    },
+    {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm --filter @cvg-his-v2/shared-types test",
+      "observed_start": "2026-09-23T05:48:34.084372Z",
+      "observed_end": "2026-09-23T05:48:34.830898Z",
+      "result": "PASS",
+      "exit_status": 0,
+      "tests": "2 Vitest files passed",
+      "scope": "Synthetic event envelope/type contracts."
+    },
+    {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run tests/unit/infra/root-test-runner-contract.test.ts --config vitest.config.ts --reporter=dot",
+      "observed_start": "2026-09-23T05:56:22.988168Z",
+      "observed_end": "2026-09-23T05:56:33.639899Z",
+      "result": "PASS",
+      "exit_status": 0,
+      "tests": "5/5",
+      "limitation": "Tests only runner sequencing, failure propagation and filtering in temporary directories; the full root/workspace suite was not run."
+    }
+  ],
+  "review_findings": [
+    "All 69 inventoried package.json files differ from origin/main only in scripts; current content SHA-256 matches the initial inventory for each path.",
+    "The contract test confirms workspace lint routes through the semantic runner and remains distinct from typecheck; workspace-wide typecheck and lint both exit 0.",
+    "Lint emits 164 configured no-explicit-any warning diagnostics across 14 workspaces; M-44 remains separate and open.",
+    "New/changed unit test scripts in chaos, shared-contracts, and shared-types passed. Source-level integration beyond the focused files is not inferred from those commands."
+  ],
+  "disposition": {
+    "review_state": "PARTIAL_CONTENT_REVIEW",
+    "candidate_overlay": "NOT_AUTHORIZED_OR_CREATED",
+    "path_level_notes": "Manifest script routing and the listed focused tests are reviewed. Root package.json test/validation script migration and apps/api/apps/worker test commands remain HOLD pending safe side-effect review; the full 386-path inventory and independent M-02 critique remain open."
+  },
+  "limitations": [
+    "This local validation is not candidate-bound.",
+    "No production, external CI, registry, target, deployment, shared database reset/migration/seed/grant, or external credential was used.",
+    "No claim of M-02 completion, release readiness, zero warnings, or completion of M-44 is made."
+  ],
+  "documentation_validation": {
+    "docs_validate": {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+      "observed_start": "2026-09-23T05:52:28.206238Z",
+      "observed_end": "2026-09-23T05:52:28.564358Z",
+      "result": "PASS",
+      "exit_status": 0,
+      "summary": "Documentation links and governance valid; Triple-A current snapshot declarations agree and declared SHA is an ancestor of HEAD.",
+      "limitation": "This validator does not establish a clean worktree or an M-02 candidate overlay."
+    },
+    "candidate_identity_check": {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm validate:candidate-identity",
+      "observed_start": "2026-09-23T05:53:48.953641Z",
+      "observed_end": "2026-09-23T05:53:49.281547Z",
+      "result": "EXPECTED_BLOCK",
+      "exit_status": 1,
+      "finding": "candidate identity requires a clean worktree; freeze source and control bytes before validation.",
+      "interpretation": "Confirms the dirty shared worktree cannot be represented as a clean M-02 candidate."
+    }
+  },
+  "latest_shared_worktree_snapshot": {
+    "observed_start": "2026-09-23T05:54:44.677251Z",
+    "observed_end": "2026-09-23T05:54:44.692171Z",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 262,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 388,
+    "note": "Read-only git status --porcelain=v1 -uall after adding this evidence file; the file itself is included as one of the untracked paths."
+  },
+  "subsequent_shared_worktree_snapshots": [
+    {
+      "captured_at_utc": "2026-09-23T06:01:35.859633Z",
+      "head": "ad2f0373f68635f2579253b013a4382219906921",
+      "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+      "modified_tracked_paths": 126,
+      "untracked_paths": 263,
+      "deleted_paths": 0,
+      "staged_paths": 0,
+      "total_dirty_paths": 389,
+      "status_sha256": "3582414aefc3261a6b21308905ff2db2091f0e841b9b02d79677d995825ca8a4",
+      "environment": {
+        "node": "v22.23.2",
+        "pnpm": "10.33.0"
+      },
+      "note": "Read-only git status --porcelain=v1 -uall snapshot. The 386-path M-02 inventory is the earlier baseline; the inventory manifest, workspace-manifest review, and content-scope review were created after that baseline and must be present in a refreshed candidate-bound inventory."
+    }
+  ]
+}

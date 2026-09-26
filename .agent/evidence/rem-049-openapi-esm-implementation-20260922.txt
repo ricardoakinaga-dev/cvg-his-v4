@@ -1,0 +1,47 @@
+REM-049 — implementação e verificação do validador OpenAPI ESM
+observed_at: 2026-09-22T09:11:08.000000Z
+task: REM-049
+mode: Direct; agente primário único; worktree compartilhado dirty preservado
+
+Mudança aplicada
+- `scripts/validate-openapi.mjs` passou a conter a implementação canônica ESM,
+  sem alteração das regras de validação.
+- `scripts/validate-openapi.js` ficou somente como shim CommonJS que importa o
+  `.mjs`, preservando comandos e links históricos sem duplicação.
+- `package.json` e `tests/integration/openapi-runtime.test.ts` apontam para o
+  `.mjs`; o execution input crítico foi substituído pelo refresh oficial do
+  manifesto (revisão 89, `executionInputsSha256`
+  `efa160d6805ac84048e5851a39638a716b875792ccad501f29c5fb40b7def546`).
+- O refresh também reconciliou o drift de inventário nativo/Vitest já presente
+  no worktree e preservou o manifesto anterior em
+  `artifacts/remediation/REM-049/critical-scope-refresh-20260922/`.
+
+Resultados executados
+- Node 24.20.0: entrypoint `.mjs` e shim `.js` terminaram status 0, com
+  `stderr` vazio e resumo `All structural checks passed`.
+- Node 22.23.2/pnpm 10.33.0: `pnpm validate:openapi` passou com 431 paths,
+  41 tags e 525 schemas, sem warning.
+- `tests/integration/openapi-runtime.test.ts --config vitest.integration.config.ts`
+  passou 1 arquivo / 36 testes, incluindo o teste de ausência do warning.
+- `pnpm complexity:check` passou; a reconciliação separada atualizou somente
+  medições/limites do manifesto para as linhas reais, sem elevar limites.
+- `tests/unit/infra/complexity-hotspots.test.ts` passou 1 arquivo / 4 testes.
+- `pnpm docs:validate` passou: documentação e snapshot Triple-A current válidos.
+- `refresh-critical-source-manifest.mjs --check` passou na revisão 89.
+- `node --test scripts/critical-source-manifest.test.mjs` passou 16/16.
+- `git diff --check` passou.
+
+Integridade e limites
+Os hashes correntes relevantes são:
+- preparação: `4696a5a0be20599a84b542dcf05b69de6882e53bd95c0d7fbc025a572593b754`;
+- gate de preparação: `654a016f193279942f680dd3333ab2c75f866696b15260ef79362323bb383a1f`;
+- manifesto crítico: `25f856028b2e08e598d178b6128d03daeae09d4bcafcaf370bae8c0b1557556e`;
+- `validate-openapi.mjs`: `ca2c87d0b87d9f2c79f499a6515c3193431eed15599344f8629736eef3577fed`;
+- shim `.js`: `3a9d76640d7bfbd2e2c8639c846b4c18d42d2142880f313d4da2be88955613d2`;
+- `package.json`: `dfc13901ea4fb2529a83d18dad6d567889678d968283f898ab97a1be6ac8d3c3`;
+- teste focal: `f5824b0cf8a8ae3e70647b2f253e593d6069411220b75058ade6f980fdcd06a4`.
+
+Este gate é local e condicional. Não prova CI remoto, coverage autenticada,
+target, migrations, provider, credenciais, UAT, browser/a11y, E7, owners,
+release ou go/no-go. A crítica independente fresca não foi possível sob a
+restrição de agente único; nenhum PASS externo ou release foi inferido.

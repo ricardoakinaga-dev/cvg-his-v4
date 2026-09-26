@@ -7,7 +7,7 @@ import {
   MAX_ATTACHMENT_FILE_SIZE_BYTES,
   type CreateAttachmentRequest
 } from '@cvg-his-v2/shared-contracts';
-import { NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
+import { AppError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AccountId, AttachmentId, AttachmentSummary, UserId } from '@cvg-his-v2/shared-types';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
@@ -423,12 +423,17 @@ export class AttachmentsService {
     let sizeBytes: number | undefined;
 
     if (fileContent && this.#fileStorage) {
-      const result = await this.#fileStorage.store(
-        accountId,
-        linkedEntityId,
-        payload.fileName,
-        fileContent
-      );
+      let result: Awaited<ReturnType<FileStorage['store']>>;
+      try {
+        result = await this.#fileStorage.store(
+          accountId,
+          linkedEntityId,
+          payload.fileName,
+          fileContent
+        );
+      } catch {
+        throw new AppError('INTERNAL_ERROR', 'Unexpected error');
+      }
       if (!isTenantScopedStorageKey(accountId, result.storageKey)) {
         throw new ValidationError('File storage returned an invalid tenant-scoped key');
       }
@@ -438,7 +443,12 @@ export class AttachmentsService {
 
       const declaredChecksum = requireNonEmptyString(payload.checksum, 'checksum');
       if (declaredChecksum !== checksum) {
-        await this.#fileStorage.delete(accountId, storageKey);
+        await this.#discardUnreferencedObject(
+          accountId,
+          payload.linkedEntityType,
+          linkedEntityId,
+          storageKey
+        );
         throw new ValidationError('Checksum mismatch: file integrity verification failed', {
           expected: declaredChecksum,
           actual: checksum
@@ -498,15 +508,56 @@ export class AttachmentsService {
         await this.#repository.create(attachment);
       } catch (error) {
         if (fileContent && this.#fileStorage) {
-          await this.#fileStorage.delete(accountId, storageKey).catch(() => undefined);
+          await this.#discardUnreferencedObject(
+            accountId,
+            payload.linkedEntityType,
+            linkedEntityId,
+            storageKey
+          ).catch(() => undefined);
         }
         throw error;
       }
+    } else {
+      this.#attachments.unshift(attachment);
     }
 
-    this.#attachments.unshift(attachment);
-
     return attachment;
+  }
+
+  /**
+   * Storage keys are content-addressed, so a re-upload of the same file for the
+   * same entity resolves to the object an earlier, committed attachment already
+   * owns. Compensation must only remove objects nobody references; when the
+   * reference check itself cannot run, the object is kept (a leaked object is
+   * recoverable, a deleted clinical document is not).
+   */
+  async #discardUnreferencedObject(
+    accountId: AccountId,
+    linkedEntityType: AttachmentSummary['linkedEntityType'],
+    linkedEntityId: string,
+    storageKey: string
+  ): Promise<void> {
+    if (!this.#fileStorage) return;
+    let referenced: boolean;
+    try {
+      const existing = this.#repository
+        ? await this.#repository.findByLinkedEntity(accountId, linkedEntityType, linkedEntityId)
+        : this.#attachments.filter(
+            (item) =>
+              item.accountId === accountId &&
+              item.linkedEntityType === linkedEntityType &&
+              item.linkedEntityId === linkedEntityId
+          );
+      referenced = existing.some((item) => item.storageKey === storageKey);
+    } catch {
+      return;
+    }
+    if (referenced) return;
+    try {
+      await this.#fileStorage.delete(accountId, storageKey);
+    } catch {
+      throw new AppError('INTERNAL_ERROR', 'Unexpected error');
+    }
   }
 
   public async getById(accountId: AccountId, id: string): Promise<AttachmentSummary | null> {

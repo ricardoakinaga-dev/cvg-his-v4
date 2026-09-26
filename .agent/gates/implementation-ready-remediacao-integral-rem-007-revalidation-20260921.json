@@ -1,0 +1,21 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-REM-007-REVALIDATION-20260921",
+  "timestamp": "2026-09-21T20:39:10.000000+00:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "REM-007 canonical root/workspace test runner and fail-closed known-bad contract; local evidence only",
+  "scope_ref": "REM-007",
+  "version": 1,
+  "criteria":[
+    {"id":"IR-001","description":"O runner canônico, o known-bad e o plano ativo permanecem disponíveis para revalidação.","required":true,"status":"PASS","evidence_refs":[".agent/plans/remediacao-integral-20260921.md","scripts/run-root-test-suite.mjs","tests/unit/infra/root-test-runner-contract.test.ts"],"confidence":"HIGH","limitations":"A revalidação é local."},
+    {"id":"IR-002","description":"A ordem root/workspaces e a propagação fail-closed continuam explícitas sem promover o runner a CI remoto.","required":true,"status":"PASS","evidence_refs":[".agent/evidence/rem-007-canonical-current-rerun-20260921.txt","tests/unit/infra/root-test-runner-contract.test.ts","package.json"],"confidence":"HIGH","limitations":"CI, branch protection e autoridade de release permanecem fora do escopo."},
+    {"id":"IR-003","description":"O rerun canônico pós-REM-026 terminou exit 0 com root e workspaces observados.","required":true,"status":"PASS","evidence_refs":[".agent/verification.jsonl#VER-REM-007-CANONICAL-ROOT-CURRENT-20260921",".agent/verification.jsonl#VER-REM-026-CANONICAL-20260921"],"confidence":"HIGH","limitations":"Não substitui CI remoto, target, UAT, recovery ou release."}
+  ],
+  "evidence":[".agent/evidence/rem-007-canonical-current-rerun-20260921.txt",".agent/verification.jsonl#VER-REM-007-CANONICAL-ROOT-CURRENT-20260921","scripts/run-root-test-suite.mjs","package.json"],
+  "confidence":"HIGH","gaps":[],
+  "conditions":[
+    {"id":"COND-REM-007-COMPOSITE-RESIDUAL","description":"O rerun canônico pós-REM-026 passou, mas a obrigação histórica permanece aberta para revalidação quando o runner ou seu contrato mudarem.","non_blocking":true,"impact":"Mudança do runner ou regressão exige nova verificação.","owner":"lead","due_or_trigger":"Quando o runner, a ordem ou o known-bad mudarem","due_at":"2026-09-22T12:00:00.000000+00:00","verification_method":"Executar o contrato focal e `CI=1 pnpm test` antes de novo claim.","evidence_refs":[".agent/verification.jsonl#VER-REM-007-CANONICAL-ROOT-CURRENT-20260921",".agent/evidence/rem-007-canonical-current-rerun-20260921.txt"],"status":"OPEN","residual_risk":"MEDIUM","authority_state":"NOT_REQUIRED"},
+    {"id":"COND-REM-007-EXTERNAL-BOUNDARY","description":"CI remoto, branch protection, target, UAT, recovery, release authority e crítica independente continuam obrigações separadas.","non_blocking":true,"impact":"O runner local não pode ser interpretado como certificação externa ou release readiness.","owner":"lead","due_or_trigger":"Antes do gate integrado REM-009 ou de qualquer ação externa","due_at":"2026-09-22T12:00:00.000000+00:00","verification_method":"Executar a fronteira autorizada e anexar verificação current antes de superseder esta condição.","evidence_refs":[".agent/state.json",".agent/plans/remediacao-integral-20260921.md"],"status":"OPEN","residual_risk":"MEDIUM","authority_state":"NOT_REQUIRED"}
+  ],
+  "authority":{"required":false,"state":"NOT_REQUIRED","actor":"local remediation executor","scope":"REM-007 canonical root/workspace test runner and fail-closed known-bad contract; local evidence only","decision":"A instrução autoriza somente a revalidação local reversível.","evidence_ref":".agent/plans/remediacao-integral-20260921.md","expires_or_revalidates":"Revalidar antes de CI, target, UAT, credentials, deployment ou release."},
+  "residual_risk":"MEDIUM","decision":"PASS_WITH_CONDITIONS","next_action":"REM-007:REOPEN","revalidation_triggers":["Mudança no runner, ordem ou contrato known-bad.","Qualquer failure no root/workspaces.","Expansão para CI, target, UAT, recovery ou release."],"supersedes":"GATE-IR-REMEDIACAO-INTEGRAL-RUNNER-20260921"
+}

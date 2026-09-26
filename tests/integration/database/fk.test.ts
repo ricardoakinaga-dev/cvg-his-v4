@@ -134,9 +134,8 @@ describe('Foreign Keys — Existence', () => {
     { table: 'audit_events', column: 'actor_user_id', refTable: 'users' }
   ];
 
-  it.each(ESSENTIAL_FKS)(
-    'FK $table.$column → $refTable.id should exist',
-    async ({ table, column }) => {
+  for (const { table, column, refTable } of ESSENTIAL_FKS) {
+    it(`FK ${table}.${column} → ${refTable}.id should exist`, async () => {
       const result = await queryOne<{ count: number }>(
         `SELECT COUNT(*)::int FROM information_schema.table_constraints
          WHERE constraint_schema = 'public'
@@ -146,8 +145,8 @@ describe('Foreign Keys — Existence', () => {
         [table, column]
       );
       expect(result?.count).toBeGreaterThanOrEqual(1);
-    }
-  );
+    });
+  }
 });
 
 describe('Foreign Keys — Enforcement', () => {

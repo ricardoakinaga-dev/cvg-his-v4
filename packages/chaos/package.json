@@ -14,7 +14,8 @@
   "scripts": {
     "build": "tsc -b tsconfig.json --force",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "node -e \"console.log('no tests for chaos')\""
+    "test": "tsc -p tsconfig.json && node --test --test-reporter=dot dist/*.test.js",
+    "lint": "node ../../scripts/run-semantic-lint.mjs"
   },
   "dependencies": {
     "@cvg-his-v2/shared-logging": "workspace:*",

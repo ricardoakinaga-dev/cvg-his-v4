@@ -31,10 +31,10 @@ export const patientService = {
     if (normalizedFilters?.status && normalizedFilters.status !== 'all') {
       searchParams.set('status', normalizedFilters.status);
     }
-    if (normalizedFilters?.page) {
+    if (normalizedFilters?.page !== undefined) {
       searchParams.set('page', String(normalizedFilters.page));
     }
-    if (normalizedFilters?.pageSize) {
+    if (normalizedFilters?.pageSize !== undefined) {
       searchParams.set('pageSize', String(normalizedFilters.pageSize));
     }
 

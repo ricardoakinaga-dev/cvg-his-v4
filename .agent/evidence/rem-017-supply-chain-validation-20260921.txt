@@ -1,0 +1,35 @@
+REM-017 — validação local de supply chain em modo seguro
+Data da verificação: 2026-09-21 (America/Sao_Paulo)
+
+Escopo e autoridade
+- Execução somente local, read-only/reversível e bounded ao validador, fixtures de contrato e workflow versionado.
+- Nenhuma publicação OCI/registry, assinatura real, attestation externa, credential, target ou release foi executado.
+
+Comandos executados no runtime oficial
+1. source /home/ricardo/.nvm/nvm.sh && nvm use 22.23.2 && CI=1 pnpm validate:supply-chain
+2. source /home/ricardo/.nvm/nvm.sh && nvm use 22.23.2 && XDG_CACHE_HOME=/tmp/cvg-rem017-cache-20260921 node --test scripts/validate-supply-chain.test.mjs
+3. source /home/ricardo/.nvm/nvm.sh && nvm use 22.23.2 && CI=1 pnpm validate:dependencies
+
+Resultados
+- `pnpm validate:supply-chain`: PASS / exit 0.
+- O validador escaneou 132 referências de actions, 14 imagens de workflow, 15 imagens Compose, 0 imagens Helm estáticas, 6 bases Docker e 4 imagens em scripts de runtime; todas as referências externas foram imutáveis. Imagens Compose locais são exceções explícitas do contrato.
+- `scripts/validate-supply-chain.test.mjs`: 17/17 testes PASS, 0 skipped/todo, exit 0.
+- `pnpm validate:dependencies`: PASS; 69 manifests ativos, lockfile e política de specifiers válidos.
+
+Cobertura do pipeline candidate-bound
+- `.github/workflows/release-artifacts.yml` constrói API, worker e SPA uma vez em OCI `linux/amd64`, com `provenance: mode=max`, `sbom: true` e label do `RELEASE_SHA`.
+- A matriz verifica preparação de layouts OCI antes dos três scans Trivy, com `HIGH,CRITICAL`, `ignore-unfixed: false` e `exit-code: '1'`.
+- O workflow declara attestation de cada imagem por digest, verificação via `gh attestation verify` com workflow/ref/SHA, manifesto digest-bound e gate Triple-A.
+- Os known-bads fail-closed cobrem action/image mutable, image workflow/Helm/runtime substituída, digest cruzado, scanner apontando para artefato diferente, scan desabilitado, OCI reorder e rebuild silencioso.
+
+Limitações explícitas
+- Os testes locais validam a estrutura e o vínculo fail-closed; não geram imagens candidate-bound, SBOM ou vulnerabilidades reais nesta estação nem publicam em registry.
+- Não houve assinatura/attestation verificável por GitHub OIDC nem execução remota do workflow; portanto a prova não promove CI/OCI/attestation/manifest a evidência externa atual.
+- O fechamento local não é aprovação de release, target, provider, credencial ou autoridade humana.
+
+Artefatos
+- scripts/validate-supply-chain.mjs
+- scripts/validate-supply-chain.test.mjs
+- scripts/validate-dependency-policy.mjs
+- .github/workflows/release-artifacts.yml
+- .github/workflows/ci.yml

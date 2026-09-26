@@ -28,6 +28,7 @@
   "scripts": {
     "build": "tsc -b tsconfig.json --force",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "test": "cd ../../.. && vitest run packages/modules/notifications-whatsapp/src/*.test.ts"
+    "test": "cd ../../.. && vitest run packages/modules/notifications-whatsapp/src/*.test.ts",
+    "lint": "node ../../../scripts/run-semantic-lint.mjs"
   }
 }

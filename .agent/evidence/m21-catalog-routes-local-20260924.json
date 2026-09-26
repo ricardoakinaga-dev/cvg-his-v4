@@ -1,0 +1,193 @@
+{
+  "evidence_id": "M21-CATALOG-ROUTES-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T07:53:02Z",
+  "scope": "M-21/M-23 local extraction and characterization of API catalog and preventive-event route families, plus strict matching for item and item-action paths.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to this dirty worktree at the recorded HEAD; it is not candidate or release evidence."
+  },
+  "environment": {
+    "node_for_checks": "v22.23.2",
+    "pnpm": "10.33.0",
+    "database_url_variables_unset_for_http_tests": true,
+    "catalog_stores_explicitly_in_memory": true,
+    "http_test_transport": "server.emit in-process; no listener or port",
+    "database_or_service_started": false
+  },
+  "boundary_decision": {
+    "status": "IMPLEMENTED_LOCALLY",
+    "current": "Catalog and preventive-event parsing, authorization calls, account guards, store calls, audit calls, and HTTP responses were mixed into the API composition module.",
+    "proposed": "Keep route behavior in dedicated HTTP modules; server.ts composes handlers and injects stores, principal authorization, and audit callbacks.",
+    "compatibility_target": "Preserve valid route order, aliases, query parsing, permission codes, request-body behavior, account isolation, audit arguments, and response status/body behavior.",
+    "path_matching_follow_up": "Reject malformed item paths with extra non-empty segments while retaining item paths with optional trailing slashes. Item action routes require exactly one item and one action segment."
+  },
+  "extraction": {
+    "source_path": "apps/api/src/server.ts",
+    "server_lines_before_route_batch": 5204,
+    "server_lines_after": 4439,
+    "server_line_delta": -765,
+    "server_line_reduction_since_7943": 3504,
+    "server_line_reduction_since_8332": 3893,
+    "dispatch_order": [
+      "product/service catalogs",
+      "animal catalogs",
+      "customer groups",
+      "preventive events",
+      "responsibility terms"
+    ],
+    "route_modules": [
+      "apps/api/src/routes/product-service-catalog-routes.ts",
+      "apps/api/src/routes/animal-catalog-routes.ts",
+      "apps/api/src/routes/customer-group-routes.ts",
+      "apps/api/src/routes/preventive-event-routes.ts",
+      "apps/api/src/routes/responsibility-term-routes.ts"
+    ],
+    "path_matcher": "apps/api/src/routes/resource-route-path.ts",
+    "persistence_boundary": "Route modules import repository factories and catalog input types only as types. Stores, requirePrincipal, and appendAudit are injected."
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "7c1cffcf1934ab9e5041c69d108552e9bd9844566c9913b70ca9c5b191b49195",
+      "physical_lines": 4439
+    },
+    {
+      "path": "apps/api/src/server.test.ts",
+      "sha256": "c15640849c9cebc2ce00e7635712780ee79bb08183c29dcc4b14dbff97ffc95c",
+      "physical_lines": 6365
+    },
+    {
+      "path": "apps/api/src/routes/product-service-catalog-routes.ts",
+      "sha256": "ea797ebd0c5dbc4bcf966c537575634744b772aade90c6926c12f0bd7fb3b825",
+      "physical_lines": 276
+    },
+    {
+      "path": "apps/api/src/routes/animal-catalog-routes.ts",
+      "sha256": "0224edadc59ba3cf6c9448ff69151f159a646e4ed150e077cb3de6149530cad8",
+      "physical_lines": 411
+    },
+    {
+      "path": "apps/api/src/routes/customer-group-routes.ts",
+      "sha256": "c27cc650a99c2c345bd74757b6ad0a19e33349a96b8d5a3657ae164029b7c6c5",
+      "physical_lines": 169
+    },
+    {
+      "path": "apps/api/src/routes/preventive-event-routes.ts",
+      "sha256": "4806ef09d0ac33128f12c8454c4e6e396903e5dc1eab65f1cc9497b1eae25988",
+      "physical_lines": 259
+    },
+    {
+      "path": "apps/api/src/routes/responsibility-term-routes.ts",
+      "sha256": "274d9f1742b3808023217078de4ed74ed10976bd8c392dea87abb35e09c0ad88",
+      "physical_lines": 162
+    },
+    {
+      "path": "apps/api/src/routes/resource-route-path.ts",
+      "sha256": "14fba17b195fe78f330b8b7be119d4801716cd5683141388b7b8598b464e9d03",
+      "physical_lines": 20
+    },
+    {
+      "path": "apps/api/src/routes/resource-route-path.test.ts",
+      "sha256": "ab180b1e453844325ec1baf672ac7274468771a555f45e7b127ee23ae9710557",
+      "physical_lines": 60
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "813272a98943a4b4f7bac978f38554d061e227936559182dbc2a29b0890f01d5",
+      "server_budget": {
+        "current_lines": 4439,
+        "max_lines": 8323,
+        "previous_max_lines": 8335,
+        "margin_lines": 3884
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test pnpm exec tsx --test --test-reporter=dot --test-name-pattern='catalog stores honor the in-memory persistence mode|catalog endpoints respect frontend search filters over HTTP semantics|animal reference item routes enforce account ownership over HTTP|product and service item routes enforce account ownership over HTTP|customer group item routes enforce account ownership over HTTP|responsibility-term item routes enforce account ownership over HTTP|preventive-event item routes enforce account ownership over HTTP' apps/api/src/server.test.ts",
+      "result": "PASS; seven focused in-process HTTP tests. They cover owner/foreign list isolation for products, services, breeds, animal species, coat colors, customer groups, responsibility terms, and preventive events; item requests; unchanged data after foreign mutations; aliases; filters; and preventive-event execution/email ownership gates.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx --test --test-reporter=dot apps/api/src/routes/resource-route-path.test.ts",
+      "result": "PASS; two tests for item segment boundaries, trailing slashes, and exact action paths.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsc -p apps/api/tsconfig.json --noEmit",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; server.ts=4,439, cap=8,323, previous max=8,335.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec vitest run tests/unit/infra/complexity-hotspots.test.ts --config /tmp/cvg-his-m35-no-db-vitest.config.mjs",
+      "result": "PASS; one test file, four tests; isolated configuration clears database global setup and setup files.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/server.ts apps/api/src/routes/product-service-catalog-routes.ts apps/api/src/routes/animal-catalog-routes.ts apps/api/src/routes/customer-group-routes.ts apps/api/src/routes/responsibility-term-routes.ts apps/api/src/routes/preventive-event-routes.ts apps/api/src/routes/resource-route-path.ts apps/api/src/routes/resource-route-path.test.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check -- apps/api/src/server.ts apps/api/src/server.test.ts apps/api/src/routes/product-service-catalog-routes.ts apps/api/src/routes/animal-catalog-routes.ts apps/api/src/routes/customer-group-routes.ts apps/api/src/routes/responsibility-term-routes.ts apps/api/src/routes/preventive-event-routes.ts apps/api/src/routes/resource-route-path.ts apps/api/src/routes/resource-route-path.test.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test pnpm exec tsx --test --test-reporter=dot --test-name-pattern='preventive-event item routes enforce account ownership over HTTP' apps/api/src/server.test.ts (before route extraction)",
+      "result": "PASS; one two-account test against the original in-server route implementation.",
+      "exit_code": 0
+    }
+  ],
+  "intermediate_failure": {
+    "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --write apps/api/src/routes/resource-route-path.ts apps/api/src/routes/resource-route-path.test.ts apps/api/src/routes/product-service-catalog-routes.ts apps/api/src/routes/animal-catalog-routes.ts apps/api/src/routes/customer-group-routes.ts apps/api/src/routes/responsibility-term-routes.ts apps/api/src/routes/preventive-event-routes.ts",
+    "result": "An initial run exited 2 because the new route matcher test was missing a closing `);`. The test was corrected, Prettier then passed, and all focused tests/typechecks passed.",
+    "exit_code": 2
+  },
+  "independent_review": {
+    "result": "PASS",
+    "critic_id": "critic_m21_route_batch_final_i3",
+    "independence": "Fresh I1 context fork; read-only source comparison and unchanged before/after SHA-256 sentinels.",
+    "context_fork": "none",
+    "method": "A read-only TypeScript AST comparison matched all 41 original and 41 extracted route branch bodies in order after normalizing handler return wrappers and isolating path predicates. The reviewer also inspected dispatch dependencies and route-path matching against canonical OpenAPI paths.",
+    "reviewer_test_command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test pnpm exec tsx --test --test-name-pattern='collection item paths|collection item action paths|item routes enforce account ownership over HTTP|catalog endpoints respect frontend search filters over HTTP semantics' apps/api/src/routes/resource-route-path.test.ts apps/api/src/server.test.ts",
+    "reviewer_test_result": "PASS; 8 tests, 0 failures, 0 skipped; server.emit in-process harness only.",
+    "findings": "No behavior regression found. Dispatch order, aliases, filters, permissions, account checks, audit calls, responses, and injected dependencies match the original handlers. Route modules use type-only repository imports.",
+    "coverage_gaps": [
+      "Trailing-slash compatibility is covered by path matcher unit tests, not performRequest HTTP tests.",
+      "Malformed nested item paths are tested over HTTP with GET across the collections; malformed PATCH/DELETE are not separately exercised.",
+      "Tests use admin principals and do not assert explicit insufficient-role denial or exact runtime audit records.",
+      "Database-backed adapters and PostgreSQL RLS were not exercised."
+    ],
+    "mutation_sentinel_clean": true,
+    "reviewed_sha256": [
+      { "path": "apps/api/src/server.ts", "sha256": "7c1cffcf1934ab9e5041c69d108552e9bd9844566c9913b70ca9c5b191b49195" },
+      { "path": "apps/api/src/server.test.ts", "sha256": "c15640849c9cebc2ce00e7635712780ee79bb08183c29dcc4b14dbff97ffc95c" },
+      { "path": "apps/api/src/routes/product-service-catalog-routes.ts", "sha256": "ea797ebd0c5dbc4bcf966c537575634744b772aade90c6926c12f0bd7fb3b825" },
+      { "path": "apps/api/src/routes/animal-catalog-routes.ts", "sha256": "0224edadc59ba3cf6c9448ff69151f159a646e4ed150e077cb3de6149530cad8" },
+      { "path": "apps/api/src/routes/customer-group-routes.ts", "sha256": "c27cc650a99c2c345bd74757b6ad0a19e33349a96b8d5a3657ae164029b7c6c5" },
+      { "path": "apps/api/src/routes/preventive-event-routes.ts", "sha256": "4806ef09d0ac33128f12c8454c4e6e396903e5dc1eab65f1cc9497b1eae25988" },
+      { "path": "apps/api/src/routes/responsibility-term-routes.ts", "sha256": "274d9f1742b3808023217078de4ed74ed10976bd8c392dea87abb35e09c0ad88" },
+      { "path": "apps/api/src/routes/resource-route-path.ts", "sha256": "14fba17b195fe78f330b8b7be119d4801716cd5683141388b7b8598b464e9d03" },
+      { "path": "apps/api/src/routes/resource-route-path.test.ts", "sha256": "ab180b1e453844325ec1baf672ac7274468771a555f45e7b127ee23ae9710557" },
+      { "path": "docs/engineering/complexity-hotspots.json", "sha256": "813272a98943a4b4f7bac978f38554d061e227936559182dbc2a29b0890f01d5" }
+    ]
+  },
+  "coverage_gaps": [
+    "Trailing-slash compatibility and malformed item/action path behavior are not all asserted through HTTP for every method.",
+    "Tests use administrator principals; explicit insufficient-role denial and runtime audit-record assertions are not covered.",
+    "PostgreSQL-backed store adapter and RLS behavior were not exercised."
+  ],
+  "limitations": [
+    "This is a local M-21/M-23 slice against a dirty worktree; no candidate SHA or release state is established.",
+    "More API composition can still be decomposed; full PROD-041 acceptance remains open.",
+    "Persistent PostgreSQL/RLS verification, broader auth/replay/transaction evidence, and end-to-end critical journeys remain open."
+  ]
+}

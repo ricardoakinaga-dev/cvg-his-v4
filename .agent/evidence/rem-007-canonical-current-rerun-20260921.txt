@@ -1,0 +1,12 @@
+REM-007 current canonical runner rerun after the Vitest helper-coverage test
+Observed: 2026-09-21T19:53:48Z
+Environment: Linux; Node v22.23.2; pnpm 10.33.0; local worktree; no real secrets, provider, target or external action.
+
+Command:
+  source /home/ricardo/.nvm/nvm.sh && nvm use 22.23.2 && CI=1 pnpm test
+
+Result: exit 0.
+Root stage: 282 files (282 executed; 1 skipped file reported by Vitest), 3019 passed tests and 3 skipped tests.
+Workspace stage: 68 of 69 projects; SPA 217/217 files and 1891/1891 tests; API 639/639 tests; worker and remaining modules completed without failure observed.
+
+Limitations: This is a local canonical-runner result. It does not prove CI, target behavior, UAT, recovery, release authority or human go/no-go.

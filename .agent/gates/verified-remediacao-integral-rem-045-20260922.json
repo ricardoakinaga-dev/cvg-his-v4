@@ -1,0 +1,111 @@
+{
+  "gate_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-045-20260922",
+  "task": "REM-045",
+  "timestamp": "2026-09-22T11:22:08.000000Z",
+  "gate_type": "VERIFIED",
+  "decision": "PASS_WITH_CONDITIONS",
+  "criteria": [
+    {
+      "id": "V-REM045-001",
+      "criterion": "A política versionada classifica raízes, define TTL, quota e ACL restrita por classe.",
+      "status": "PASS",
+      "observed": "artifact-retention-policy.json declara legal-hold, active-evidence, generated-run, coverage-run e unknown; docs operacionais descrevem o mesmo contrato.",
+      "evidence_refs": [
+        ".agent/evidence/rem-045-preparation-20260922.txt",
+        ".agent/evidence/rem-045-artifact-retention-20260922.txt",
+        "docs/engineering/artifact-retention-policy.json",
+        "docs/operations/ARTIFACT_RETENTION_POLICY.md"
+      ]
+    },
+    {
+      "id": "V-REM045-002",
+      "criterion": "Existe limpeza apenas em modo dry-run, com falha fechada para modo implícito.",
+      "status": "PASS",
+      "observed": "A CLI exige --dry-run, não importa rm/unlink/rmdir e o teste focal confirma que o modo implícito é recusado.",
+      "evidence_refs": [
+        ".agent/evidence/rem-045-artifact-retention-20260922.txt",
+        "scripts/artifact-retention-dry-run.mjs",
+        "scripts/artifact-retention-dry-run.test.mjs"
+      ]
+    },
+    {
+      "id": "V-REM045-003",
+      "criterion": "Evidência legal, ativa, desconhecida e arquivos de integridade nunca são candidatos.",
+      "status": "PASS",
+      "observed": "3/3 testes passam; no workspace real, 418.729 de 418.922 arquivos foram protegidos e nenhum candidato foi emitido.",
+      "evidence_refs": [
+        ".agent/evidence/rem-045-artifact-retention-20260922.txt",
+        "scripts/artifact-retention-dry-run.test.mjs"
+      ]
+    },
+    {
+      "id": "V-REM045-004",
+      "criterion": "O inventário real é executável no runtime oficial e sem erro de leitura/estatística.",
+      "status": "PASS_WITH_CONDITIONS",
+      "observed": "Node v22.23.2/pnpm 10.33.0; 418.922 arquivos, 0 erros de scan; Prettier e git diff --check verdes.",
+      "evidence_refs": [
+        ".agent/evidence/rem-045-artifact-retention-20260922.txt"
+      ]
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-045-preparation-20260922.txt",
+    ".agent/evidence/rem-045-artifact-retention-20260922.txt",
+    "docs/engineering/artifact-retention-policy.json",
+    "docs/operations/ARTIFACT_RETENTION_POLICY.md",
+    "scripts/artifact-retention-dry-run.mjs",
+    "scripts/artifact-retention-dry-run.test.mjs"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "ACL/retention de provedor externo não foram executadas nem provadas.",
+    "A quota de active-evidence é consultiva nesta fatia; o grande coverage-scope permanece preservado.",
+    "Qualquer remoção futura exige decisão humana para o escopo exato e nova prova de recuperabilidade.",
+    "CI/OCI, target, owners externos, UAT, browser/a11y, release e go/no-go permanecem fora do claim.",
+    "A crítica independente fresca E7 continua ausente por modo de agente único."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM045-AUTHORITY",
+      "description": "Não executar exclusão, chmod ou alteração de retenção externa sem autoridade explícita vinculada ao escopo.",
+      "non_blocking": true,
+      "impact": "A política e o dry-run ficam verificados localmente; a limpeza efetiva permanece aberta.",
+      "owner": "lead",
+      "due_or_trigger": "Autorização humana específica e evidência de rollback/arquivo recuperável.",
+      "verification_method": "Executar novo dry-run, revisar candidatos e registrar gate superseding antes de qualquer ação.",
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "REQUIRED_FOR_DESTRUCTIVE_ACTION"
+    },
+    {
+      "id": "COND-REM045-DRIFT",
+      "description": "Reabrir se raízes, classes, marcadores de proteção, comandos de archive ou retenções de workflow mudarem.",
+      "non_blocking": true,
+      "impact": "A seleção de candidatos pode perder cobertura após drift de superfície.",
+      "owner": "lead",
+      "due_or_trigger": "Drift em artifacts/, coverage/, test-results/, playwright-report/, política ou workflows de upload.",
+      "verification_method": "Reexecutar teste focal e inventário real, produzindo gate superseding.",
+      "status": "OPEN",
+      "residual_risk": "LOW",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED_FOR_LOCAL_DRY_RUN",
+    "actor": "local remediation executor",
+    "scope": "classificação, inventário e dry-run locais",
+    "decision": "A instrução autoriza correção local reversível; não autoriza exclusão, ACL externa, provider, target, release ou go/no-go.",
+    "evidence_ref": ".agent/evidence/rem-045-artifact-retention-20260922.txt",
+    "expires_or_revalidates": "Revalidar quando a política, as raízes gerenciadas ou os workflows de retenção mudarem."
+  },
+  "residual_risk": "MEDIUM",
+  "next_action": "REM-045:REOPEN-IF-DRIFT",
+  "revalidation_triggers": [
+    "Alterar a política de classes, TTL, quota, ACL ou marcadores de proteção.",
+    "Adicionar ou mover artefatos nas raízes gerenciadas.",
+    "Solicitar remoção efetiva, chmod, upload, retenção externa ou limpeza por quota.",
+    "Executar push, CI/OCI, target, deploy, UAT, release ou decisão humana sem gate específico."
+  ],
+  "status": "DONE_LOCAL"
+}

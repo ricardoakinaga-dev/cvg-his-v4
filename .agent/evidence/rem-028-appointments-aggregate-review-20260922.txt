@@ -1,0 +1,20 @@
+REM-028 — revisão agregada local dos seams de appointments
+Data: 2026-09-22T06:10:00.000000Z
+Escopo: reconciliação dos seams calendar/list, actions, overview/query e create flow; seleção da próxima tarefa
+Status: PASS_WITH_CONDITIONS
+
+## Resultado da revisão
+
+- Os quatro gates candidate-bound da agenda estão presentes e em `PASS_WITH_CONDITIONS`: `AgendaCalendarOrList.vue`, `appointmentActionController.ts`, `useAppointmentsOverview.ts` e `AppointmentCreateFlow.vue`.
+- A auditoria de ownership confirmou que `AppointmentsListPage.vue` mantém `agendaContext`, URL/query, sessão e permissões, overview/server state, filtros, router, drawer, actions, refresh e reconciliação de `selectedAppointment`.
+- `AppointmentQuickCreateForm.vue` continua owner da mutation `appointmentService.create`, lookups, disponibilidade e recommendation; o wrapper de create apenas coordena seleção, preset e intents.
+- A auditoria runtime candidate-bound passou: os três boundaries não têm imports runtime de services, router, pinia ou stores; imports `type` de contratos permanecem permitidos.
+- A reconciliação proporcional anterior permanece válida: focal da agenda create 5 arquivos/54 testes, `vue-tsc`, lint, build Vite/PWA, diff e boundaries passaram.
+
+## Próxima tarefa
+
+O backlog/documento definem `REM-029` como o próximo cartão independente (`F-016`, dependência REM-027): decompor relatórios e worker runner em boundaries testáveis, preservando concorrência, retries e contratos públicos. A próxima ação aberta é `REM-029:PREPARE`; nenhuma implementação de reports/worker foi iniciada neste review.
+
+## Condições abertas
+
+Browser/visual/a11y, foco real, dark/mobile, reduced-motion, suíte SPA integral pós-seam, crítica E7, revisão de owners, UAT, target, release e autoridade humana permanecem fora do claim. A API local em `127.0.0.1:3111` continuou indisponível (`health_http=000`) e snapshots não foram atualizados.

@@ -1,0 +1,122 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND14-20260923",
+  "recorded_at": "2026-09-23T08:20:51Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PARTIAL; root test orchestration and changed CI gate boundary reviewed; broad local test safety, other command implementations, other pipeline invocations, full inventory, candidate gates, and independent critique remain open",
+  "paths_reviewed": [
+    {
+      "path": "package.json",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "bf8780af15a54cc586c2ca0b4dcf362c9c40a56aaa3e3b8629fb37d399742c41",
+      "current_sha256": "bf8780af15a54cc586c2ca0b4dcf362c9c40a56aaa3e3b8629fb37d399742c41",
+      "sha_matches_inventory": true,
+      "scope_classification": "CONFIG_OR_CODE",
+      "counted_as_new_original_path_this_round": false,
+      "content_review": "REVIEWED_WITH_BOUNDED_SCOPE_AND_LIMITS",
+      "review_notes": "The root manifest changes test to the canonical runner; adds separate test:root/test:workspaces stages and test:redis; and adds migration-harness, validator and retention commands. The test command map was checked here, but the other new command implementations remain in their own pending source paths.",
+      "candidate_overlay_decision": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE"
+    },
+    {
+      "path": "scripts/run-root-test-suite.mjs",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "f6404a921014bc5746513d1e708528e63a6f9d64c8012d14f9c3f9a99e195465",
+      "current_sha256": "f6404a921014bc5746513d1e708528e63a6f9d64c8012d14f9c3f9a99e195465",
+      "sha_matches_inventory": true,
+      "scope_classification": "TOOLING_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true,
+      "content_review": "REVIEWED_WITH_BOUNDED_SCOPE_AND_LIMITS",
+      "review_notes": "Fixed root then workspace commands run sequentially with shell:false, inherited environment/stdin, piped output and nonzero propagation; execution stops at first failure. Only the exact JSDOM navigation warning line is filtered from stderr. No timeout or explicit signal/cancel policy is present.",
+      "candidate_overlay_decision": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE"
+    },
+    {
+      "path": "tests/unit/infra/root-test-runner-contract.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "96f11a730c35b4ac9127d66f5746aab1126002878964280f518fdad4cd71e85f",
+      "current_sha256": "96f11a730c35b4ac9127d66f5746aab1126002878964280f518fdad4cd71e85f",
+      "sha_matches_inventory": true,
+      "scope_classification": "TEST_OR_QUALITY_CONTRACT",
+      "counted_as_new_original_path_this_round": true,
+      "content_review": "REVIEWED_WITH_BOUNDED_SCOPE_AND_LIMITS",
+      "review_notes": "The focused contract checks the command map, root-before-workspace order, success propagation, fail-fast behavior, exact warning filtering, and CI prepared-build test script expectations. Known-bad child exits 73 and does not create the workspace marker. Temp directories are created under os.tmpdir and removed in finally.",
+      "candidate_overlay_decision": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE"
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "42df3738c40e9eab1488012473b23b1e9ac1c35f9d1046c18ce14b3d7e31c754",
+      "current_sha256": "42df3738c40e9eab1488012473b23b1e9ac1c35f9d1046c18ce14b3d7e31c754",
+      "sha_matches_inventory": true,
+      "scope_classification": "CI_CONFIGURATION",
+      "counted_as_new_original_path_this_round": true,
+      "content_review": "REVIEWED_WITH_BOUNDED_SCOPE_AND_LIMITS",
+      "review_notes": "The push/pull-request CI workflow has separate typecheck and lint jobs; lint needs typecheck. The unit job starts CI-local PostgreSQL/Redis services, migrates/seeds the test DB, runs pnpm test and the Redis shard, then stops PostgreSQL. It also adds the REM-016 harness artifact command/upload and a PostgreSQL webhook shard. No GitHub job was executed locally.",
+      "candidate_overlay_decision": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE"
+    }
+  ],
+  "test_execution": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config apps/spa/vitest.config.ts tests/unit/infra/root-test-runner-contract.test.ts",
+    "working_directory": ".",
+    "started_at_utc": "2026-09-23T08:20:12Z",
+    "finished_at_utc": "2026-09-23T08:20:13Z",
+    "test_files_passed": 1,
+    "tests_passed": 5,
+    "tests_failed": 0,
+    "result": "PASS",
+    "environment": "Standalone SPA Vitest/JSDOM config, with no database global setup; selected test imports the runner, reads manifests/workflow, and launches only small Node child processes in a unique temp directory that is removed in finally. No database, provider, or live network command was invoked.",
+    "not_run": "pnpm test, test:root, and test:workspaces were not run; the root Vitest configuration and workspace suites have database-aware global setup, and the shared local DB is not an approved broad-suite target."
+  },
+  "pipeline_observations": {
+    "lint_typecheck": "In .github/workflows/ci.yml, push/pull_request CI has a dedicated typecheck job (pnpm typecheck) followed by a dedicated lint job (pnpm lint, needs typecheck).",
+    "test_environment": "The unit job starts the CI-local PostgreSQL service and Redis service, migrates/seeds the test database, invokes pnpm test with explicit test DB/Redis URLs, then stops the database service.",
+    "other_workflows": "Read-only search found test commands in critical-soak.yml, release-artifacts.yml, and state-of-art-closure.yml but no pnpm lint/typecheck invocation in those files. Other local developer entrypoints were not exhaustively audited; round-13 pipeline boundary is only partly resolved.",
+    "new_ci_edges": "The edited CI config invokes scripts/run-rem016-migration-harness.mjs with a local artifact output and uploads it for 30 days, and adds a PostgreSQL webhook process shard. Those invoked implementations/execution results are outside this round."
+  },
+  "architecture_observations": [
+    "The canonical pnpm test command is an orchestrator, not a unit-only shortcut: it invokes the root Vitest stage and then every filtered workspace test sequentially, stopping on the first nonzero result.",
+    "The runner uses fixed argument arrays and shell:false, forwards process streams, and maps spawn errors or signal termination to a failing exit status. It has no timeout or explicit child cancellation policy.",
+    "The contract test proves orchestration semantics only; it does not prove test-suite side-effect safety or DB behavior.",
+    "The changed main CI workflow explicitly runs lint and typecheck as separate jobs, while other checked-in workflows invoke other test subsets. No remote workflow was dispatched."
+  ],
+  "findings_and_limits": [
+    {
+      "id": "M02-ROOT-TEST-BROAD-SHARED-DB-BOUNDARY",
+      "classification": "HOLD_LOCAL_EXECUTION",
+      "observation": "The canonical pnpm test command runs root Vitest followed by all workspace tests. The orchestrator itself is deterministic, but it does not guard against the configured database-aware setup/hooks in those suites.",
+      "required_followup": "Keep broad local test commands held until an approved disposable database target or no-connection guard is available; the isolated contract test does not authorize the aggregate run."
+    },
+    {
+      "id": "M02-CI-LINT-TYPECHECK-INVOCATION-SCOPE",
+      "classification": "PARTIAL_EVIDENCE",
+      "observation": "The edited push/pull_request CI workflow invokes typecheck then lint in separate jobs. Other checked-in workflows found by search run other test subsets without those two commands; local developer pipeline coverage is not established.",
+      "required_followup": "Retain a pipeline-invocation hold for workflows/developer entrypoints outside ci.yml; do not interpret lint alone as type correctness."
+    },
+    {
+      "id": "M02-CI-MIGRATION-HARNESS-TARGET",
+      "classification": "HOLD_TARGET_IMPLEMENTATION_REVIEW",
+      "observation": "The workflow adds a REM-016 migration harness command and artifact upload; the target script and its database/artifact effects were not reviewed or executed in this round.",
+      "required_followup": "Review scripts/run-rem016-migration-harness.mjs and its test/output contract before candidate inclusion or any workflow execution."
+    },
+    {
+      "id": "M02-ROOT-TEST-RUNNER-LIVENESS",
+      "classification": "KNOWN_RELIABILITY_LIMIT",
+      "observation": "The subprocess runner has no command timeout or explicit signal-forwarding/cancellation implementation, and the focused contract does not exercise hung or interrupted children.",
+      "required_followup": "Decide whether timeout/signal behavior is required for the canonical runner; verify with focused tests if changed."
+    }
+  ],
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "hold_reason": "Three paths add new original-inventory coverage; the root manifest was already counted in initial manifest review. Broad tests, migration harness target, unreviewed command implementations, remaining inventory, and independent critique remain open."
+  },
+  "limitations": [
+    "Static review only for CI workflow; no remote CI execution.",
+    "The test passed under the standalone SPA Vitest config and does not execute the root/workspace suite.",
+    "CI and developer command invocation beyond the inspected workflow remains partially unknown.",
+    "Primary-operator review only; no independent inclusion approval."
+  ]
+}

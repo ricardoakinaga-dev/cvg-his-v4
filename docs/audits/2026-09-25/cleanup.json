@@ -1,0 +1,24 @@
+{
+  "checked_at": "2026-09-25T11:30:36.016587-03:00",
+  "resources": [
+    {
+      "name": "cvg-audit25-browser-pg",
+      "ownership_label": "cvg.audit=9c0a022c89",
+      "remove_exit_code": 0,
+      "remaining_exact_name": ""
+    },
+    {
+      "name": "cvg-audit25-pg-9c0a022c89",
+      "ownership_label": "cvg.audit=9c0a022c89",
+      "remove_exit_code": 0,
+      "remaining_exact_name": ""
+    },
+    {
+      "name": "cvg-audit25-redis-9c0a022c89",
+      "ownership_label": "cvg.audit=9c0a022c89",
+      "remove_exit_code": 0,
+      "remaining_exact_name": ""
+    }
+  ],
+  "other_resources": "No unrelated container or process was stopped."
+}

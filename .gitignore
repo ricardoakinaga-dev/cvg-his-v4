@@ -16,7 +16,7 @@ vetus-screenshots/
 .env
 .env.local
 .env.v2
-pnpm-lock.yaml
+# The canonical pnpm lockfile is tracked and must remain visible to Git.
 .DS_Store
 # Patch files should not be tracked in version control
 *.patch

@@ -83,6 +83,15 @@ const mockOwners = [
   }
 ];
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+
+  return { promise, resolve };
+}
+
 const mockListFn = vi.fn().mockResolvedValue(mockPatients);
 const mockOwnerListFn = vi.fn().mockResolvedValue(mockOwners);
 const mockGetOwnerName = vi
@@ -147,14 +156,83 @@ describe('PatientsListPage', () => {
     expect(wrapper.text()).toContain('Paciente em destaque');
   });
 
-  it('shows error state when API fails', async () => {
-    mockListFn.mockRejectedValue(new Error('Failed to load patients'));
+  it('does not show empty or zero summary values until a successful empty response arrives', async () => {
+    const response = deferred<typeof mockPatients>();
+    mockListFn.mockReturnValueOnce(response.promise);
 
     const PatientsListPage = (await import('../PatientsListPage.vue')).default;
     const wrapper = mount(PatientsListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Failed to load patients');
+    expect(wrapper.get('.patients-loading-state[role="status"]').text()).toContain(
+      'Carregando pacientes'
+    );
+    expect(wrapper.find('.empty-state').exists()).toBe(false);
+    expect(wrapper.findAll('.summary-card__value').map((value) => value.text())).toEqual([
+      '—',
+      '—',
+      '—',
+      '—'
+    ]);
+
+    response.resolve([]);
+    await flushPromises();
+
+    expect(wrapper.get('.empty-state[role="status"]').text()).toContain(
+      'Nenhum paciente encontrado'
+    );
+    expect(wrapper.findAll('.summary-card__value').map((value) => value.text())).toEqual([
+      '0',
+      '0',
+      '0',
+      '0'
+    ]);
+  });
+
+  it('keeps a failed patient load accessible and retries into the patient list', async () => {
+    const retryResponse = deferred<typeof mockPatients>();
+    mockListFn
+      .mockRejectedValueOnce(new Error('Failed to load patients'))
+      .mockReturnValueOnce(retryResponse.promise);
+
+    const PatientsListPage = (await import('../PatientsListPage.vue')).default;
+    const wrapper = mount(PatientsListPage);
+
+    await flushPromises();
+    expect(wrapper.get('[role="alert"]').text()).toContain('Failed to load patients');
+    expect(wrapper.find('.empty-state').exists()).toBe(false);
+    expect(wrapper.find('.patients-grid').exists()).toBe(false);
+    expect(wrapper.findAll('.summary-card__value').map((value) => value.text())).toEqual([
+      '—',
+      '—',
+      '—',
+      '—'
+    ]);
+
+    await wrapper
+      .findAll('[role="alert"] button')
+      .find((button) => button.text().includes('Tentar novamente'))!
+      .trigger('click');
+    await flushPromises();
+
+    expect(wrapper.get('.patients-loading-state[role="status"]').text()).toContain(
+      'Carregando pacientes'
+    );
+    expect(wrapper.find('.empty-state').exists()).toBe(false);
+    expect(wrapper.findAll('.summary-card__value').map((value) => value.text())).toEqual([
+      '—',
+      '—',
+      '—',
+      '—'
+    ]);
+
+    retryResponse.resolve(mockPatients);
+    await flushPromises();
+
+    expect(mockListFn).toHaveBeenCalledTimes(2);
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(wrapper.find('.patients-grid').text()).toContain('Rex');
+    expect(wrapper.find('.empty-state').exists()).toBe(false);
   });
 
   it('shows empty state when no patients exist', async () => {
@@ -164,7 +242,28 @@ describe('PatientsListPage', () => {
     const wrapper = mount(PatientsListPage);
 
     await flushPromises();
-    expect(wrapper.text()).toContain('Nenhum paciente encontrado');
+    expect(wrapper.get('.empty-state[role="status"]').text()).toContain(
+      'Nenhum paciente encontrado'
+    );
+  });
+
+  it('distinguishes no patients from no matches and lets the user clear filters', async () => {
+    mockRoute.query = { sex: 'unknown' };
+
+    const PatientsListPage = (await import('../PatientsListPage.vue')).default;
+    const wrapper = mount(PatientsListPage);
+
+    await flushPromises();
+    expect(wrapper.get('.empty-state[role="status"]').text()).toContain(
+      'Nenhum paciente corresponde aos filtros'
+    );
+    expect(wrapper.text()).not.toContain('Cadastre o primeiro animal');
+
+    await wrapper.get('.empty-state button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.find('.empty-state').exists()).toBe(false);
+    expect(wrapper.findAll('.patient-card')).toHaveLength(2);
   });
 
   it('renders patient data in cards', async () => {

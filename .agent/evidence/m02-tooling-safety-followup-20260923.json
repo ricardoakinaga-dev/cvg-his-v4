@@ -1,0 +1,243 @@
+{
+  "evidence_id": "M02-TOOLING-SAFETY-FOLLOWUP-20260923-01",
+  "recorded_at_utc": "2026-09-23T18:51:30Z",
+  "task": "M-02 / REM-010 source audit follow-up",
+  "status": "I1_HOLD_CURRENT_HASHES_UNREVIEWED",
+  "worktree_snapshot": {
+    "dirty_paths_total": 445,
+    "tracked_dirty_paths": 128,
+    "untracked_paths": 317,
+    "staged_paths": 0,
+    "deleted_paths": 0
+  },
+  "changes": [
+    {
+      "area": "SPA responsive appointments and fixture privacy",
+      "paths": [
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+        "apps/spa/src/pages/appointments/AgendaCalendarOrList.vue",
+        "apps/spa/src/pages/sales/__tests__/CounterSalesCardList.test.ts"
+      ],
+      "result": "Mobile ordering now targets the rendered agenda wrapper; duplicate child-scoped parent ordering was removed; a phone-shaped test fixture was replaced with synthetic contact text."
+    },
+    {
+      "area": "Monthly report cadence",
+      "paths": [
+        "packages/modules/reports/src/report-schedule-time.ts",
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/report-database-repository.ts",
+        "packages/modules/reports/src/report-database-repository.test.ts"
+      ],
+      "result": "Monthly advancement clamps to the target month end and carries the original anchor day through later months."
+    },
+    {
+      "area": "API helper test dispatch",
+      "paths": [
+        "apps/api/package.json"
+      ],
+      "result": "The API helper contract tests are now part of the package test and test:all commands."
+    },
+    {
+      "area": "Test runner and migration harness safety",
+      "paths": [
+        "scripts/run-root-test-suite.mjs",
+        "tests/unit/infra/root-test-runner-contract.test.ts",
+        "scripts/run-rem016-migration-harness.mjs",
+        "scripts/run-rem016-migration-harness.test.mjs"
+      ],
+      "result": "The aggregate runner requires an explicit disposable test database, a unique per-run suffix, strips ambient database overrides, limits child environment, and supports process-tree cancellation and timeout. REM-016 migration children now run as cancellable process groups; SIGINT/SIGTERM cleanup in finally is source-reviewed but was not signal-tested or harness-executed. The harness accepts only digest-pinned official PostgreSQL image names; output paths reject traversal, symlinks, and overwrite; cleanup failures prevent a PASS report."
+    },
+    {
+      "area": "Evidence generators and skip-policy checks",
+      "paths": [
+        "scripts/artifact-retention-dry-run.mjs",
+        "scripts/artifact-retention-dry-run.test.mjs",
+        "scripts/generate-architecture-concentration-evidence.mjs",
+        "scripts/generate-architecture-concentration-evidence.test.mjs",
+        "scripts/validate-test-skip-policy.mjs",
+        "tests/unit/infra/test-skip-policy.test.ts"
+      ],
+      "result": "Artifact and architecture evidence writes stay in-repository, refuse symlinks and overwrites, and suppress absolute roots. Static skip checks reject computed/local/imported/destructured test API aliases, including namespace-import destructuring and computed destructured modifier keys; dynamic test options fail closed across test, it, suite and describe calls. CI validation removes shell comments, here-document bodies and multiline-quoted text, rejects masked commands and commands in conditional or continue-on-error job/step scopes, and requires the Redis GITHUB_ENV export to be a standalone top-level group. The final bounded I1 review found `git log --output` could write through a RUNNER_TEMP glob to the active add_path file; the validator now checks dynamic git-log output targets and the fixture covers the exact command. This local fix passed focused checks, but the changed validator and fixture bytes have no post-fix I1 review and remain HOLD."
+    },
+    {
+      "area": "Operational runbooks and ignore policy",
+      "paths": [
+        ".gitignore",
+        "docs/engineering/INSTALL_UPGRADE_ROLLBACK.md",
+        "docs/security/DATABASE_ROLE_MATRIX.md"
+      ],
+      "result": "The protected state ignore rule is present and the file mode is 0644. The install runbook no longer links internal evidence; the role matrix discloses that NOINHERIT and migration-role memberships remain unrecorded and open for candidate-bound proof."
+    }
+  ],
+  "verification": [
+    {
+      "command": "node --test scripts/artifact-retention-dry-run.test.mjs scripts/generate-architecture-concentration-evidence.test.mjs scripts/run-rem016-migration-harness.test.mjs",
+      "result": "PASS 13/13"
+    },
+    {
+      "command": "pnpm exec tsx --test apps/api/src/helpers/api-server-boundaries.test.ts apps/api/src/helpers/response-buffer.test.ts",
+      "result": "PASS 7/7"
+    },
+    {
+      "command": "pnpm exec vitest run src/pages/appointments/__tests__/AgendaCalendarOrList.test.ts src/pages/sales/__tests__/CounterSalesCardList.test.ts (cwd apps/spa)",
+      "result": "PASS 2 files, 5/5 tests"
+    },
+    {
+      "command": "Vitest with a temporary Node-only config and no globalSetup: root-test-runner-contract.test.ts + report-database-repository.test.ts",
+      "result": "PASS 2 files, 9/9 tests"
+    },
+    {
+      "command": "node scripts/validate-test-skip-policy.mjs",
+      "result": "PASS 36 allowlisted skip occurrences"
+    },
+    {
+      "command": "pnpm exec vue-tsc --noEmit (cwd apps/spa)",
+      "result": "PASS"
+    },
+    {
+      "command": "pnpm exec tsc -p packages/modules/reports/tsconfig.json --noEmit",
+      "result": "PASS"
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS"
+    },
+    {
+      "command": "pnpm exec eslint --no-eslintrc --config .eslintrc.semantic.cjs on changed JavaScript/MJS tooling and runner-contract files",
+      "result": "PASS"
+    },
+    {
+      "command": "Vitest with a temporary Node-only config and no globalSetup: tests/unit/infra/test-skip-policy.test.ts",
+      "result": "PASS 1 file, 4/4 tests; computed test[modifier] is rejected."
+    },
+    {
+      "command": "Vitest with a temporary Node-only config and no globalSetup: tests/unit/infra/test-skip-policy.test.ts",
+      "result": "PASS 1 file, 5/5 tests; covers computed modifiers, local/imported/destructured aliases, symlink test discovery, and YAML/shell comment decoys."
+    },
+    {
+      "command": "node scripts/validate-test-skip-policy.mjs",
+      "result": "PASS 36 allowlisted skip occurrences after YAML-aware mandatory shard checks."
+    },
+    {
+      "command": "node --test scripts/run-rem016-migration-harness.test.mjs",
+      "result": "PASS 3/3 safe contract tests, including official PostgreSQL image identity and report output safety; the Docker/DB harness was not executed."
+    },
+    {
+      "command": "pnpm exec eslint scripts/validate-test-skip-policy.mjs tests/unit/infra/test-skip-policy.test.ts scripts/run-rem016-migration-harness.mjs scripts/run-rem016-migration-harness.test.mjs",
+      "result": "PASS."
+    },
+    {
+      "command": "git diff --check",
+      "result": "PASS."
+    },
+    {
+      "command": "Vitest with a temporary Node-only config and no globalSetup: tests/unit/infra/test-skip-policy.test.ts; node scripts/validate-test-skip-policy.mjs",
+      "result": "PASS 5/5 focused tests, including a shell echo decoy for REDIS_SERVER_BIN without a GITHUB_ENV export; repository validator passed 36 allowlisted skip occurrences."
+    },
+    {
+      "command": "Vitest with a temporary Node-only config and no globalSetup: tests/unit/infra/test-skip-policy.test.ts; node scripts/validate-test-skip-policy.mjs; focused ESLint; git diff --check",
+      "result": "PASS 5/5 focused tests, including shell comments, here-document command decoys, and a Redis echo that is not redirected to GITHUB_ENV; validator passed 36 allowlisted occurrences; ESLint and diff check passed."
+    },
+    {
+      "command": "pnpm exec vitest run --config /tmp/cvg-vitest-node-m02-skip-policy.config.mjs (temporary Node-only config without globalSetup); node scripts/validate-test-skip-policy.mjs; node --test scripts/run-rem016-migration-harness.test.mjs; pnpm exec eslint scripts/validate-test-skip-policy.mjs tests/unit/infra/test-skip-policy.test.ts scripts/run-rem016-migration-harness.mjs scripts/run-rem016-migration-harness.test.mjs; git diff --check",
+      "result": "PASS: focused skip-policy tests 5/5, including a complete fake REDIS_SERVER_BIN export inside a here-document (rejected); repository validator 36 allowlisted occurrences; REM-016 safe contract tests 3/3; focused ESLint and git diff --check passed."
+    },
+    {
+      "command": "pnpm exec vitest run --config /tmp/cvg-vitest-node-m02-skip-policy.config.mjs (temporary Node-only config without globalSetup); node scripts/validate-test-skip-policy.mjs; pnpm exec eslint scripts/validate-test-skip-policy.mjs tests/unit/infra/test-skip-policy.test.ts scripts/run-rem016-migration-harness.mjs scripts/run-rem016-migration-harness.test.mjs; git diff --check",
+      "result": "PASS: focused skip-policy tests 5/5, including direct-command and full Redis export decoys inside multiline single-quoted shell strings; repository validator 36 allowlisted occurrences; focused ESLint and git diff --check passed."
+    },
+    {
+      "command": "pnpm exec vitest run --config /tmp/cvg-vitest-node-m02-skip-policy.config.mjs (temporary Node-only config without globalSetup); node scripts/validate-test-skip-policy.mjs; pnpm exec eslint scripts/validate-test-skip-policy.mjs tests/unit/infra/test-skip-policy.test.ts scripts/run-rem016-migration-harness.mjs scripts/run-rem016-migration-harness.test.mjs; git diff --check",
+      "result": "PASS: focused skip-policy tests 5/5; required command text inside both single- and double-quoted multiline shell strings and a Redis export echo inside a multiline quote were rejected; repository validator 36 allowlisted occurrences; focused ESLint and git diff --check passed."
+    },
+    {
+      "command": "pnpm exec vitest run --config /tmp/cvg-vitest-node-m02-skip-policy.config.mjs (temporary Node-only config without globalSetup); node scripts/validate-test-skip-policy.mjs; pnpm exec eslint scripts/validate-test-skip-policy.mjs tests/unit/infra/test-skip-policy.test.ts scripts/run-rem016-migration-harness.mjs scripts/run-rem016-migration-harness.test.mjs; git diff --check",
+      "result": "PASS: focused skip-policy tests 6/6; computed option aliases, unknown computed keys, spread options, and opaque option objects fail closed; repository validator 36 allowlisted occurrences; focused ESLint and git diff --check passed."
+    },
+    {
+      "command": "pnpm exec vitest run --config /tmp/cvg-vitest-node-m02-skip-policy.config.mjs (temporary Node-only config without globalSetup); node scripts/validate-test-skip-policy.mjs; pnpm exec eslint scripts/validate-test-skip-policy.mjs tests/unit/infra/test-skip-policy.test.ts scripts/run-rem016-migration-harness.mjs scripts/run-rem016-migration-harness.test.mjs; git diff --check",
+      "result": "PASS: focused skip-policy tests 6/6, including a computed alias option on describe/suite; repository validator 36 allowlisted occurrences; focused ESLint and git diff --check passed."
+    },
+    {
+      "command": "pnpm exec vitest run --config /tmp/cvg-vitest-node-m02-skip-policy.config.mjs (temporary Node-only config without globalSetup); node scripts/validate-test-skip-policy.mjs; pnpm exec eslint scripts/validate-test-skip-policy.mjs tests/unit/infra/test-skip-policy.test.ts scripts/run-rem016-migration-harness.mjs scripts/run-rem016-migration-harness.test.mjs; git diff --check",
+      "result": "PASS: focused skip-policy tests 8/8; computed option aliases/spreads/opaque objects and computed destructured modifiers fail closed; namespace-import test APIs remain detected after destructuring and member aliasing; repository validator 36 allowlisted occurrences; focused ESLint and git diff --check passed."
+    },
+    {
+      "command": "pnpm exec vitest run --config /tmp/cvg-vitest-node-m02-skip-policy.config.mjs (temporary Node-only config without globalSetup); node scripts/validate-test-skip-policy.mjs; pnpm exec eslint scripts/validate-test-skip-policy.mjs tests/unit/infra/test-skip-policy.test.ts scripts/run-rem016-migration-harness.mjs scripts/run-rem016-migration-harness.test.mjs; git diff --check",
+      "result": "PASS: focused skip-policy tests 8/8; shell command suffixes that mask failure, commands inside branches, conditional/continue-on-error jobs or steps, and conditional Redis exports are rejected; repository validator 36 allowlisted occurrences; focused ESLint and git diff --check passed."
+    },
+    {
+      "command": "pnpm exec vitest run --config vitest.unit.config.ts tests/unit/infra/test-skip-policy.test.ts",
+      "result": "PASS: 1 file, 8/8 tests, including a fixture for git log --output with the RUNNER_TEMP add_path glob.",
+      "exit_status": 0,
+      "observed_at_utc": "2026-09-23T18:34:55Z"
+    },
+    {
+      "command": "node scripts/validate-test-skip-policy.mjs",
+      "result": "PASS: 36 allowlisted skip occurrences.",
+      "exit_status": 0,
+      "observed_at_utc": "2026-09-23T18:34:55Z"
+    },
+    {
+      "command": "pnpm exec eslint scripts/validate-test-skip-policy.mjs tests/unit/infra/test-skip-policy.test.ts",
+      "result": "PASS: no ESLint errors.",
+      "exit_status": 0,
+      "observed_at_utc": "2026-09-23T18:34:55Z"
+    },
+    {
+      "command": "git diff --check -- .github/workflows/ci.yml; git diff --no-index --check -- /dev/null scripts/validate-test-skip-policy.mjs; git diff --no-index --check -- /dev/null tests/unit/infra/test-skip-policy.test.ts",
+      "result": "PASS: no whitespace diagnostics. Each --no-index command returned 1 because the untracked file differs from /dev/null; the repository files were not modified by the check.",
+      "exit_status": 0,
+      "observed_at_utc": "2026-09-23T18:34:55Z"
+    },
+    {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config vitest.unit.config.ts tests/unit/infra/test-skip-policy.test.ts; PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" node scripts/validate-test-skip-policy.mjs; PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec eslint scripts/validate-test-skip-policy.mjs tests/unit/infra/test-skip-policy.test.ts",
+      "result": "PASS: pinned Node 22.23.2 with pnpm 10.33.0; Vitest 1 file/8 tests, validator 36 allowlisted occurrences, focused ESLint no errors.",
+      "exit_status": 0,
+      "runtime": {
+        "node": "22.23.2",
+        "pnpm": "10.33.0"
+      },
+      "observed_at_utc": "2026-09-23T18:51:30Z"
+    }
+  ],
+  "safety": {
+    "shared_database_or_service_access": false,
+    "docker_or_migration_harness_execution": false,
+    "host_port_opened": false,
+    "root_full_or_workspace_test_suite_run": false,
+    "gauntlet_state_contents_read": false
+  },
+  "remaining": [
+    "The final hash-bound I1 returned HOLD on the pre-fix hashes and found the git log --output path writer. The finding was patched and focused checks pass, but the current validator/test hashes have not received a fresh I1 review; these and all other post-review-edited product/tooling paths remain HOLD. This evidence does not approve a candidate or overlay.",
+    "REM-016 SIGINT/SIGTERM handling and disposable-resource cleanup are source-reviewed only; the harness and signal path were not executed or signal-tested because this shared session must not start Docker or open a host port. Synchronous Docker CLI operations remain bounded by configured timeout before cleanup resumes.",
+    "Candidate-bound disposable database proof, persistent report/worker flow, browser visual acceptance, and external CI remain open.",
+    "The full root/workspace suite was not run; no disposable database environment was supplied for its guarded entry point."
+  ],
+  "independent_review": {
+    "reviewer": "/root/m02_final_i1_critic",
+    "verdict": "HOLD",
+    "scope": [
+      "scripts/validate-test-skip-policy.mjs",
+      "tests/unit/infra/test-skip-policy.test.ts",
+      ".github/workflows/ci.yml"
+    ],
+    "reviewed_sha256": {
+      "scripts/validate-test-skip-policy.mjs": "f4eccfe75f7e249aee60316400bf013465f4a898abe950e96fcf8f9fae66ca95",
+      "tests/unit/infra/test-skip-policy.test.ts": "8feeea52ce4cdbf9ee6aa955d6e2f7a63f86015e08f6d90a2be4e39963c2e7e5",
+      ".github/workflows/ci.yml": "6b880543907ee78cc2e991894abd20c41462d1d693a95575ce47af60111452f2"
+    },
+    "finding": {
+      "command": "git log -1 --format=\"${RUNNER_TEMP}/fakebin\" --output=${RUNNER_TEMP}/_runner_file_commands/add_path_*",
+      "description": "The unquoted glob can resolve to the active Actions add_path file and git log writes the formatted line there, changing PATH without naming GITHUB_PATH.",
+      "disposition": "Patched locally by detecting dynamic git log --output/-o targets and adding a regression fixture."
+    },
+    "current_sha256_after_local_fix": {
+      "scripts/validate-test-skip-policy.mjs": "a3896e56d7db865a4bb53070ebf9225c0fdebb5abb78d6ae829535f9e73b7432",
+      "tests/unit/infra/test-skip-policy.test.ts": "a68cb601d0a5ddbc5a97a301947c51aec6c4b5bb50d96b9a8073c6a54d533dde",
+      ".github/workflows/ci.yml": "6b880543907ee78cc2e991894abd20c41462d1d693a95575ce47af60111452f2"
+    },
+    "current_bytes_independently_reviewed": false,
+    "candidate_or_overlay_approval": false
+  }
+}

@@ -1,0 +1,108 @@
+{
+  "evidence_id": "M21-CEP-LOOKUP-ROUTE-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T10:02:14Z",
+  "scope": "M-21/M-23 extraction of the GET /cep/lookup ViaCEP boundary from the API dispatcher.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to this dirty worktree at the recorded HEAD; it is not candidate or release evidence."
+  },
+  "extraction": {
+    "source_path": "apps/api/src/server.ts",
+    "server_lines_before": 3897,
+    "server_lines_after": 3842,
+    "server_line_delta": -55,
+    "dispatch_placement": "The handler remains at the former inline ViaCEP branch position before delegated discharges routes.",
+    "behavior_preserved": [
+      "Exact /cep/lookup path and GET method requirement",
+      "Missing CEP and post-normalization length validation statuses, messages, and correlation IDs",
+      "Digit stripping and the same ViaCEP URL with AbortSignal.timeout(5000)",
+      "The same success field mapping, erro-to-404 envelope, and fetch/JSON catch-to-502 envelope"
+    ],
+    "dependency_boundary": "The fetch function is injected by API composition; the route unit tests use stubs and do not call ViaCEP."
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/routes/cep-lookup-route.ts",
+      "sha256": "e5e51e7005349e6730f20e48a8316f6cb238097dccb6c92c597e5a1551b9dad2",
+      "physical_lines": 83
+    },
+    {
+      "path": "apps/api/src/routes/cep-lookup-route.test.ts",
+      "sha256": "f2decdceeccadb1526ad6aec389326c8aca9cccfce24bead965f98db86e22d59",
+      "physical_lines": 163
+    },
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "736e52c3d9482aa0826e798538b37f7e22ea37c83180bf91cdfe193005e3fb96",
+      "physical_lines": 3842
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "664f8648778c99ba0c2194b27b150590832a03e4a6ffdfc1b371419d96b061ec",
+      "server_budget": {
+        "current_lines": 3842,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH node --import tsx --test apps/api/src/routes/cep-lookup-route.test.ts",
+      "result": "PASS, 5 focused tests for missing/invalid input, digit normalization, timeout signal, success mapping, not-found/upstream failure envelopes, and path/method fallthrough; injected fetch prevents network access.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/api typecheck",
+      "result": "PASS",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; server.ts=3,842, cap=8,323, previous maximum=8,335.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/routes/cep-lookup-route.ts apps/api/src/routes/cep-lookup-route.test.ts apps/api/src/server.ts docs/engineering/complexity-hotspots.json && git diff --check -- apps/api/src/server.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    }
+  ],
+  "independent_review": {
+    "result": "PASS",
+    "critic_id": "critic_m21_cep_lookup_i1",
+    "independence": "Fresh I1 context; read-only source comparison and focused test rerun.",
+    "reviewed_sha256": [
+      {
+        "path": "apps/api/src/routes/cep-lookup-route.ts",
+        "sha256": "e5e51e7005349e6730f20e48a8316f6cb238097dccb6c92c597e5a1551b9dad2"
+      },
+      {
+        "path": "apps/api/src/routes/cep-lookup-route.test.ts",
+        "sha256": "f2decdceeccadb1526ad6aec389326c8aca9cccfce24bead965f98db86e22d59"
+      },
+      {
+        "path": "apps/api/src/server.ts",
+        "sha256": "736e52c3d9482aa0826e798538b37f7e22ea37c83180bf91cdfe193005e3fb96"
+      },
+      {
+        "path": "docs/engineering/complexity-hotspots.json",
+        "sha256": "664f8648778c99ba0c2194b27b150590832a03e4a6ffdfc1b371419d96b061ec"
+      }
+    ],
+    "findings": "No behavior delta found. The reviewer confirmed the prior branch's exact validation, fetch URL and timeout, field mapping, error envelopes, and dispatch position; 5/5 tests passed. It noted that undefined-field omission and the exact timeout duration are source-compared rather than directly asserted by tests."
+  },
+  "limitations": [
+    "The ViaCEP response is stubbed; no external network or live provider behavior was exercised.",
+    "Focused tests confirm a timeout signal is passed but do not wait for timeout expiry; source comparison confirms the 5,000 ms value.",
+    "The populated fixture does not directly exercise undefined response field omission; source mapping and JSON serialization match the old branch.",
+    "The worktree remains dirty and no candidate SHA, CI, target, UAT, or release acceptance is asserted.",
+    "No database, service, listener, container, network probe, or port was used."
+  ]
+}

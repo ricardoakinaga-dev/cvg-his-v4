@@ -1,0 +1,113 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND38-20260923",
+  "recorded_at": "2026-09-23T10:41:35Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "docs/2026-09-13-backlog-prontidao-producao.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "4fdc4bab18b405c91d2eee972bc1f968a0bdb2dc05c3f4cbbff80fa9e16f2a42",
+      "current_sha256": "4fdc4bab18b405c91d2eee972bc1f968a0bdb2dc05c3f4cbbff80fa9e16f2a42",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical 13/09 backlog preserves 47 PROD acceptance contracts and the PROD-001-R1 first dispatch; it says .agent is the live status source and is superseded by the 21/09 REM backlog. One local path token is present in its procedure."
+    },
+    {
+      "path": "docs/2026-09-13-plano-executivo-prontidao-producao.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "98b8db99bd5b9e370d8afb0a19f9c2e7310e3e130621a33ee560087ec8564b6d",
+      "current_sha256": "98b8db99bd5b9e370d8afb0a19f9c2e7310e3e130621a33ee560087ec8564b6d",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical 13/09 plan carries 63/100/FAIL context, 47 deliverables and local-vs-external gates; first investment is recovery/harness and corrected legacy/replay behavior. It is superseded by 21/09."
+    },
+    {
+      "path": "docs/2026-09-13-relatorio-estado-atual-erp-cvg-his-v4.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "3085c715c050565ff322fe3490a7d37e98115260a8afb396a049999df99f9f0a",
+      "current_sha256": "3085c715c050565ff322fe3490a7d37e98115260a8afb396a049999df99f9f0a",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical report is candidate 324099e5, score 63/100, BLOCKED, with a documented update that preserves initial numbers and notes follow-up re-audit. It distinguishes probes/current runs from non-executed target proof; two local path tokens occur in its scope/attempt description."
+    },
+    {
+      "path": "docs/2026-09-13-roadmap-prontidao-producao.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "215f7b44e0ce9c0c668c9a58ee4225a4f43e55f51c1f65e979d102279a8a8833",
+      "current_sha256": "215f7b44e0ce9c0c668c9a58ee4225a4f43e55f51c1f65e979d102279a8a8833",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical R0–R7 roadmap inserts the post-checkpoint repair sequence before the original F0–F7 phases and retains authority/target gates. It is superseded by the 21/09 roadmap."
+    }
+  ],
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "Documentation links/governance and current Triple-A snapshot validators passed after recording round 38.",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-13SEP-BASELINE-IS-SUPERSEDED",
+      "classification": "HOLD_SNAPSHOT_PROVENANCE",
+      "observation": "The 13/09 report binds score 63/100, BLOCKED and FAIL coverage results to candidate 324099e5 and a dated worktree/evidence set. It is explicitly superseded by the 21/09 audit; intervening 14/15/20/21 September scorecards use different evidence boundaries and cannot be treated as a monotonic score series."
+    },
+    {
+      "id": "M02-13SEP-OLD-PROD-QUEUE-IS-NOT-LIVE",
+      "classification": "HOLD_HISTORICAL_STATUS",
+      "observation": "The paired backlog/plan/roadmap define 47 PROD cards and R0–R7/R0 repair slices and direct live status to .agent. Their first action PROD-001-R1 and old MA/REM mapping are historical; current REM-010/M-02 status belongs to the active control plane and 21/09 package."
+    },
+    {
+      "id": "M02-13SEP-LOCAL-PATH-REDACTION",
+      "classification": "HOLD_PUBLICATION_REDACTION",
+      "observation": "A scoped scan found three local absolute path tokens across the backlog and report. Redact before external publication; no absolute path value is reproduced in this review."
+    },
+    {
+      "id": "M02-13SEP-CLAIMS-NOT-REEXECUTED",
+      "classification": "SCOPE_LIMIT",
+      "observation": "The report distinguishes historical/probe/local evidence from target/CI/authority proof, and notes failures/reopens. No listed PostgreSQL, HTTP, browser, coverage, CI, release, provider or operational procedure was rerun in this content review."
+    }
+  ],
+  "candidate_actions": [
+    "Retain the 13/09 score, candidate SHA, 47-card model and first dispatch as archival context only.",
+    "Use the current 21/09 formal baseline and active .agent REM control records for present status.",
+    "Redact local paths before external publication; do not claim full PII or underlying artifact review from this content pass."
+  ],
+  "limitations": [
+    "Content/cross-reference review only; the re-audit, probes, tests, CI, database, browser, coverage and release evidence cited in these files were not re-executed.",
+    "No referenced artifacts, target, credentials, UAT, external handoff or destructive operation was recreated.",
+    "The path scan only detected /home and /tmp patterns and is not full PII/security clearance.",
+    "Reviewer is not independent; remaining inventory paths and independent critique remain open."
+  ],
+  "checkpoint_validation": {
+    "json_and_jsonl_parse": "PASS (177 JSON and 8 JSONL files under .agent; document-governance JSON also parsed)",
+    "git_diff_check": "PASS",
+    "docs_validate": "PASS",
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 37; no new REM-010/M-02 finding and no gate-v2 finding. The global controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T10:41:35Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 301,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 427,
+    "status_sha256": "dfb179ca80560d28afc455275052b5163c729bb2425258b9d58c5aeafe58b80e",
+    "note": "Read-only porcelain status after M-02 round 38 and checkpoint validation; original 386-path denominator unchanged. Round-38 review artifact is the forty-first post-inventory path. No candidate, overlay or frozen SHA exists."
+  }
+}

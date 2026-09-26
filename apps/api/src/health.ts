@@ -4,8 +4,14 @@ import type { HealthResponse } from '@cvg-his-v2/shared-contracts';
 import { createCorrelationId, nowIso } from '@cvg-his-v2/shared-utils';
 
 import type { PersistenceMode } from './app-state.js';
+import type { TraceableIncomingMessage } from './tracing.js';
 
 type RateLimiterMode = 'redis' | 'in-memory' | 'fail-closed';
+
+function requestCorrelationId(request: IncomingMessage): string {
+  const correlationId = (request as TraceableIncomingMessage).correlationId;
+  return typeof correlationId === 'string' ? correlationId : createCorrelationId('api');
+}
 
 export interface HealthDependencies {
   databaseConfigured: boolean;
@@ -42,7 +48,7 @@ export function createHealthResponse(
   request: IncomingMessage,
   deps: HealthDependencies
 ): HealthResponse {
-  const correlationId = request.headers['x-correlation-id'];
+  const correlationId = requestCorrelationId(request);
 
   let dbState: 'healthy' | 'unhealthy' | 'not-configured' | 'in-memory-fallback';
   let dbDetail: string;
@@ -115,7 +121,7 @@ export function createHealthResponse(
     version,
     environment,
     timestamp: nowIso(),
-    correlationId: typeof correlationId === 'string' ? correlationId : createCorrelationId('api'),
+    correlationId,
     liveness: {
       live: true,
       initialized: deps.initialized
@@ -195,7 +201,7 @@ export function createLivenessResponse(
   initialized: boolean,
   persistenceMode: PersistenceMode = 'not-initialized'
 ): HealthResponse {
-  const correlationId = request.headers['x-correlation-id'];
+  const correlationId = requestCorrelationId(request);
 
   return {
     ok: true,
@@ -203,7 +209,7 @@ export function createLivenessResponse(
     version,
     environment,
     timestamp: nowIso(),
-    correlationId: typeof correlationId === 'string' ? correlationId : createCorrelationId('api'),
+    correlationId,
     liveness: {
       live: true,
       initialized

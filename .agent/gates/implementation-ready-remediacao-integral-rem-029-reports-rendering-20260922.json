@@ -1,0 +1,131 @@
+{
+  "record_id": "GATE-IMPLEMENTATION-READY-REMEDIACAO-INTEGRAL-REM-029-REPORTS-RENDERING-20260922",
+  "timestamp": "2026-09-22T07:30:00.000000Z",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "preparação candidate-bound para extrair os renderizadores puros JSON/CSV/XLSX/PDF do módulo reports",
+  "scope_ref": "REM-029",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-REM029-RENDER-001",
+      "description": "A superfície de rendering foi delimitada em 249 linhas físicas, separada de ReportsService, persistência, claims, delivery e DatabaseReportRepository.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-rendering-preparation-20260922.txt",
+        "packages/modules/reports/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A delimitação é estática; a extração e a regressão pós-mutação ficam para IMPLEMENT."
+    },
+    {
+      "id": "IR-REM029-RENDER-002",
+      "description": "Contratos atuais de content type/encoding, colunas, BOM, CSV formula-safe, JSON, XLSX/ZIP e PDF escaping foram congelados com known-bads observáveis.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-rendering-preparation-20260922.txt",
+        "packages/modules/reports/src/reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A prova atual é a suíte existente; o teste direto do novo boundary ainda não existe."
+    },
+    {
+      "id": "IR-REM029-RENDER-003",
+      "description": "O baseline do module-reports passou no runtime oficial local: 36/36 testes, typecheck, lint e diff check.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-rendering-preparation-20260922.txt",
+        "packages/modules/reports/package.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A execução é local e não substitui CI ou revisão externa."
+    },
+    {
+      "id": "IR-REM029-RENDER-004",
+      "description": "A próxima implementação foi limitada a um renderer puro em arquivo dedicado; IDs, cache, persistência, leases, retries, delivery e contexto tenant permanecem no service/repository.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-rendering-preparation-20260922.txt",
+        ".agent/plans/remediacao-integral-20260921.md",
+        ".agent/gates/verified-remediacao-integral-rem-029-worker-report-sources-verify-20260922.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A extração deve revalidar o import graph e a ordem de persistência."
+    },
+    {
+      "id": "IR-REM029-RENDER-005",
+      "description": "Limites de autoridade e crítica estão explícitos: mutação local reversível autorizada; sem subagentes, target, provider real, UAT, owners, release ou decisão de go/no-go.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-rendering-preparation-20260922.txt",
+        ".agent/execution-log.jsonl#EVT-REM-029-VERIFIED-PROCESS-WORKER-REPORT-SOURCES-20260922"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A ausência de E7 mantém qualquer gate posterior condicionado."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-029-reports-rendering-preparation-20260922.txt",
+    "packages/modules/reports/src/index.ts",
+    "packages/modules/reports/src/reports.test.ts",
+    "packages/modules/reports/src/report-catalog-contract.test.ts",
+    "packages/modules/reports/src/cancellation-report-definitions.test.ts",
+    "packages/modules/reports/package.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "A implementação e teste focal do renderer ainda não existem.",
+    "A checagem global de complexidade mantém quatro medições SPA divergentes fora desta fatia.",
+    "Crítica E7 e revisão formal dos owners REPORTS/RUNTIME permanecem abertas.",
+    "CI/OCI, target, provider real, UAT, browser visual/a11y, release e go/no-go humano permanecem fora do claim."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-029-RENDER-IMPLEMENTATION",
+      "description": "Extrair somente a região pura de rendering, adicionar focal direto para JSON/CSV/XLSX/PDF e provar que o service continua dono de IDs, persistência e claims.",
+      "non_blocking": false,
+      "impact": "Qualquer movimento de persistência/lease/provider reabre esta preparação.",
+      "owner": "REPORTS",
+      "due_or_trigger": "Durante REM-029:IMPLEMENT-REPORTS-RENDERING.",
+      "verification_method": "Teste focal do renderer, regressão reports, typecheck, lint, diff e boundary audit.",
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-029-RENDER-REVIEW",
+      "description": "Owners REPORTS/RUNTIME e crítica E7 devem revisar o boundary antes do fechamento do cartão.",
+      "non_blocking": true,
+      "impact": "Não bloqueia implementação local; bloqueia aceite organizacional.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de fechar REM-029.",
+      "verification_method": "Revisão identificada em contexto fresco e gate superseding.",
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "preparação e implementação local reversível do renderer puro de reports",
+    "decision": "A instrução autoriza inspeção e futura mutação local; não autoriza target, provider real, UAT, aceite de owners, release ou go/no-go.",
+    "evidence_ref": ".agent/evidence/rem-029-reports-rendering-preparation-20260922.txt",
+    "expires_or_revalidates": "Revalidar se a implementação tocar persistência, leases, delivery, tenant context, exports públicos ou qualquer superfície SPA."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-029:IMPLEMENT-REPORTS-RENDERING",
+  "revalidation_triggers": [
+    "Mover stableReportId, cache, persistExport, repository ou provider para o renderer.",
+    "Alterar content type/encoding, BOM, formula-safe CSV, ZIP/XML/PDF escaping ou ordem de colunas sem novos known-bads.",
+    "Criar ciclo runtime entre renderer e index.ts.",
+    "Executar target, provider real, UAT, release ou alteração visual sem os gates próprios."
+  ],
+  "supersedes": ".agent/gates/verified-remediacao-integral-rem-029-worker-report-sources-verify-20260922.json"
+}

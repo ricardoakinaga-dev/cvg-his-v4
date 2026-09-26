@@ -1,0 +1,50 @@
+REM-009 — gate local integrado (evidência current)
+Data: 2026-09-21
+HEAD observado: ad2f0373f68635f2579253b013a4382219906921
+Ambiente: Linux local; Node v22.23.2; pnpm 10.33.0; PostgreSQL descartável local quando indicado; sem credenciais reais, provider, target, OCI, deploy ou CI remoto.
+
+RESULTADO TÉCNICO
+
+Os comandos públicos abaixo terminaram com exit 0:
+
+- CI=1 pnpm install --frozen-lockfile — 69 workspaces; lockfile atualizado.
+- CI=1 pnpm build — 68/69 projetos; API, worker, packages e SPA/PWA construídos.
+- CI=1 pnpm typecheck — 68/69 projetos.
+- CI=1 pnpm lint — lint semântico dos pacotes aplicáveis; warnings históricos de any, sem erro.
+- CI=1 pnpm test — raiz: 285 arquivos, 3028 testes passados, 1 arquivo/3 testes skipped allowlisted; workspaces concluídos sem falha.
+- CI=1 pnpm test:coverage — 285 arquivos, 3028 testes passados, 1 arquivo/3 testes skipped; branches 82.06% (8238/10038), statements 87.23%, functions 88.93%, lines 88.68%; nenhum threshold/exclude reduzido.
+- CI=1 pnpm test:critical:bootstrap — PostgreSQL isolado; 177 migrations, seed e RLS; base crítica 68 arquivos/623 testes; suíte de processos 11/11; bancos efêmeros removidos.
+- CI=1 pnpm complexity:check — orçamento de complexidade válido.
+- CI=1 pnpm security:enterprise — sem vulnerabilidades critical/high/moderate conhecidas.
+- CI=1 pnpm security:secrets — PASS após a correção do fixture de URL do harness REM-016.
+- CI=1 pnpm docs:validate — documentação e snapshot Triple-A válidos.
+- CI=1 pnpm validate:openapi — 431 paths, 41 tags, 525 schemas; estruturalmente válido.
+- CI=1 pnpm validate:rls — 171/172 tabelas tenant protegidas e 1 exceção documentada.
+- CI=1 pnpm validate:helm — validação estática dev/staging/prod passou; a execução integrada não encontrou Helm no PATH. A validação real com Helm v3.15.4 está registrada em VER-REM-015-HELM-REAL-20260921.
+- CI=1 pnpm validate:supply-chain — actions/imagens externas imutáveis; 132 actions, 14 workflow images, 15 Compose images, 6 bases Docker e 4 runtime images.
+- CI=1 pnpm validate:dependencies — 69 manifests ativos; política e lockfile válidos.
+- CI=1 pnpm validate:p0-registry — registry válido; 14 itens, 11 P0 ainda abertos e 3 fechados.
+- CI=1 pnpm validate:test-skips — 36 ocorrências allowlisted.
+- CI=1 pnpm validate:candidate-identity — exit 1 esperado: exige worktree limpo.
+- CI=1 pnpm validate:deploy-surface, validate:environment-runtime, validate:production-runtime, validate:observability, validate:identity-contract, validate:behavioral-parity-contract, validate:registry-contract, validate:loyalty-expiration-contract, validate:clinical-workflow, validate:prompt-traceability, validate:migration-source e validate:namespaces — PASS.
+- pnpm test:production-contract — 3/3.
+- pnpm test:tracing — 3/3.
+- test:event-catalog com DOTENV_CONFIG_PATH=/dev/null, REQUIRE_TEST_DB=1 e TEST_DB_EPHEMERAL=1 — 3 arquivos/31 testes; banco descartável removido.
+- CI=1 pnpm test:migration-harness — PASS; install HEAD 176/176, reexecução idempotente, mixed-version 168/176, lock observado, dump/restore com 12 contas sintéticas, checksum recovery e alvo desconhecido fail-closed.
+- git diff --check — PASS.
+
+CORREÇÕES DURANTE O GATE
+
+1. Sob instrumentação de coverage, o inventário AST de skips ultrapassou o timeout global de 30 s. O teste focal recebeu timeout explícito de 60 s; a suíte completa passou e a política permaneceu inalterada (36 findings).
+2. Secretlint detectou duas URLs PostgreSQL sintéticas literais no harness REM-016. O fixture passou a compor protocolo/usuário/senha em runtime; security:secrets e security:enterprise passaram, e o harness completo foi repetido com sucesso.
+
+BOUNDARY DE CHECKOUT LIMPO
+
+`node scripts/assert-clean-checkout.mjs` terminou exit 1 e `validate:candidate-identity` recusou o mesmo estado. O worktree compartilhado contém mudanças e artefatos de 175 entradas de status, incluindo trabalho pré-existente e evidências desta remediação. Nenhum stash, reset, checkout, commit, push ou limpeza destrutiva foi executado para esconder o boundary.
+
+DECISÃO DE EVIDÊNCIA
+
+Resultado técnico current: PASS_WITH_CONDITIONS.
+Condição obrigatória: COND-REM-009-CLEAN-CHECKOUT-BOUNDARY — repetir install/build/typecheck/lint/test/coverage/critical/bootstrap/complexity/security/docs/validators e validar candidate identity em um checkout candidate-bound realmente limpo, autorizado e congelado. Até isso ocorrer, REM-009 não recebe DONE e nenhum claim de publicabilidade, release ou go/no-go é inferido.
+
+Limitações residuais: gates remotos, OCI/SBOM/scan/attestation reais, target/RLS target, rollback/RPO/RTO target, providers, UAT, acessibilidade, recuperação operacional e autoridade humana permanecem fora desta evidência.

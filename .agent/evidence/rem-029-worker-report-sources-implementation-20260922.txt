@@ -1,0 +1,31 @@
+REM-029 — IMPLEMENTAÇÃO E VERIFICAÇÃO LOCAL DO BOUNDARY DE FONTES DE REPORTS DO WORKER
+Observado em: 2026-09-22T07:10:00Z
+HEAD observado: ad2f0373f68635f2579253b013a4382219906921
+Ambiente: Linux local; Node v22.23.2; pnpm 10.33.0; agente primário único em modo Direct; worktree compartilhado dirty preservado
+
+ESCOPO EXECUTADO
+- `apps/worker/src/scheduled-report-sources.ts` passou a concentrar o adapter de resolução/mapeamento das fontes de reports agendados e suas validações fail-closed.
+- `apps/worker/src/runner.ts` foi reduzido de 2.139 para 231 linhas e permaneceu como fachada de ticks/factories, com re-export de `resolveScheduledReportRows` e de `AdministrativeExecutiveReportSources`.
+- `apps/worker/src/scheduled-report-sources.test.ts` adiciona dois testes focais do novo boundary: forwarding de conta/filtros e mapeamento, além de validação antes da consulta/account guard.
+- `apps/worker/package.json` passou a executar o teste focal no script canônico do worker.
+- `docs/engineering/complexity-hotspots.json` foi reconciliado somente para `runner.ts` (`current_lines: 231`); não foram alteradas medições de superfícies SPA fora desta ação.
+- Claims, retries, métricas, contexto tenant, concorrência por conta, composição one-shot e `runScheduledReportJob` permaneceram fora do adapter; nenhuma página SPA foi alterada nesta ação.
+
+VERIFICAÇÕES EXECUTADAS SOB NODE 22.23.2
+1. `pnpm --filter @cvg-his-v2/worker test` — PASS, compilação TypeScript e todas as suítes declaradas; runner 65/65, boundary novo 2/2, scheduled-report-job 11/11 e demais suítes do pacote sem falhas.
+2. `pnpm --filter @cvg-his-v2/module-reports test` — PASS, 3 arquivos/36 testes.
+3. `pnpm --filter @cvg-his-v2/worker typecheck` — PASS, build das dependências e `tsc --noEmit`.
+4. `pnpm --filter @cvg-his-v2/worker lint` — PASS, sem erro semântico.
+5. `git diff --check` — PASS.
+6. Auditoria estática do boundary — PASS: não há imports/referências de SPA, router, Pinia ou store; o runner mantém a superfície exportada observada no HEAD.
+7. Auditoria de medição — PASS para o hotspot do runner: 231 linhas físicas medidas e registradas, abaixo do teto 2.139.
+
+CONDIÇÕES REPRODUZIDAS
+- `pnpm complexity:check` permanece com exit 1 por quatro entradas SPA já divergentes da medição física atual: `AppointmentsListPage.vue` (3.082/2.379), `PatientDetailPage.vue` (4.075/4.051), `ReportWorkbenchPage.vue` (3.142/2.750) e `CounterSalesPage.vue` (3.468/2.779). O erro do runner foi eliminado; as quatro medições não foram alteradas por esta ação.
+- A tentativa autorizada de integração processual em banco efêmero usou `REQUIRE_TEST_DB=1 TEST_DB_EPHEMERAL=1 TEST_DB_SUFFIX=rem029_worker_sources_20260922` para `tests/integration/process/worker-run-once-reports.test.ts`, mas o setup falhou antes dos testes com `permission denied to create database`. Nenhum banco explícito compartilhado, target ou provider real foi usado.
+- Não houve crítica adversarial E7 em contexto fresco nem revisão formal identificada dos owners REPORTS/RUNTIME; o agente permaneceu único por restrição explícita.
+
+DECISÃO LOCAL
+- A fatia de implementação é reversível e localmente verificada como `PASS_WITH_CONDITIONS`.
+- O gate não afirma integração PostgreSQL, CI/OCI, target, UAT, visual/a11y, aceite de owners, release ou go/no-go humano.
+- Próxima ação: `REM-029:VERIFY-WORKER-REPORT-SOURCES`, para fechar a verificação proporcional quando houver PostgreSQL efêmero autorizado e registrar a revisão/condições restantes.

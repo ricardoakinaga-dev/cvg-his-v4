@@ -1,0 +1,328 @@
+{
+  "schemaVersion": 1,
+  "unapprovedSkipAction": "fail",
+  "requiredShards": [
+    {
+      "id": "postgresql-vitest",
+      "runner": "vitest-integration",
+      "workflowJob": "critical-coverage-gate",
+      "requiredEnv": {
+        "REQUIRE_TEST_DB": "'1'",
+        "TEST_DB_EPHEMERAL": "'1'"
+      },
+      "requiredText": [
+        "run_vitest_shard vitest-integration"
+      ],
+      "paths": [
+        "tests/integration/database/laboratory-provider-ingress.test.ts",
+        "tests/integration/database/pix-provider-settlement-consumer.test.ts",
+        "tests/integration/database/service-principal-writer-linearization.test.ts",
+        "packages/modules/ml/src/ml.test.ts"
+      ]
+    },
+    {
+      "id": "diagnostics-postgresql",
+      "runner": "vitest-integration",
+      "workflowJob": "critical-coverage-gate",
+      "requiredEnv": {
+        "REQUIRE_TEST_DB": "'1'",
+        "TEST_DB_EPHEMERAL": "'1'"
+      },
+      "requiredText": [
+        "run_vitest_shard vitest-integration"
+      ],
+      "paths": [
+        "packages/modules/diagnostics/src/laboratory-postgres.integration.test.ts"
+      ]
+    },
+    {
+      "id": "postgresql-process",
+      "runner": "critical-process",
+      "workflowJob": "critical-coverage-gate",
+      "requiredEnv": {
+        "REQUIRE_TEST_DB": "'1'",
+        "TEST_DB_EPHEMERAL": "'1'"
+      },
+      "requiredText": [
+        "run_process_shard"
+      ],
+      "paths": [
+        "tests/integration/process/inpatient-domain-sigkill.test.ts",
+        "tests/integration/process/pix-provider-settlement-sigkill.test.ts"
+      ]
+    },
+    {
+      "id": "postgresql-process-aux",
+      "runner": "vitest-postgresql-process-aux",
+      "workflowJob": "integration-tests",
+      "requiredEnv": {
+        "REQUIRE_TEST_DB": "1",
+        "TEST_DB_EPHEMERAL": "1"
+      },
+      "requiredText": [
+        "vitest run tests/integration/process/pix-provider-webhook-settlement-e2e.test.ts"
+      ],
+      "paths": [
+        "tests/integration/process/pix-provider-webhook-settlement-e2e.test.ts"
+      ]
+    },
+    {
+      "id": "redis-postgresql-process",
+      "runner": "critical-process",
+      "workflowJob": "critical-coverage-gate",
+      "requiredEnv": {
+        "REQUIRE_TEST_DB": "'1'",
+        "TEST_DB_EPHEMERAL": "'1'"
+      },
+      "requiredText": [
+        "run_process_shard",
+        "REDIS_SERVER_BIN=${redis_server}"
+      ],
+      "paths": [
+        "tests/integration/process/setup-installation-to-session.test.ts"
+      ]
+    },
+    {
+      "id": "redis-rate-limiter",
+      "runner": "test:redis",
+      "workflowJob": "unit-tests",
+      "requiredEnv": {
+        "REDIS_RATE_LIMITER_TEST_URL": "redis://localhost:6380"
+      },
+      "requiredText": [
+        "services:\n      redis:",
+        "run: pnpm validate:test-skips",
+        "run: pnpm test:redis"
+      ],
+      "paths": [
+        "packages/shared/rate-limiter/src/rate-limiter.test.ts"
+      ]
+    },
+    {
+      "id": "e2e-postgresql",
+      "runner": "playwright-postgresql",
+      "workflowJob": "test-e2e-spa",
+      "requiredEnv": {
+        "E2E_DATABASE_MODE": "'1'"
+      },
+      "requiredText": [
+        "npx playwright test"
+      ],
+      "paths": [
+        "e2e/spa/finance-operational-catalog.spec.ts",
+        "e2e/spa/inventory-invoices-report-flow.spec.ts",
+        "e2e/spa/inventory-movements-report-flow.spec.ts",
+        "e2e/spa/inventory-products-report-flow.spec.ts",
+        "e2e/spa/inventory-stock-report-flow.spec.ts",
+        "e2e/spa/report-registration-exports.spec.ts",
+        "e2e/spa/service-invoices-report-flow.spec.ts",
+        "e2e/tests/jornada-clinica-canonica.spec.ts",
+        "e2e/tests/jornada-internacao-canonica.spec.ts"
+      ]
+    }
+  ],
+  "allowlist": [
+    {
+      "path": "tests/integration/database/laboratory-provider-ingress.test.ts",
+      "kind": "skipIf",
+      "callee": "describe",
+      "condition": "!TEST_DB_IS_EPHEMERAL",
+      "count": 1,
+      "shard": "postgresql-vitest",
+      "reason": "The PostgreSQL ledger suite is only meaningful against the disposable database shard."
+    },
+    {
+      "path": "tests/integration/database/pix-provider-settlement-consumer.test.ts",
+      "kind": "skipIf",
+      "callee": "describe",
+      "condition": "!TEST_DB_IS_EPHEMERAL",
+      "count": 1,
+      "shard": "postgresql-vitest",
+      "reason": "The settlement consumer suite requires the disposable PostgreSQL runtime."
+    },
+    {
+      "path": "tests/integration/database/service-principal-writer-linearization.test.ts",
+      "kind": "skipIf",
+      "callee": "describe",
+      "condition": "!TEST_DB_IS_EPHEMERAL",
+      "count": 1,
+      "shard": "postgresql-vitest",
+      "reason": "Linearization is a PostgreSQL integration contract, not a unit-only assertion."
+    },
+    {
+      "path": "tests/integration/process/inpatient-domain-sigkill.test.ts",
+      "kind": "skipIf",
+      "callee": "describe",
+      "condition": "!TEST_DB_IS_EPHEMERAL",
+      "count": 1,
+      "shard": "postgresql-process",
+      "reason": "The process lifecycle contract needs a disposable PostgreSQL database."
+    },
+    {
+      "path": "tests/integration/process/pix-provider-settlement-sigkill.test.ts",
+      "kind": "skipIf",
+      "callee": "describe",
+      "condition": "!TEST_DB_IS_EPHEMERAL",
+      "count": 1,
+      "shard": "postgresql-process",
+      "reason": "The process settlement contract needs a disposable PostgreSQL database."
+    },
+    {
+      "path": "tests/integration/process/pix-provider-webhook-settlement-e2e.test.ts",
+      "kind": "skipIf",
+      "callee": "describe",
+      "condition": "!TEST_DB_IS_EPHEMERAL",
+      "count": 1,
+      "shard": "postgresql-process-aux",
+      "reason": "The webhook process contract needs a disposable PostgreSQL database."
+    },
+    {
+      "path": "tests/integration/process/setup-installation-to-session.test.ts",
+      "kind": "skipIf",
+      "callee": "describe",
+      "condition": "!canRunDisposableDistributedFixture && !requireDisposableDistributedFixture",
+      "count": 1,
+      "shard": "redis-postgresql-process",
+      "reason": "The distributed bootstrap fixture requires both disposable DB and Redis capability."
+    },
+    {
+      "path": "tests/unit/infra/critical-process-suite-windows-contract.test.mjs",
+      "kind": "option",
+      "condition": "process.platform !== 'win32'",
+      "count": 9,
+      "shard": "platform-windows",
+      "reason": "These contracts execute only on the Windows runner and have a dedicated CI job."
+    },
+    {
+      "path": "packages/modules/diagnostics/src/laboratory-postgres.integration.test.ts",
+      "kind": "skipIf",
+      "callee": "test",
+      "condition": "!runPostgresTest",
+      "count": 1,
+      "shard": "diagnostics-postgresql",
+      "reason": "The diagnostic laboratory contract requires PostgreSQL and is classified in the integration shard."
+    },
+    {
+      "path": "packages/modules/ml/src/ml.test.ts",
+      "kind": "skipIf",
+      "callee": "describe",
+      "condition": "!runPostgresContract",
+      "count": 1,
+      "shard": "postgresql-vitest",
+      "reason": "The database model contract shares this package file but runs in the PostgreSQL shard."
+    },
+    {
+      "path": "packages/shared/rate-limiter/src/rate-limiter.test.ts",
+      "kind": "option",
+      "condition": "!process.env.REDIS_RATE_LIMITER_TEST_URL",
+      "count": 2,
+      "shard": "redis-rate-limiter",
+      "reason": "The two-connection Redis atomicity contracts require the mandatory Redis shard."
+    },
+    {
+      "path": "e2e/spa/finance-operational-catalog.spec.ts",
+      "kind": "skip",
+      "callee": "test",
+      "condition": "process.env.E2E_DATABASE_MODE !== '1'",
+      "count": 1,
+      "shard": "e2e-postgresql",
+      "reason": "The SPA flow is only valid against the disposable PostgreSQL E2E runtime."
+    },
+    {
+      "path": "e2e/spa/inventory-invoices-report-flow.spec.ts",
+      "kind": "skip",
+      "callee": "test",
+      "condition": "process.env.E2E_DATABASE_MODE !== '1'",
+      "count": 1,
+      "shard": "e2e-postgresql",
+      "reason": "The SPA flow is only valid against the disposable PostgreSQL E2E runtime."
+    },
+    {
+      "path": "e2e/spa/inventory-movements-report-flow.spec.ts",
+      "kind": "skip",
+      "callee": "test",
+      "condition": "process.env.E2E_DATABASE_MODE !== '1'",
+      "count": 1,
+      "shard": "e2e-postgresql",
+      "reason": "The SPA flow is only valid against the disposable PostgreSQL E2E runtime."
+    },
+    {
+      "path": "e2e/spa/inventory-products-report-flow.spec.ts",
+      "kind": "skip",
+      "callee": "test",
+      "condition": "process.env.E2E_DATABASE_MODE !== '1'",
+      "count": 1,
+      "shard": "e2e-postgresql",
+      "reason": "The SPA flow is only valid against the disposable PostgreSQL E2E runtime."
+    },
+    {
+      "path": "e2e/spa/inventory-stock-report-flow.spec.ts",
+      "kind": "skip",
+      "callee": "test",
+      "condition": "process.env.E2E_DATABASE_MODE !== '1'",
+      "count": 1,
+      "shard": "e2e-postgresql",
+      "reason": "The SPA flow is only valid against the disposable PostgreSQL E2E runtime."
+    },
+    {
+      "path": "e2e/spa/report-registration-exports.spec.ts",
+      "kind": "skip",
+      "callee": "test",
+      "condition": "process.env.E2E_DATABASE_MODE !== '1'",
+      "count": 1,
+      "shard": "e2e-postgresql",
+      "reason": "The SPA flow is only valid against the disposable PostgreSQL E2E runtime."
+    },
+    {
+      "path": "e2e/spa/service-invoices-report-flow.spec.ts",
+      "kind": "skip",
+      "callee": "test",
+      "condition": "process.env.E2E_DATABASE_MODE !== '1'",
+      "count": 1,
+      "shard": "e2e-postgresql",
+      "reason": "The SPA flow is only valid against the disposable PostgreSQL E2E runtime."
+    },
+    {
+      "path": "e2e/tests/jornada-clinica-canonica.spec.ts",
+      "kind": "skip",
+      "callee": "test",
+      "condition": "health.persistenceMode !== 'database'",
+      "count": 1,
+      "shard": "e2e-postgresql",
+      "reason": "The canonical clinical journey rejects the in-memory fallback as non-evidence."
+    },
+    {
+      "path": "e2e/tests/jornada-internacao-canonica.spec.ts",
+      "kind": "skip",
+      "callee": "test",
+      "condition": "health.persistenceMode !== 'database'",
+      "count": 1,
+      "shard": "e2e-postgresql",
+      "reason": "The canonical inpatient journey rejects the in-memory fallback as non-evidence."
+    },
+    {
+      "path": "scripts/critical-process-runtime-fixture.test.mjs",
+      "kind": "option",
+      "condition": "process.platform !== 'linux'",
+      "count": 1,
+      "shard": "platform-linux",
+      "reason": "The staging fixture exercises Linux-specific process behavior."
+    },
+    {
+      "path": "scripts/critical-process-source-preload.test.mjs",
+      "kind": "option",
+      "condition": "mode === 'late-exit-write-failure' && process.getuid?.() === 0",
+      "count": 1,
+      "shard": "platform-linux",
+      "reason": "The root-only late-exit write-failure case is unsafe when the runner has uid 0."
+    },
+    {
+      "path": "scripts/critical-process-success-report.test.mjs",
+      "kind": "option",
+      "condition": "process.platform !== 'linux'",
+      "count": 5,
+      "shard": "platform-linux",
+      "reason": "The process evidence sanitizer contract has a Linux-only implementation boundary."
+    }
+  ]
+}

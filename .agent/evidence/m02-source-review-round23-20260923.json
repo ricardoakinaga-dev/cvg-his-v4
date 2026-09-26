@@ -1,0 +1,135 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND23-20260923",
+  "recorded_at": "2026-09-23T09:29:20Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "scripts/validate-openapi.js",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "3a9d76640d7bfbd2e2c8639c846b4c18d42d2142880f313d4da2be88955613d2",
+      "current_sha256": "3a9d76640d7bfbd2e2c8639c846b4c18d42d2142880f313d4da2be88955613d2",
+      "sha_matches_inventory": true,
+      "scope_classification": "TOOLING_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "The original 284-line `.js` implementation is now a 12-line dynamic-import compatibility shim; the canonical ESM implementation moved to `.mjs`. Package `validate:openapi` points directly to the `.mjs` entrypoint. Root package has no `type` field, so the shim stays compatible with CommonJS loading."
+    },
+    {
+      "path": "scripts/validate-openapi.mjs",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "ca2c87d0b87d9f2c79f499a6515c3193431eed15599344f8629736eef3577fed",
+      "current_sha256": "ca2c87d0b87d9f2c79f499a6515c3193431eed15599344f8629736eef3577fed",
+      "sha_matches_inventory": true,
+      "scope_classification": "TOOLING_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Canonical standalone validator parses local YAML and TypeScript source, checks structural fields/tags/operationIds/local schema refs and bidirectional critical session/WebAuthn/OIDC operation presence. Its TS analysis is deliberately bounded: constant booleans/! / && / || and direct conjunction comparisons, plus one regex-recognized revoke matcher; it is not a full route/call-graph analyzer. The script reads local files only and has no target/network/database side effects."
+    },
+    {
+      "path": "tests/integration/openapi-runtime.test.ts",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "f5824b0cf8a8ae3e70647b2f253e593d6069411220b75058ade6f980fdcd06a4",
+      "current_sha256": "f5824b0cf8a8ae3e70647b2f253e593d6069411220b75058ade6f980fdcd06a4",
+      "sha_matches_inventory": true,
+      "scope_classification": "TEST_OR_QUALITY_CONTRACT",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Integration contract was redirected to `.mjs` and adds a no-module-warning invocation plus reachability fixtures. It also has an optional runtime HTTP test: when API_RUNTIME_URL is absent it returns normally (ordinary test pass, not an explicit skip); with the variable set it fetches `${API_RUNTIME_URL}/openapi.json` without timeout or destination allowlist. Current environment has the variable unset, and this integration suite was not rerun in this round. Its top comment references scripts/validate-openapi-runtime.js, which is absent."
+    }
+  ],
+  "verification": {
+    "inventory_hash_recheck": {
+      "result": "PASS",
+      "paths_checked": 3,
+      "all_match": true
+    },
+    "canonical_cli": {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm validate:openapi",
+      "result": "PASS",
+      "exit_status": 0,
+      "summary": "431 paths, 41 tags, 525 schemas; All structural checks passed."
+    },
+    "compatibility_shim": {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" node scripts/validate-openapi.js",
+      "result": "PASS",
+      "exit_status": 0,
+      "summary": "Same 431/41/525 summary and structural-check pass."
+    },
+    "historical_integration_test": {
+      "reference": ".agent/evidence/rem-049-openapi-esm-implementation-20260922.txt",
+      "result": "36/36 PASS on 2026-09-22; the three current source hashes match the hashes printed in that evidence. Not rerun in round 23 because this path includes a configurable HTTP fetch and the active audit holds external runtime targets."
+    },
+    "runtime_boundary": {
+      "API_RUNTIME_URL_configured_in_current_environment": false,
+      "referenced_scripts_validate_openapi_runtime_js_exists": false,
+      "integration_test_executed_in_round23": false,
+      "network_or_database_access": false
+    },
+    "package_entrypoint": {
+      "validate:openapi": "node scripts/validate-openapi.mjs",
+      "result": "PASS_EXACT_CANONICAL_MJS"
+    },
+    "checkpoint_validation": {
+      "recorded_at": "2026-09-23T09:29:58Z",
+      "docs_validate": {
+        "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+        "result": "PASS",
+        "exit_status": 0
+      },
+      "json_jsonl_parse": {
+        "result": "PASS",
+        "exit_status": 0,
+        "scope": "State, cumulative M-02 review, round-23 review, execution log and inventory JSONL."
+      },
+      "git_diff_check": {
+        "command": "git diff --check",
+        "result": "PASS",
+        "exit_status": 0
+      },
+      "read_only_controller": {
+        "command": "python3 /home/ricardo/.agents/skills/engineering-framework/scripts/check_state.py --quiet .",
+        "result": "FAIL_PRESERVED_BASELINE",
+        "exit_status": 1,
+        "summary": "RESULT FAIL (pass=6 warn=0 fail=788); no active-plan, REM-010 or gate-v2 finding; the same four preserved REM-056 v1 findings remain. The global controller does not approve a candidate/release."
+      }
+    }
+  },
+  "candidate_relative_change": {
+    "scripts/validate-openapi.js": "Existing candidate-base file reduced to a backward-compatible dynamic import shim.",
+    "scripts/validate-openapi.mjs": "New untracked canonical ESM entry point containing the former validator implementation.",
+    "tests/integration/openapi-runtime.test.ts": "Existing test updates spawn targets to the .mjs path and adds a warning regression assertion."
+  },
+  "boundary_review": {
+    "local_scope": "Both direct CLI checks read apps/api/src/openapi.yaml and apps/api/src/routes/auth-routes.ts and exited before any API/runtime call. No integration test, server, database or external endpoint was run.",
+    "runtime_claim": "The OpenAPI runtime assertion is conditional on API_RUNTIME_URL. With the variable absent, Vitest records an ordinary passing test after the early return; it does not contribute runtime endpoint evidence.",
+    "reachability_claim": "The validator can catch the currently modeled critical auth path mismatch. Its bounded AST rules can be sensitive to alternate dispatch shapes; successful current comparison does not prove all route/auth semantics or auth behavior."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-OPENAPI-RUNTIME-CHECK-SILENT-PASS",
+      "classification": "HOLD_RUNTIME_EVIDENCE",
+      "observation": "The runtime endpoint test returns normally when API_RUNTIME_URL is absent, so the suite can count the runtime assertion as passed without contacting a server. It should be an explicit skip/not-run result or require a configured runtime for a claimed runtime gate. This round did not run it."
+    },
+    {
+      "id": "M02-OPENAPI-RUNTIME-HELPER-REFERENCE-STALE",
+      "classification": "HOLD_TEST_DOCUMENTATION",
+      "observation": "The test file says full runtime validation uses scripts/validate-openapi-runtime.js, but that file does not exist in the current checkout."
+    },
+    {
+      "id": "M02-OPENAPI-ROUTE-ANALYZER-BOUNDED",
+      "classification": "HOLD_ANALYZER_SCOPE",
+      "observation": "Critical runtime auth extraction recognizes direct pathname/method comparisons in if conjunctions and a narrow revoke matcher. The inline comment correctly calls this bounded analysis; alternative route dispatch or refactoring can produce mismatches/false alarms. The local pass only proves the current source shape matches the current spec."
+    }
+  ],
+  "candidate_actions": [
+    "Keep .mjs as canonical and retain the .js compatibility shim; both work in the current Node 22 runtime.",
+    "Make runtime URL absence visible as skipped/not-run and give an enabled runtime fetch a bounded timeout and approved host boundary before using it as gate evidence.",
+    "Update the stale runtime-helper reference and keep analyzer claims limited to its bounded AST patterns."
+  ],
+  "limitations": [
+    "No integration/Vitest suite was rerun in this round; historical 36/36 result is hash-identical, but its conditional runtime branch may not have executed.",
+    "No OpenAPI runtime endpoint, target, database, provider, credentials or browser was contacted.",
+    "Self-review only; candidate overlay and release proof remain open."
+  ]
+}

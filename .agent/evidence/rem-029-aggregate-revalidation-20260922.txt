@@ -1,0 +1,33 @@
+REM-029 — revalidação agregada após reconciliar o guard de complexidade
+observed_at: 2026-09-22T09:18:00.000000Z
+task: REM-029
+trigger: condição aberta no aggregate anterior: quatro medições SPA divergentes
+agent_mode: Direct; agente primário único; sem crítica independente disponível
+
+Escopo da revalidação
+- O único artefato alterado nesta revalidação de REM-029 foi o manifesto de
+  complexidade, ajustando current_lines/max_lines às medições reais sem elevar
+  limites.
+- `scheduled-report-sources.ts`, `runner.ts`, `report-renderers.ts`,
+  `report-database-repository.ts`, `report-schedule-time.ts`, `index.ts` e os
+  testes focais de worker/reports não receberam alteração nesta fatia.
+- O gate agregado anterior e seus três gates verified foram preservados; esta
+  evidência apenas supersede a condição mecânica de complexidade.
+
+Regressões executadas
+- `@cvg-his-v2/module-reports`: 5 arquivos / 40 testes PASS.
+- `@cvg-his-v2/worker`: typecheck e suíte canônica PASS; runner 65/65,
+  scheduled-report-sources 2/2 e scheduled-report-job 11/11, além das demais
+  suítes listadas pelo script.
+- `pnpm complexity:check`: PASS.
+- `tests/unit/infra/complexity-hotspots.test.ts`: 4/4 PASS.
+- A prova processual PostgreSQL 28/28 do aggregate anterior permanece a
+  evidência current do boundary de claims/tenant/lease/fencing; não foi repetida
+  porque esta revalidação não tocou código ou banco.
+
+Resultado
+O gap mecânico das quatro medições SPA está fechado localmente. Sources,
+rendering e persistence continuam compostos pelos boundaries já verificados,
+com os gates anteriores preservados. O resultado continua
+`PASS_WITH_CONDITIONS`: owners REPORTS/RUNTIME, E7, browser/visual/a11y,
+CI/OCI, target, UAT, release e go/no-go não foram provados.

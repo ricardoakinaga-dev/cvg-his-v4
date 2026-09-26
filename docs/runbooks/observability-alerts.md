@@ -48,6 +48,11 @@ correlation IDs, traces, logs e o estado das filas para a análise posterior.
   `worker tick failed`.
 - Investigue indisponibilidade de dependências, lock/lease, backlog e falhas de
   consumidor antes de redrive.
+- Desde 26/09/2026 o próprio worker responde `503` em `/live` e `/ready` quando
+  nenhum tick conclui dentro de `WORKER_LOOP_STALLED_AFTER_MS` (padrão
+  `max(10 × WORKER_INTERVAL_MS, 15 min)`), e o orquestrador reinicia o pod. Se
+  os reinícios se repetirem, trate como falha de dependência ou job travado e
+  capture os logs do pod anterior (`kubectl logs --previous`).
 
 <a id="worker-database-unhealthy"></a>
 ## `CVG_HIS_Worker_DatabaseUnhealthy`

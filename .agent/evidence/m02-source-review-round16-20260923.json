@@ -1,0 +1,114 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND16-20260923",
+  "recorded_at": "2026-09-23T08:32:52Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PARTIAL; test skip validator and contract reviewed with filesystem-only checks; policy/critical-manifest content, computed/aliased skip bypasses, full test skip remediation, remaining inventory and independent critique remain open",
+  "paths_reviewed": [
+    {
+      "path": "scripts/validate-test-skip-policy.mjs",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "d637021a2d61282fbc0ed60ea2a118ed77d05174d5929d0a838133e674221660",
+      "current_sha256": "d637021a2d61282fbc0ed60ea2a118ed77d05174d5929d0a838133e674221660",
+      "sha_matches_inventory": true,
+      "scope_classification": "TOOLING_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true,
+      "content_review": "REVIEWED_WITH_STATIC_ENFORCEMENT_LIMITS",
+      "review_notes": "Read-only CLI validator discovers test/spec files while excluding generated/dependency directories and symlinks, parses JS/TS/JSX with @typescript-eslint/parser, records direct .skipIf/.skip/.todo calls and non-computed skip properties, then matches exact path/kind/callee/condition and occurrence count against an allowlist. It also checks required CI shard text/env, manifest membership/classification, and canonical package script wiring. CLI run passed with 36 allowlisted occurrences in about eight seconds; no write/network/DB behavior observed.",
+      "candidate_overlay_decision": "HOLD_PENDING_POLICY_CONFIG_AND_BYPASS_REVIEW"
+    },
+    {
+      "path": "tests/unit/infra/test-skip-policy.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "71ad1ef003e1ecf951c6f02ba43861b7cd709fb72d7ef907f2d327416c1f485a",
+      "current_sha256": "71ad1ef003e1ecf951c6f02ba43861b7cd709fb72d7ef907f2d327416c1f485a",
+      "sha_matches_inventory": true,
+      "scope_classification": "TEST_OR_QUALITY_CONTRACT",
+      "counted_as_new_original_path_this_round": true,
+      "content_review": "REVIEWED_WITH_STATIC_ENFORCEMENT_LIMITS",
+      "review_notes": "The filesystem-only suite checks repository policy/required-shard contract plus temp-fixture cases for ignoring skip-like fixture strings, failing unapproved option skips, exact allowlist condition and count. Temp directories are cleaned in finally. It does not exercise computed-member/destructured aliases, symlink discovery, malicious workflow comments, or malformed policy edge cases.",
+      "candidate_overlay_decision": "HOLD_PENDING_POLICY_CONFIG_AND_BYPASS_REVIEW"
+    }
+  ],
+  "verification": {
+    "focused_test": {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config apps/spa/vitest.config.ts tests/unit/infra/test-skip-policy.test.ts",
+      "working_directory": ".",
+      "started_at_utc": "2026-09-23T08:31:53Z",
+      "finished_at_utc": "2026-09-23T08:32:02Z",
+      "files_passed": 1,
+      "tests_passed": 3,
+      "tests_failed": 0,
+      "result": "PASS"
+    },
+    "cli": {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm validate:test-skips",
+      "result": "PASS",
+      "summary": "TEST_SKIP_POLICY PASS: 36 allowlisted skip occurrences",
+      "side_effect_scope": "Filesystem scan and parse only; .gauntlet is an ignored directory and its contents were not read; no DB/provider/network/write operation observed."
+    },
+    "environment": "Both checks ran outside the root Vitest configuration using the standalone SPA config for the test; no database global setup."
+  },
+  "architecture_observations": [
+    "Allowlist matching binds each skip occurrence to exact path, syntax kind, callee, condition and count; duplicate allowlist keys, unmatched findings and count drift fail.",
+    "Required shards receive runner-specific checks only for several recognized labels: vitest-integration and critical-process validate coverage-manifest membership/classification; the auxiliary PostgreSQL process and test:redis labels have narrower checks. Unrecognized labels, including policy runner playwright-postgresql, receive only generic path/allowlist and raw workflow text/environment checks.",
+    "The scanner relies on AST structure and does not evaluate tests or import their application modules. The CLI currently discovers 36 allowlisted occurrences."
+  ],
+  "findings_and_limits": [
+    {
+      "id": "M02-TEST-SKIP-COMPUTED-ALIAS-BYPASS",
+      "classification": "HOLD_ENFORCEMENT_COVERAGE",
+      "observation": "Call detection requires a non-computed MemberExpression and property detection also excludes computed keys; forms such as test[\"skip\"](...) or { [\"skip\"]: condition } are not recorded. Standalone/destructured aliases are also outside the current recognition rule.",
+      "required_followup": "Extend recognition or explicitly constrain/validate syntax so computed and aliased skip forms cannot evade the mandatory scanner; add adversarial parser tests."
+    },
+    {
+      "id": "M02-TEST-SKIP-SYMLINK-COVERAGE",
+      "classification": "HOLD_DISCOVERY_SCOPE",
+      "observation": "The recursive walker deliberately skips symlinked files/directories. A test tree entry introduced as a symlink can be absent from the inventory scan.",
+      "required_followup": "Document/validate the no-symlink source-tree assumption or safely resolve and scan repository-contained symlink targets."
+    },
+    {
+      "id": "M02-TEST-SKIP-WORKFLOW-TEXT-PARSER",
+      "classification": "HOLD_CONTRACT_ROBUSTNESS",
+      "observation": "Required workflow job/environment checks use a regular expression over raw YAML and substring checks rather than a YAML parser; comments or unrelated text in a job block may satisfy a required-text check.",
+      "required_followup": "Consider parsing YAML structurally and test decoy/comment cases before relying on this as strong CI enforcement."
+    },
+    {
+      "id": "M02-TEST-SKIP-POLICY-CONFIG-PENDING",
+      "classification": "HOLD_CONFIGURATION_REVIEW",
+      "observation": "The tests execute the current skip policy and critical coverage manifest as inputs and validate structural wiring, but their own full content/provenance/path review remains pending in the 386-path inventory.",
+      "required_followup": "Review docs/engineering/test-skip-policy.json and docs/engineering/critical-coverage-scope.json as separate inventory paths."
+    },
+    {
+      "id": "M02-TEST-SKIP-SCHEMA-ROBUSTNESS",
+      "classification": "KNOWN_LIMIT",
+      "observation": "The validator checks selected schema markers and shard entries but is not a complete typed schema validator; malformed nested values may throw or be accepted by substring-oriented checks.",
+      "required_followup": "Keep config-schema robustness open until malformed input tests cover the policy and manifest boundary."
+    },
+    {
+      "id": "M02-TEST-SKIP-PLAYWRIGHT-RUNNER-UNBOUND",
+      "classification": "HOLD_ENFORCEMENT_GAP",
+      "observation": "Round-17 policy review found the required e2e-postgresql shard uses runner=playwright-postgresql, but validateRequiredShards has no explicit branch for that runner. Its E2E paths are not checked against critical coverage manifest membership or test classification.",
+      "required_followup": "Add a Playwright runner-specific manifest/classification check and mutation tests for removed or misclassified E2E paths."
+    }
+  ],
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "hold_reason": "Two source/test paths are hash-stable and the 3/3/CLI checks pass, but policy inputs remain separate pending paths and the scanner/workflow parser has known bypass and robustness limits."
+  },
+  "limitations": [
+    "Primary-operator review only; no independent critique.",
+    "The test and CLI are filesystem-only; no DB, network, provider, or application test code execution occurred.",
+    "The validator result does not certify all test skip syntax or every developer/CI entrypoint."
+  ],
+  "follow_up_after_round17": {
+    "observed_at": "2026-09-23T08:38:56Z",
+    "review_artifact": ".agent/evidence/m02-source-review-round17-20260923.json",
+    "note": "Corrected the round-16 summary of runner-specific validator coverage after inspecting all seven policy shard labels. The validator does not explicitly enforce the playwright-postgresql label against the critical manifest."
+  }
+}

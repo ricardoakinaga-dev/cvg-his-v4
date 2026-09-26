@@ -8,8 +8,11 @@
       :primary-action="headerPrimaryAction"
     />
 
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
+    <DsAlert v-if="error" variant="danger">
       {{ error }}
+      <DsButton size="sm" variant="secondary" :loading="loading" @click="load">
+        Tentar novamente
+      </DsButton>
     </DsAlert>
 
     <form class="search-shell" @submit.prevent="submitSearch">
@@ -61,7 +64,11 @@
       </div>
     </form>
 
-    <section class="summary-grid">
+    <section
+      class="summary-grid"
+      aria-label="Resumo de pacientes"
+      :aria-busy="loading || undefined"
+    >
       <DsCard
         v-for="card in summaryCards"
         :key="card.label"
@@ -70,7 +77,11 @@
       >
         <div class="summary-card__icon">{{ card.icon }}</div>
         <div class="summary-card__body">
-          <span class="summary-card__value">{{ card.value }}</span>
+          <span
+            class="summary-card__value"
+            :aria-label="summaryUnavailable ? 'Dados indisponíveis' : undefined"
+            >{{ summaryUnavailable ? '—' : card.value }}</span
+          >
           <span class="summary-card__label">{{ card.label }}</span>
           <span class="summary-card__hint">{{ card.hint }}</span>
         </div>
@@ -146,7 +157,16 @@
       </DsCard>
     </section>
 
-    <section v-if="displayedPatients.length > 0" class="patients-grid">
+    <div
+      v-if="loading && displayedPatients.length === 0"
+      class="patients-loading-state"
+      role="status"
+      aria-live="polite"
+    >
+      Carregando pacientes...
+    </div>
+
+    <section v-if="!error && displayedPatients.length > 0" class="patients-grid">
       <DsCard
         v-for="patient in displayedPatients"
         :key="patient.id"
@@ -252,15 +272,37 @@
       </DsCard>
     </section>
 
-    <DsCard v-else class="empty-state" variant="elevated">
+    <DsCard
+      v-else-if="!loading && !error && displayedPatients.length === 0"
+      class="empty-state"
+      variant="elevated"
+      role="status"
+      aria-live="polite"
+    >
       <div class="empty-state__icon">PA</div>
-      <h2 class="empty-state__title">Nenhum paciente encontrado</h2>
-      <p class="empty-state__description">
+      <h2 class="empty-state__title">
+        {{
+          hasActiveFilters
+            ? 'Nenhum paciente corresponde aos filtros'
+            : 'Nenhum paciente encontrado'
+        }}
+      </h2>
+      <p v-if="hasActiveFilters" class="empty-state__description">
+        Ajuste os critérios da busca ou limpe os filtros para consultar a lista completa.
+      </p>
+      <p v-else class="empty-state__description">
         Cadastre o primeiro animal para abastecer agenda, atendimento, prontuário e internação.
       </p>
       <div class="empty-state__actions">
-        <DsButton tag="a" to="/patients/new" variant="primary">+ Cadastrar paciente</DsButton>
-        <DsButton tag="a" to="/owners" variant="secondary">Ver {{ clinicalLabels.tutor.plural }}</DsButton>
+        <DsButton v-if="hasActiveFilters" variant="primary" @click="clearPatientFilters">
+          Limpar filtros
+        </DsButton>
+        <template v-else>
+          <DsButton tag="a" to="/patients/new" variant="primary">+ Cadastrar paciente</DsButton>
+          <DsButton tag="a" to="/owners" variant="secondary"
+            >Ver {{ clinicalLabels.tutor.plural }}</DsButton
+          >
+        </template>
       </div>
     </DsCard>
   </div>
@@ -289,7 +331,7 @@ import AppPageHeader from '@/components/AppPageHeader.vue';
 
 type SortMode = 'recent' | 'name' | 'weight';
 
-const loading = ref(false);
+const loading = ref(true);
 const error = ref('');
 const showAdvanced = ref(false);
 const patients = ref<PatientSummary[]>([]);
@@ -329,6 +371,12 @@ showAdvanced.value = Boolean(
     filters.sort !== 'recent'
 );
 const ownerIdFilter = computed(() => queryValue('ownerId'));
+const summaryUnavailable = computed(() => loading.value || Boolean(error.value));
+const hasActiveFilters = computed(() =>
+  Boolean(
+    filters.search.trim() || filters.species || filters.status !== 'all' || filters.sex !== 'all'
+  )
+);
 
 const displayedPatients = computed(() => {
   let items = [...patients.value];
@@ -431,6 +479,15 @@ async function submitSearch() {
   };
   await router.replace({ query });
   await load();
+}
+
+async function clearPatientFilters() {
+  filters.search = '';
+  filters.species = '';
+  filters.status = 'all';
+  filters.sex = 'all';
+  filters.sort = 'recent';
+  await submitSearch();
 }
 
 function statusVariant(status: string) {
@@ -811,6 +868,12 @@ onMounted(load);
 .empty-state {
   text-align: center;
   padding: 28px;
+}
+
+.patients-loading-state {
+  padding: 24px;
+  color: var(--color-text-muted, #64748b);
+  text-align: center;
 }
 
 .empty-state__icon {

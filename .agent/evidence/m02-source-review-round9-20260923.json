@@ -1,0 +1,80 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND9-20260923",
+  "recorded_at": "2026-09-23T07:33:51Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PARTIAL; parent clinical-record page source and workflow reviewed; candidate-wide inventory, fixture provenance, runtime persistence, browser accessibility/visual QA, and independent critique remain open",
+  "paths_reviewed": [
+    {
+      "path": "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "a94dc2c8c0ad9c94bda1e40029f5925ca90cc82ce039d0ce441b88fdb53aa6a5",
+      "current_sha256": "a94dc2c8c0ad9c94bda1e40029f5925ca90cc82ce039d0ce441b88fdb53aa6a5",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_RUNTIME_PRIVACY_AND_BROWSER_HOLDS",
+      "review_notes": "The 26-insertion/213-deletion diff is principally template/style extraction into ClinicalStepNavigator and ClinicalRecordContextAside plus parent wiring; existing state, service calls, guards, and mutation workflow remain in the page. Focused source review covered route generation, context loading, clinical write guard, attachment URL checks, draft protection, and save/readback flow.",
+      "candidate_overlay_decision": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE"
+    }
+  ],
+  "reference_test": {
+    "path": "apps/spa/src/pages/medical-records/__tests__/MedicalRecordsDetailPage.test.ts",
+    "working_tree_status": "clean tracked, not a dirty inventory path",
+    "working_tree_sha256": "0975e981b3691f7d5b4593b103c5a652a8d416fe9768d09fe6653346eb547b99",
+    "origin_main_diff": "byte-identical to origin/main",
+    "used_as": "Focused parent-page regression evidence only; not counted in the original 386 dirty-path denominator."
+  },
+  "source_diff": {
+    "baseline": "origin/main:apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue",
+    "numstat": "26\t213\tapps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue",
+    "assessment": "The diff extracts clinical tab navigation and context-aside markup/styles into the two separately reviewed children. The parent retains clinical sheet and entry state, service mutations, route loading, attachment handling, authorization/read-only state, and save/readback workflow."
+  },
+  "test_execution": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config vitest.config.ts src/pages/medical-records/__tests__/MedicalRecordsDetailPage.test.ts",
+    "working_directory": "apps/spa",
+    "started_at_utc": "2026-09-23T07:30:42.617Z",
+    "finished_at_utc": "2026-09-23T07:30:47.447Z",
+    "test_files_passed": 1,
+    "tests_passed": 49,
+    "tests_failed": 0,
+    "environment": "Standalone SPA Vitest/JSDOM config; page service modules, router, cache, and related domain services are mocked. No database global setup, provider, or live network call was observed."
+  },
+  "architecture_observations": [
+    "The page remains the state and service owner. Extracted children receive display props and emit typed navigation intent; the active step and clinical workflow stay in the page.",
+    "Page generation plus route identity guard every inspected asynchronous load/mutation continuation; route changes and unmount invalidate the generation. The page test covers stale route responses and route identity behavior.",
+    "Clinical writes fail closed unless a record exists and is open and the encounter context exists and is not closed. Context lookups use Promise.allSettled; failed encounter lookup leaves the write guard false.",
+    "Clinical entry creates/updates/archives use idempotency keys tied to stable payload or mutation identity, then refresh and confirm the persisted entry before clearing the draft or reporting success. Clinical-sheet sections are submitted separately, so a partial failure can leave earlier sections persisted; the page reports that condition and instructs the operator to preserve the draft and reread before retrying.",
+    "Local clinical-sheet drafts use the shared unsaved-change composable, which guards route leave/update and beforeunload without browser storage. Tests cover protecting a draft before departure and retaining newer edits made during a save.",
+    "Attachment opening requires available scan status, asks the API for a download URL, checks expected attachment path, API origin, token and future expiry, and checks the route generation before opening. JSDOM tests validate URL rejection/opening decisions, not a real browser download.",
+    "The tests cover route loading and stale response behavior, open/closed read-only cases, attachment URL checks, idempotent writes, draft preservation, partial failure, and reread confirmation using mocks; they do not establish backend authorization, transactionality, audit behavior, or durable persistence."
+  ],
+  "findings_and_limits": [
+    {
+      "id": "M02-CLINICAL-TEST-FIXTURE-PROVENANCE",
+      "classification": "HOLD_SENSITIVITY_PROVENANCE",
+      "observation": "The clean baseline page test contains a CPF-shaped repeated-zero fixture. It appears synthetic, but provenance was not established in this source review.",
+      "required_followup": "Confirm synthetic provenance or replace it with clearly reserved test data before external publication; this review makes no claim that it identifies a real person."
+    },
+    {
+      "id": "M02-CLINICAL-PERSISTENCE-BOUNDARY",
+      "classification": "HOLD_RUNTIME_EVIDENCE",
+      "observation": "All page regression cases use service mocks. API/database enforcement of encounter state, idempotency, partial-section recovery, persisted readback, attachment authorization, and audit events was not exercised here.",
+      "required_followup": "Use an approved disposable/no-connection test boundary and obtain clinical/product/security acceptance before treating persistence or authorization as verified."
+    }
+  ],
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "hold_reason": "This one modified page path is hash-stable and reviewed, but the original inventory still has pending paths; fixture provenance, runtime persistence/authorization, browser focus/assistive-technology/viewport/visual evidence, and independent critique remain open."
+  },
+  "limitations": [
+    "The 49 focused tests run in mocked JSDOM and prove only the exercised parent-page behavior at the service boundary; no database, provider, real browser, screen reader, or responsive visual check was used.",
+    "The clean test file is reference evidence, not a path counted in this round or the original 386-path denominator.",
+    "The test fixture scan was limited to the observed CPF-shaped repeated-zero value; no complete PII review or provenance confirmation was performed.",
+    "This is a primary-operator source review, not independent clinical, privacy, backend, or candidate acceptance."
+  ]
+}

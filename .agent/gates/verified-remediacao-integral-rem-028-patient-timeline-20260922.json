@@ -1,0 +1,123 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-028-PATIENT-TIMELINE-20260922",
+  "timestamp": "2026-09-22T02:37:50.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "primeira extração presentation-bound da timeline 360 em PatientDetailPage, com verificação local de código, testes, tipos e build; sem aceite visual",
+  "scope_ref": "REM-028",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001",
+      "description": "O novo módulo é presentation-bound, recebe contrato tipado, não chama services/stores e deixa URL, server state, geração e workflows no page boundary.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-IMPLEMENT-20260922",
+        ".agent/evidence/rem-028-patient-timeline-implementation-20260922.txt",
+        "apps/spa/src/pages/patients/PatientTimeline360.vue",
+        "apps/spa/src/pages/patients/PatientDetailPage.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A preservação visual necessita browser atual; fonte compilada não substitui inspeção renderizada."
+    },
+    {
+      "id": "V-002",
+      "description": "O seam passou teste focal, suíte completa da SPA, vue-tsc, lint semântico, build Vite/PWA e diff check.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-IMPLEMENT-20260922",
+        ".agent/evidence/rem-028-patient-timeline-implementation-20260922.txt",
+        "apps/spa/src/pages/patients/__tests__/PatientTimeline360.test.ts",
+        "apps/spa/src/pages/patients/__tests__/PatientDetailPage.test.ts",
+        "apps/spa/package.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Os avisos de lint são dívida preexistente fora do módulo novo; não há claim de zero warnings global."
+    },
+    {
+      "id": "V-003",
+      "description": "O cenário visual foi tentado sem atualizar snapshots e o bloqueio do runtime foi registrado fail-closed.",
+      "required": true,
+      "status": "CONDITION",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-IMPLEMENT-20260922",
+        ".agent/evidence/rem-028-patient-timeline-implementation-20260922.txt",
+        "playwright-spa.config.ts",
+        "e2e/spa/visual/visual-regression.spec.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "O `/health` da API local respondeu unhealthy após 30s; não houve pixel diff nem interação browser válida."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-028-patient-timeline-implementation-20260922.txt",
+    ".agent/verification.jsonl#VER-REM-028-IMPLEMENT-20260922",
+    "apps/spa/src/pages/patients/PatientTimeline360.vue",
+    "apps/spa/src/pages/patients/PatientDetailPage.vue",
+    "apps/spa/src/pages/patients/__tests__/PatientTimeline360.test.ts",
+    "apps/spa/src/pages/patients/__tests__/PatientDetailPage.test.ts",
+    "playwright-spa.config.ts",
+    "e2e/spa/visual/visual-regression.spec.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Visual/interação browser do paciente não executou por API local unhealthy.",
+    "A extração cobre somente a timeline 360; as seis demais superfícies REM-028 permanecem abertas.",
+    "Nenhuma crítica adversarial independente E7 ou aprovação humana foi obtida."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-028-PATIENT-TIMELINE-BROWSER",
+      "description": "Reexecutar desktop light/dark, mobile light, estados empty/partial e teclado/foco quando o runtime E2E local estiver saudável, sem atualizar snapshots automaticamente.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a continuidade local de implementação; bloqueia claim de aceitação visual/a11y e fechamento integral de REM-028.",
+      "owner": "frontend/design",
+      "due_or_trigger": "Antes do gate VERIFIED integral de REM-028 ou qualquer atualização de snapshot.",
+      "verification_method": "Corrigir ou disponibilizar runtime sintético saudável; executar Playwright focal e registrar artefatos atuais, incluindo foco/keyboard.",
+      "due_at": "2026-09-23T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-patient-timeline-implementation-20260922.txt",
+        "playwright-spa.config.ts"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-028-REMAINING-SURFACES",
+      "description": "Patient timeline é apenas o primeiro seam; prontuário, vendas, reports, agenda, dashboard e layout ainda exigem implementação e verificação próprios.",
+      "non_blocking": true,
+      "impact": "Impede marcar REM-028 como DONE; não invalida o seam local já verificado.",
+      "owner": "lead",
+      "due_or_trigger": "Até concluir as superfícies e o gate integral de REM-028.",
+      "verification_method": "Cada seam terá evidence, teste focal, build/typecheck e boundary browser conforme aplicável.",
+      "due_at": "2026-09-26T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "primeiro seam reversível de apresentação de REM-028",
+    "decision": "A instrução autoriza implementação e verificação local; não autoriza aprovação visual humana, UAT, target, release ou atualização de snapshots como baseline aceita.",
+    "evidence_ref": ".agent/evidence/rem-028-patient-timeline-implementation-20260922.txt",
+    "expires_or_revalidates": "Revalidar quando o runtime E2E ficar saudável, o seam mudar, ou a implementação avançar para outra fronteira de domínio."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-028:IMPLEMENT-NEXT",
+  "revalidation_triggers": [
+    "Alterar o contrato `PatientTimelineFeedItem`, mover source of truth ou adicionar service/store ao módulo.",
+    "Alterar tokens, breakpoint, semântica aria, empty state ou link contextual sem teste focal e browser atual.",
+    "Tentar atualizar snapshots enquanto a API/health E2E estiver unhealthy.",
+    "Promover o seam a aceite integral de REM-028 sem concluir as seis superfícies restantes."
+  ],
+  "supersedes": null
+}

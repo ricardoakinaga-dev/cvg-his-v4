@@ -1,0 +1,449 @@
+{
+  "schema_version": "FP-DR-1",
+  "record_id": "DR-PATIENT-CLINICAL-HISTORY-20260924",
+  "claim_type": "DECISION",
+  "evidence_status": "CONFIRMED",
+  "confidence": "HIGH",
+  "problem": "PatientDetailPage mixes dashboard data fan-in with a longitudinal clinical-history editor and its retry-safe write workflow.",
+  "desired_outcome": "Place the clinical-history UI and its controlled draft, pending, idempotency, and read-back confirmation behavior in a domain feature slice while keeping patient loading and cross-dashboard projection in the page.",
+  "user_journey": [
+    "Open a patient record and review the longitudinal clinical-history summary.",
+    "Expand the history section and edit the existing draft or create one for the current encounter.",
+    "Save while an encounter is writable and wait for the API write and a fresh read to confirm the exact entry.",
+    "If confirmation fails, retain the draft and show an error so the user can retry.",
+    "If the patient route changes while saving, ignore the stale completion and reset the feature state for the new patient."
+  ],
+  "current_evidence": [
+    {
+      "id": "OBS-001",
+      "claim": "The page currently owns the clinical-history draft, save pending flag, idempotency attempt, save handler, route-generation guard, and exact read-back match.",
+      "status": "CONFIRMED",
+      "source": "apps/spa/src/pages/patients/PatientDetailPage.vue"
+    },
+    {
+      "id": "OBS-002",
+      "claim": "Existing page tests cover create confirmation, closed-encounter read-only behavior, stale read-back preservation, route change during save, and stale patient responses.",
+      "status": "CONFIRMED",
+      "source": "apps/spa/src/pages/patients/__tests__/PatientDetailPage.test.ts"
+    },
+    {
+      "id": "OBS-003",
+      "claim": "The application is a Vue 3 Vite SPA and owns accordion expansion and page-level action feedback outside the history feature.",
+      "status": "CONFIRMED",
+      "source": "apps/spa/package.json and PatientDetailPage.vue"
+    }
+  ],
+  "unknowns": [
+    {
+      "id": "UNK-001",
+      "question": "Does keyboard focus and announcement behavior remain correct in a real browser and with assistive technology after extraction?",
+      "impact": "MEDIUM",
+      "falsification": "Run the deployed browser journey with keyboard-only navigation and an assistive-technology pass."
+    },
+    {
+      "id": "UNK-002",
+      "question": "Does the extraction preserve the current patient detail appearance across narrow viewports and dark theme?",
+      "impact": "MEDIUM",
+      "falsification": "Compare browser screenshots for light and dark themes at desktop and narrow viewport widths."
+    }
+  ],
+  "constraints": [
+    "The API remains the source of truth for clinical entries.",
+    "Keep the route-generation guard so a stale patient response cannot update the active view.",
+    "Retain the current page-level accordion order and stable trigger and panel IDs.",
+    "A successful message requires a fresh read-back matching the patient, encounter, record, title, content, deletion state, and increasing version for updates.",
+    "No added request, persistence mechanism, permission rule, or optimistic success behavior."
+  ],
+  "framework_runtime": {
+    "framework": "Vue",
+    "version": "3.5.x",
+    "router": "Vue Router 4.5.x",
+    "runtime": "Vite client-rendered SPA",
+    "status": "CONFIRMED"
+  },
+  "render_environment": {
+    "mode": "client-rendered SPA",
+    "server": "API owns authorization, persistence, and clinical-entry truth",
+    "client": "Patient route composes the feature; the feature owns its controlled draft and save workflow",
+    "hydration": "No SSR hydration boundary is used for this route"
+  },
+  "browser_targets": ["Current evergreen browsers supported by the app"],
+  "device_input_constraints": ["Keyboard", "Pointer", "Touch", "Narrow viewport reflow"],
+  "ux_invariants": [
+    "The history summary and preview reflect the same controlled draft.",
+    "The save action is disabled when the focused encounter cannot be edited.",
+    "An unconfirmed write keeps the draft available for retry.",
+    "Changing patient routes prevents a previous save from reporting success for the new patient."
+  ],
+  "accessibility_invariants": [
+    "The accordion button exposes expanded state and a stable controlled region.",
+    "The region remains labelled by the trigger.",
+    "The textarea remains keyboard-operable and the save control exposes pending state through the design-system button."
+  ],
+  "data_invariants": [
+    "Clinical-entry data remains server-owned.",
+    "The page remains the owner of loaded patient and encounter projections.",
+    "The feature only adopts saved content after exact read-back confirmation.",
+    "Mutation retry reuses its idempotency key only for the unchanged payload."
+  ],
+  "state_classification": [
+    {
+      "kind": "server",
+      "source_of_truth": "Medical-records API",
+      "owner": "Medical-records service and API",
+      "scope": "Patient clinical entries",
+      "derivation": "Page projects longitudinal entry for the selected patient and encounter",
+      "persistence": "Remote database",
+      "sync_requirement": "Write must be reread and confirmed before success is reported"
+    },
+    {
+      "kind": "form",
+      "source_of_truth": "User-edited clinical-history draft",
+      "owner": "usePatientClinicalHistory feature composable",
+      "scope": "One mounted patient detail route",
+      "derivation": "Initialized from the selected patient's confirmed server entry",
+      "persistence": "Ephemeral in memory",
+      "sync_requirement": "Reset on patient route load; controlled by the feature view"
+    },
+    {
+      "kind": "local_ui",
+      "source_of_truth": "Expanded patient-card set",
+      "owner": "PatientDetailPage usePatientCards composable",
+      "scope": "Nearby patient detail accordion cards",
+      "derivation": "User toggle",
+      "persistence": "Ephemeral in memory",
+      "sync_requirement": "Feature emits toggle and header-keydown events to the page owner"
+    },
+    {
+      "kind": "derived",
+      "source_of_truth": "Current draft and selected encounter",
+      "owner": "PatientDetailPage selectors",
+      "scope": "History summary and write eligibility",
+      "derivation": "Trimmed draft plus active encounter status",
+      "persistence": "None",
+      "sync_requirement": "Recompute when draft or encounter changes"
+    }
+  ],
+  "state_ownership": [
+    {
+      "state": "Clinical-history draft, save pending, retry idempotency attempt",
+      "owner": "usePatientClinicalHistory composable",
+      "readers": ["PatientClinicalHistoryCard", "PatientDetailPage save result handler"],
+      "writers": ["Textarea input", "Confirmed API read-back", "Patient route reset"],
+      "reset": "Reset when the patient route begins a new load"
+    },
+    {
+      "state": "Accordion expansion and keyboard sequence",
+      "owner": "PatientDetailPage usePatientCards composable",
+      "readers": ["All patient detail cards"],
+      "writers": ["Card toggle events"],
+      "reset": "New page mount"
+    },
+    {
+      "state": "Patient clinical-entry arrays and global action feedback",
+      "owner": "PatientDetailPage",
+      "readers": ["Patient summary and other patient cards"],
+      "writers": ["Page load and confirmed history save"],
+      "reset": "Patient route load"
+    }
+  ],
+  "data_ownership": {
+    "source": "Medical-records API",
+    "client_projection": "PatientDetailPage selects longitudinal and focal entries for display",
+    "mutation_owner": "usePatientClinicalHistory calls medicalRecordsService and PatientDetailPage merges the confirmed result into its projections",
+    "staleness": "Route generation guard rejects stale completion; a fresh listEntries read is required after write"
+  },
+  "server_client_boundary": {
+    "server_owned": [
+      "Authorization",
+      "Clinical-entry persistence",
+      "Canonical version and content"
+    ],
+    "client_drivers": [
+      "Draft editing",
+      "Accordion expansion",
+      "Save initiation",
+      "Visible pending and error feedback"
+    ],
+    "serialization": "Existing create/update clinical-entry request DTOs",
+    "bundle_cost": "Small patient-domain component and composable; no new dependency",
+    "hydration_cost": "Not applicable to this client-rendered route"
+  },
+  "trust_boundary": {
+    "browser_trust": "Textarea content and client permissions are untrusted",
+    "server_enforcement": "Existing API authorizes every create/update and validates encounter ownership and editability",
+    "untrusted_inputs": ["Clinical-history text", "Route patient ID"],
+    "sensitive_data": ["Longitudinal clinical-history text"]
+  },
+  "candidates": [
+    {
+      "name": "Patient detail page keeps the view and write workflow",
+      "complexity": "baseline",
+      "drivers": ["No file boundary migration"],
+      "benefits": ["No interface change"],
+      "costs": ["Page keeps dashboard orchestration and longitudinal mutation protocol together"],
+      "failure_semantics": ["Current retry and stale-route behavior remains directly in the page"],
+      "evidence": ["PatientDetailPage.vue"],
+      "driver_evidence": [
+        {
+          "claim": "The same file also owns the page's multi-domain data fan-in and projections.",
+          "source": "PatientDetailPage.vue contains patient, agenda, billing, inpatient, prescription, and clinical-history flows",
+          "status": "CONFIRMED"
+        }
+      ],
+      "verdict": "candidate"
+    },
+    {
+      "name": "Patient clinical-history feature card plus composable",
+      "complexity": "medium",
+      "drivers": [
+        "Distinct clinical-history form and confirmed-write workflow",
+        "Existing route guard and retry behavior can be preserved behind one feature contract"
+      ],
+      "benefits": [
+        "Domain view and form workflow have explicit boundaries",
+        "The patient page retains cross-domain projection and accordion ownership"
+      ],
+      "costs": ["Adds a component event contract and feature unit tests"],
+      "failure_semantics": [
+        "Composable returns only a read-back confirmed entry; errors remain visible through page feedback"
+      ],
+      "evidence": ["Existing clinical-history page tests cover save and recovery cases"],
+      "driver_evidence": [
+        {
+          "claim": "Clinical history has its own form state, pending state, retry key, server write, and read-back recovery path.",
+          "source": "PatientDetailPage.vue saveClinicalHistory and PatientDetailPage.test.ts",
+          "status": "CONFIRMED"
+        }
+      ],
+      "verdict": "selected"
+    },
+    {
+      "name": "Move all patient fetching and clinical-record state into a patient-wide store",
+      "complexity": "high",
+      "drivers": [],
+      "benefits": ["Potential cross-route reuse"],
+      "costs": ["Broader state migration", "Duplicate invalidation and route identity policy"],
+      "failure_semantics": ["Requires global stale-response and cache ownership beyond this slice"],
+      "evidence": ["No cross-route ownership requirement in this change"],
+      "driver_evidence": [
+        {
+          "claim": "No shared cross-route store requirement was found for this history workflow.",
+          "source": "Current patient detail call sites and page route ownership",
+          "status": "CONFIRMED"
+        }
+      ],
+      "verdict": "rejected"
+    }
+  ],
+  "simple_baseline": {
+    "name": "Keep one page-local form and save function",
+    "description": "Retain current inline markup and mutation logic in PatientDetailPage.vue.",
+    "why_insufficient_or_sufficient": "Behavior is a sufficient baseline, but it leaves a distinct clinical-history workflow mixed into a multi-domain dashboard page and its existing state is already independently testable.",
+    "complexity": "baseline"
+  },
+  "rejected_candidates": [
+    {
+      "name": "Move all patient fetching and clinical-record state into a patient-wide store",
+      "reason": "No cross-route owner needs the state; this would add broader cache and invalidation policy without helping the bounded history workflow.",
+      "evidence": [
+        "PatientDetailPage currently owns route identity and resets data on patient changes"
+      ]
+    }
+  ],
+  "selected_pattern": "Domain feature card with a controlled view contract and feature-owned form/save workflow",
+  "selection_rationale": [
+    "The history card and write protocol form one recognizable patient-domain journey.",
+    "The page remains the owner of patient route loading, accordion navigation order, global feedback, and cross-card server projections.",
+    "The feature owns draft, pending, and retry idempotency state; it returns only an exact reread-confirmed entity.",
+    "No server/query cache, request identity, authorization, persistence, or visual redesign is introduced."
+  ],
+  "component_boundaries": [
+    {
+      "name": "PatientClinicalHistoryCard",
+      "owns": [
+        "History card and editor markup",
+        "Controlled draft input event",
+        "Stable history trigger and region semantics"
+      ],
+      "inputs": ["draft", "summary", "expanded", "canWrite", "saving", "encounterId"],
+      "outputs": ["update:draft", "toggle", "header-keydown", "save"],
+      "extraction_driver": "Named clinical-history module and accessibility test boundary",
+      "accessibility_contract": "Button exposes expanded and controls; region is labelled; textarea and actions remain keyboard reachable"
+    },
+    {
+      "name": "usePatientClinicalHistory",
+      "owns": [
+        "Draft",
+        "Pending state",
+        "Payload-bound idempotency key",
+        "Create/update and read-back confirmation"
+      ],
+      "inputs": [
+        "Patient/encounter snapshot",
+        "Existing entry and record identity",
+        "Current-route guard"
+      ],
+      "outputs": [
+        "Draft ref",
+        "Pending ref",
+        "Reset operation",
+        "Confirmed entry or null",
+        "Thrown recoverable error"
+      ],
+      "extraction_driver": "Clinical-history workflow state and recovery boundary",
+      "accessibility_contract": "View receives pending and eligibility state; failed confirmation retains editable draft and page alert"
+    },
+    {
+      "name": "PatientDetailPage",
+      "owns": [
+        "Route lifecycle",
+        "Patient/encounter server projections",
+        "Accordion order",
+        "Global page feedback",
+        "Merging a confirmed entry"
+      ],
+      "inputs": ["Route patient ID", "API results"],
+      "outputs": [
+        "Controlled feature props",
+        "Save outcome feedback",
+        "Patient-wide projection updates"
+      ],
+      "extraction_driver": "Page-level composition and cross-domain ownership",
+      "accessibility_contract": "Preserve global patient-card keyboard order and existing landmark structure"
+    }
+  ],
+  "state_contract": {
+    "events": [
+      "EDIT_DRAFT",
+      "TOGGLE_HISTORY",
+      "SAVE",
+      "SAVE_CONFIRMED",
+      "SAVE_FAILED",
+      "PATIENT_ROUTE_RESET"
+    ],
+    "legal_states": [
+      "collapsed with draft",
+      "expanded and writable",
+      "expanded and read-only",
+      "saving",
+      "failed with retained draft",
+      "confirmed"
+    ],
+    "illegal_states": [
+      "success before read-back confirmation",
+      "write while no writable focal encounter exists",
+      "stale patient completion mutating the current route"
+    ],
+    "owner": "Feature owns form/save lifecycle; page owns route guard and accordion expansion"
+  },
+  "data_fetching_contract": {
+    "query_identity": "Existing patient route ID and selected encounter ID",
+    "deduplication": "No query cache or new fetch path",
+    "cancellation": "Existing page-generation guard ignores stale patient work; network request is not aborted",
+    "stale_policy": "Only an exact fresh listEntries result can confirm and replace the draft",
+    "error_policy": "Propagate a recoverable error to page-level alert and keep the draft"
+  },
+  "mutation_semantics": {
+    "idempotency": "Reuse one generated idempotency key while the serialized mutation payload is unchanged; generate a new key for edited payload",
+    "pending": "Feature saving ref drives the design-system button pending state",
+    "duplicate_guard": "Saving control prevents repeated user submission; service idempotency protects retries",
+    "optimistic": "No optimistic server projection or success message",
+    "rollback": "No local server-state write occurs before confirmation; failed save retains draft",
+    "invalidation": "Existing listEntries reread confirms persisted state and the page merges the confirmed entry"
+  },
+  "loading_behavior": "Patient page retains its current loading skeleton; history pending state applies only during save.",
+  "empty_behavior": "No existing history shows the current empty summary and an empty editable draft when the encounter is writable.",
+  "error_behavior": "The page displays the existing action error; a failed write or stale read-back never replaces the draft or announces success.",
+  "recovery_behavior": "User edits or retries; unchanged payload reuses the idempotency key; changed payload gets a new key; route change resets feature state and rejects stale completion.",
+  "responsive_behavior": "Retain the current card grid, full-width open-card behavior, textarea resize, and existing narrow-screen layout.",
+  "keyboard_focus_behavior": "Keep current arrow/home/end navigation order by forwarding the history trigger keydown event to the page-owned usePatientCards handler.",
+  "assistive_behavior": "Preserve button expanded/controls state, labelled region, textarea semantics, and DsButton busy semantics.",
+  "motion_behavior": "No new motion or transition is introduced.",
+  "performance_budget": {
+    "workload": "One clinical-history field within the patient detail dashboard",
+    "baseline": "Existing patient route and save/read-back request sequence",
+    "target": "No increase in route requests or loaded dependencies; smaller page module through domain extraction",
+    "hard_max": "Preserve existing request count and route loading behavior",
+    "measurement": "Compare module composition and focused tests; browser bundle measurement remains pending",
+    "status": "DEFAULT"
+  },
+  "bundle_impact": "Adds no package or service dependency; component and composable remain in the existing patient route chunk.",
+  "rendering_impact": "No route-level rendering mode change; controlled draft updates rerender the feature view.",
+  "network_impact": "Preserves the existing create/update followed by one listEntries confirmation request.",
+  "security_implications": [
+    "Clinical text remains rendered as escaped Vue interpolation; no HTML rendering is added.",
+    "The client-side canWrite flag only controls the UI; the existing API remains responsible for authorization.",
+    "The composable preserves patient, encounter, and record identity matching on read-back."
+  ],
+  "testing_requirements": [
+    {
+      "type": "unit",
+      "boundary": "usePatientClinicalHistory",
+      "claim": "Create/update payloads, idempotency retry, route staleness, exact read-back confirmation, and retained draft behavior remain correct.",
+      "minimum_evidence": "E3"
+    },
+    {
+      "type": "component",
+      "boundary": "PatientClinicalHistoryCard",
+      "claim": "Controlled edit, expanded/region semantics, read-only behavior, pending, and action events remain correct.",
+      "minimum_evidence": "E3"
+    },
+    {
+      "type": "integration",
+      "boundary": "PatientDetailPage",
+      "claim": "Confirmed entries still update page projections and global success/error feedback; route change ignores stale save.",
+      "minimum_evidence": "E3"
+    }
+  ],
+  "runtime_evidence_required": [
+    "In-app save and retry journey",
+    "Patient route change during pending save"
+  ],
+  "accessibility_evidence_required": [
+    "Keyboard accordion navigation",
+    "Expanded and controls semantics",
+    "Real browser screen-reader announcement check"
+  ],
+  "performance_evidence_required": [
+    "Route chunk size comparison only if bundle splitting is proposed"
+  ],
+  "migration": {
+    "strategy": "Extract the existing history card and workflow in place without changing service DTOs or page route ownership.",
+    "compatibility_window": "No API compatibility window required; existing DOM IDs and service contracts remain stable.",
+    "rollback": "Restore inline markup and workflow from the parent component if focused tests reveal a behavior regression."
+  },
+  "compatibility": [
+    "Existing patient URLs",
+    "Existing clinical-entry API",
+    "Existing page alert conventions",
+    "Existing theme and responsive CSS"
+  ],
+  "rollout": "Ship as an internal Vue component/composable refactor behind the existing route with no feature flag.",
+  "unresolved_risks": [
+    {
+      "id": "RISK-001",
+      "risk": "A unit test cannot establish real assistive-technology announcements or visual parity.",
+      "severity": "MEDIUM",
+      "mitigation": "Preserve DOM IDs and semantics and record browser accessibility and screenshot review as pending evidence.",
+      "revalidation": "Before claiming full browser or accessibility acceptance for M-22."
+    }
+  ],
+  "handoff": [
+    {
+      "target": "Frontend implementation",
+      "trigger": "Decision accepted for bounded extraction",
+      "inputs": ["This decision record", "Existing page tests and service contract"],
+      "authority_boundary": "Implement and verify the component/composable boundary; no visual redesign claim",
+      "status": "AVAILABLE"
+    },
+    {
+      "target": "Design/accessibility review",
+      "trigger": "Browser visual and assistive technology evidence is required",
+      "inputs": ["Preserved DOM and keyboard contract", "Dark and narrow viewport screenshots"],
+      "authority_boundary": "Visual and assistive evidence only",
+      "status": "NOT_AVAILABLE"
+    }
+  ],
+  "revalidation_trigger": "Revisit when clinical-entry API, patient route state ownership, accordion navigation, or server confirmation semantics change."
+}

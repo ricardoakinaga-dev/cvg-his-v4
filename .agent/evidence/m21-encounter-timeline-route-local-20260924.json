@@ -1,0 +1,108 @@
+{
+  "evidence_id": "M21-ENCOUNTER-TIMELINE-ROUTE-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T08:41:23Z",
+  "scope": "M-21/M-23 extraction of the authenticated encounter timeline GET handler from server.ts.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to this dirty worktree at the recorded HEAD; it is not candidate or release evidence."
+  },
+  "extraction": {
+    "source_path": "apps/api/src/server.ts",
+    "server_lines_before": 4196,
+    "server_lines_after": 4179,
+    "server_line_delta": -17,
+    "server_line_reduction_since_7943": 3764,
+    "server_line_reduction_since_8332": 4153,
+    "dispatch_placement": "The injected timeline handler remains at the original location after encounter-open handling and before encounter transition handling.",
+    "path_behavior_preserved": [
+      "pathname.startsWith('/encounters/') and pathname.endsWith('/timeline')",
+      "GET method requirement",
+      "encounter ID parsed from pathname.split('/')[2]"
+    ],
+    "call_order_preserved": [
+      "requirePrincipal(request, 'encounters.read')",
+      "requireNonEmptyString(encounterId)",
+      "requireEncounterForAccount(encounterId, principal.user.accountId)",
+      "appendAudit for read_timeline",
+      "encounters.listTimelineAsync(accountId, encounterId)",
+      "HTTP 200 with { items }"
+    ],
+    "dependency_boundary": "The timeline service method, principal authorization, account guard, and audit callback are injected into the extracted route handler."
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/routes/encounter-read-routes.ts",
+      "sha256": "4632291d88a3d250deb856b54483e918c7bcb51a99def4baa2e86e41001e2818",
+      "physical_lines": 169
+    },
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "6430372aedec40659c71f3bf9054bd8fd7b25d66f0661f4227e51e9b7802b3f6",
+      "physical_lines": 4179
+    },
+    {
+      "path": "apps/api/src/server.test.ts",
+      "sha256": "8367deeaca3556ffe1dff6a6267513504b81b647c07d101a9f4addfab943ae9e",
+      "physical_lines": 6448
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "d570f566a14931935ec8caea26ab582759db8e000e23f9fc5629bdf44aad96ec",
+      "server_budget": {
+        "current_lines": 4179,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test pnpm exec tsx --test --test-reporter=dot --test-name-pattern='triage creation rejects a closed encounter without speculative list or timeline state' apps/api/src/server.test.ts",
+      "result": "PASS, one focused in-process HTTP test; executed locally and independently by I1.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsc -p apps/api/tsconfig.json --noEmit",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; server.ts=4,179, cap=8,323, previous maximum=8,335.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/routes/encounter-read-routes.ts apps/api/src/server.ts docs/engineering/complexity-hotspots.json && git diff --check -- apps/api/src/routes/encounter-read-routes.ts apps/api/src/server.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    }
+  ],
+  "independent_review": {
+    "result": "PASS",
+    "critic_id": "critic_m21_encounter_timeline_i1",
+    "independence": "Fresh I1 context fork; read-only source comparison and focused in-process HTTP test rerun.",
+    "reviewed_sha256": [
+      {
+        "path": "apps/api/src/routes/encounter-read-routes.ts",
+        "sha256": "4632291d88a3d250deb856b54483e918c7bcb51a99def4baa2e86e41001e2818"
+      },
+      {
+        "path": "apps/api/src/server.ts",
+        "sha256": "6430372aedec40659c71f3bf9054bd8fd7b25d66f0661f4227e51e9b7802b3f6"
+      },
+      {
+        "path": "docs/engineering/complexity-hotspots.json",
+        "sha256": "d570f566a14931935ec8caea26ab582759db8e000e23f9fc5629bdf44aad96ec"
+      }
+    ],
+    "findings": "No behavior delta found. The legacy matcher, dispatch position, auth/validation/account/audit/service/response order, and complexity line count were confirmed."
+  },
+  "limitations": [
+    "This slice does not prove PostgreSQL/RLS behavior, explicit role-denial behavior, or persisted audit records.",
+    "The in-process regression verifies the rejected triage mutation leaves the encounter timeline unchanged; it does not cover every timeline response or authorization matrix.",
+    "The worktree remains dirty and no candidate SHA, CI, target, UAT, or release acceptance is asserted.",
+    "No database, listener, service, container, or port was started."
+  ]
+}

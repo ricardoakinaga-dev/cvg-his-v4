@@ -40,28 +40,31 @@ function runChecker(fixtureRoot) {
   );
 }
 
-test('backup/restore gate uses the current September roadmap and backlog', () => {
+test('backup/restore gate uses the W3 roadmap and REM-024 recovery contract', () => {
   const fixtureRoot = createFixture();
 
   try {
     const result = runChecker(fixtureRoot);
 
     assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
-    assert.match(result.stdout, /backup and restore drill surface is consistent/);
+    assert.match(
+      result.stdout,
+      /repository\/documentation consistency passed; no real restore, rollback, target certification, or RPO\/RTO measurement was executed; those operations remain M-14 work/
+    );
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
 });
 
-test('backup/restore gate fails when the current roadmap loses a required exit criterion', () => {
+test('backup/restore gate rejects a W3 roadmap without the restore/RPO/RTO step', () => {
   const fixtureRoot = createFixture();
 
   try {
     const fixtureRoadmap = join(fixtureRoot, roadmapPath);
     const roadmap = readFileSync(fixtureRoadmap, 'utf8');
     const withoutRestoreProof = roadmap.replace(
-      /\| R6 Operação e target[^\n]*\n/,
-      (line) => line.replace('restore/corrupção', 'restore ainda não comprovado')
+      '5. Restaurar backup representativo e medir RPO/RTO.',
+      '5. Planejar a restauração representativa para uma execução futura.'
     );
     assert.notEqual(withoutRestoreProof, roadmap);
     writeFileSync(fixtureRoadmap, withoutRestoreProof);
@@ -69,30 +72,59 @@ test('backup/restore gate fails when the current roadmap loses a required exit c
     const result = runChecker(fixtureRoot);
 
     assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
-    assert.match(result.stderr, /FAIL roadmap e backlog vigentes mantem backup\/restore/);
+    assert.match(result.stderr, /FAIL roadmap W3 e backlog REM-024 mantem o contrato de recovery/);
   } finally {
     rmSync(fixtureRoot, { recursive: true, force: true });
   }
 });
 
-for (const [name, path, transform] of [
+for (const [name, transform] of [
   [
-    'backlog restore integrity requirement',
-    backlogPath,
-    (text) => text.replace('cumprir RPO/RTO aprovados.', 'aguardar aprovação de RPO/RTO.')
+    'representative backup/restore/rollback requirement',
+    (text) =>
+      text.replace(
+        'backup/restore/rollback representativo',
+        'planejar rotina de recuperação'
+      )
   ],
-  ['documentation manifest', 'docs/document-governance.json', () => '{}']
+  [
+    'hash/count/RLS verification requirement',
+    (text) => text.replace('hashes/contagens/RLS', 'hashes/contagens')
+  ],
+  [
+    'approved RPO/RTO limits requirement',
+    (text) =>
+      text.replace(
+        'medir RPO/RTO contra limites previamente aprovados',
+        'preparar uma medição futura de RPO/RTO'
+      )
+  ]
 ]) {
-  test(`backup/restore gate rejects missing ${name}`, () => {
+  test(`backup/restore gate rejects missing REM-024 ${name}`, () => {
     const fixtureRoot = createFixture();
     try {
-      const target = join(fixtureRoot, path);
-      writeFileSync(target, transform(readFileSync(target, 'utf8')));
+      const target = join(fixtureRoot, backlogPath);
+      const original = readFileSync(target, 'utf8');
+      const changed = transform(original);
+      assert.notEqual(changed, original);
+      writeFileSync(target, changed);
       const result = runChecker(fixtureRoot);
       assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
-      assert.match(result.stderr, /FAIL roadmap e backlog vigentes mantem backup\/restore/);
+      assert.match(result.stderr, /FAIL roadmap W3 e backlog REM-024 mantem o contrato de recovery/);
     } finally {
       rmSync(fixtureRoot, { recursive: true, force: true });
     }
   });
 }
+
+test('backup/restore gate rejects a missing documentation manifest', () => {
+  const fixtureRoot = createFixture();
+  try {
+    writeFileSync(join(fixtureRoot, 'docs/document-governance.json'), '{}');
+    const result = runChecker(fixtureRoot);
+    assert.equal(result.status, 1, `${result.stdout}\n${result.stderr}`);
+    assert.match(result.stderr, /FAIL roadmap W3 e backlog REM-024 mantem o contrato de recovery/);
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+});

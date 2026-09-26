@@ -1,0 +1,36 @@
+REM-029 — IMPLEMENTAÇÃO DO BOUNDARY DE PERSISTÊNCIA DOS REPORTS
+Observado em: 2026-09-22T08:20:18Z
+HEAD observado: ad2f0373f68635f2579253b013a4382219906921
+Ambiente: Linux local; Node v22.23.2; pnpm 10.33.0; PostgreSQL local descartável em 127.0.0.1:5433; agente primário único em modo Direct; worktree compartilhado dirty preservado
+
+IMPLEMENTAÇÃO
+- `packages/modules/reports/src/report-database-repository.ts` recebeu `DatabaseReportRepository`, seus 15 wrappers `withTenantQuery(getPool())`, SQL/CTEs, parâmetros e mapeadores de rows.
+- `packages/modules/reports/src/report-schedule-time.ts` concentra a regra UTC diária/semanal/mensal usada pelo service e pelo mapper, evitando duplicação de semântica.
+- `packages/modules/reports/src/index.ts` caiu de 2.381 para 1.750 linhas, reteve `ReportRepository`, `ReportsService` e todos os contratos públicos e reexporta `DatabaseReportRepository` como fachada compatível.
+- `packages/modules/reports/src/report-database-repository.test.ts` adicionou teste focal de cadence UTC e da superfície pública fenced; o módulo reports passou de 4 para 5 arquivos de teste.
+- O adapter não importa `ReportsService`, renderer, router, store, API ou worker; auditoria estática do boundary passou. O pool/tenant context agora ficam somente no adapter SQL.
+
+INVARIANTES PRESERVADAS
+- Os quatro tables (`report_executions`, `report_exports`, `report_schedules`, `report_schedule_deliveries`) mantêm account scoping, conflitos, ordenação, nullability, JSON/date mapping e writes existentes.
+- Claims continuam com `FOR UPDATE SKIP LOCKED`, `claim_token`, `claim_until`, `claim_worker_id`, limites e ordenação determinística.
+- Writes fenced continuam exigindo token/lease vigentes e retornando `false` quando nenhum row foi atualizado; sucesso limpa os campos de claim.
+- `ReportsService` continua dono de IDs estáveis, cache, retries, delivery identity/provider, mapas em memória, ordem de persistência e `ReportScheduleLeaseLostError`.
+
+VERIFICAÇÃO LOCAL
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:/home/ricardo/.local/share/pnpm:$PATH pnpm --filter @cvg-his-v2/module-reports test` — PASS, 5 arquivos/40 testes, incluindo 2 testes focais do boundary.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:/home/ricardo/.local/share/pnpm:$PATH pnpm --filter @cvg-his-v2/module-reports typecheck` — PASS.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:/home/ricardo/.local/share/pnpm:$PATH pnpm --filter @cvg-his-v2/module-reports build` — PASS.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:/home/ricardo/.local/share/pnpm:$PATH pnpm --filter @cvg-his-v2/module-reports lint` — PASS.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:/home/ricardo/.local/share/pnpm:$PATH pnpm --filter @cvg-his-v2/worker test` — PASS; runner 65/65, fontes 2/2, scheduled-report-job 11/11 e demais suítes declaradas passaram.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:/home/ricardo/.local/share/pnpm:$PATH pnpm --filter @cvg-his-v2/worker typecheck` — PASS; build das dependências e `tsc --noEmit` passaram.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:/home/ricardo/.local/share/pnpm:$PATH pnpm --filter @cvg-his-v2/worker lint` — PASS.
+- Processo explícito `worker-run-once-reports` em `cvg_his_v2_test_rem029_reports_persistence_20260922` — PASS, 1 arquivo/28 testes; o harness aplicou migrations/seed/integridade, criou e removeu o banco efêmero no teardown.
+- `git diff --check` — PASS; auditoria do boundary — PASS.
+- `pnpm complexity:check` não passa globalmente apenas por quatro medições SPA divergentes do manifesto (`AppointmentsListPage.vue`, `PatientDetailPage.vue`, `ReportWorkbenchPage.vue`, `CounterSalesPage.vue`); o entry de reports foi reconciliado para 1.750 linhas.
+
+INCIDENTE CORRIGIDO DURANTE A EXECUÇÃO
+- O primeiro typecheck pós-extração acusou `ReportColumnType` ausente no import type-only do novo adapter; o import foi corrigido e typecheck/build finais passaram.
+
+LIMITES
+- A prova processual é local e sintética; não promove CI/OCI, target, provider real, UAT, browser visual/a11y, E7, owners REPORTS/RUNTIME, release ou go/no-go humano.
+- A próxima ação é `REM-029:VERIFY-REPORTS-PERSISTENCE`, para reconciliar o gate desta fatia e as condições remanescentes sem simular crítica independente.

@@ -861,52 +861,52 @@
         "completion_signal": "Criterios do cartao PROD-026 atendidos com prova e revisao."
       }
     },
-  {
-    "id": "PROD-027",
-    "title": "Congelar matriz comportamental das 11 áreas",
-    "stage": "BUILD",
-    "priority": "P0",
-    "status": "BLOCKED",
+    {
+      "id": "PROD-027",
+      "title": "Congelar matriz comportamental das 11 áreas",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
       "origin": "BACKLOG-PROD-20260913-R1",
       "dependencies": [
         "PROD-001",
         "PROD-003"
       ],
       "owner": "lead",
-    "acceptance_summary": "R1 CONTRACT_ONLY_PREPARATION: taxonomia das 11 áreas e inventário dos 45 módulos foram especificados com cenários, invariantes e evidência requerida; o cartão integral permanece BLOCKED pela dependência PROD-003, autoridade Product/QA/domínio e crítica fresh indisponível. Nenhuma fixture comportamental, paridade, UAT ou aceitação de domínio é inferida; novos A02/A03–A05 reabrem o escopo afetado.",
-    "evidence_refs": [
-      "docs/2026-09-13-backlog-prontidao-producao.md",
-      "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
-      ".agent/gates/implementation-ready-prod-027-20260915.json",
-      "docs/engineering/behavioral-parity-contract-prod-027.json",
-      "docs/027-matriz-comportamental-11-areas.md",
-      "scripts/validate-prod-027-behavioral-parity-contract.mjs",
-      "scripts/validate-prod-027-behavioral-parity-contract.test.mjs",
-      "artifacts/state-of-art/PROD-027/attempt-20260915T154928Z-R1/REPORT.md",
-      "artifacts/state-of-art/PROD-027/attempt-20260915T154928Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md",
-      "artifacts/state-of-art/PROD-027/attempt-20260915T154928Z-R1/SHA256SUMS",
-      ".agent/verification.jsonl#VER-PROD-027-R1-20260915",
-      ".agent/verification.jsonl#VER-PROD-027-R1-FRESH-CRITIC-UNAVAILABLE-20260915"
-    ],
-    "execution_scope": "CONTRACT_ONLY_PREPARATION",
-    "dependency_replan": {
-      "decision": "ALLOW_LOCAL_PREPARATION_ONLY",
-      "full_acceptance_dependencies_preserved": [
-        "PROD-001",
-        "PROD-003"
+      "acceptance_summary": "R1 CONTRACT_ONLY_PREPARATION: taxonomia das 11 áreas e inventário dos 45 módulos foram especificados com cenários, invariantes e evidência requerida; o cartão integral permanece BLOCKED pela dependência PROD-003, autoridade Product/QA/domínio e crítica fresh indisponível. Nenhuma fixture comportamental, paridade, UAT ou aceitação de domínio é inferida; novos A02/A03–A05 reabrem o escopo afetado.",
+      "evidence_refs": [
+        "docs/2026-09-13-backlog-prontidao-producao.md",
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        ".agent/gates/implementation-ready-prod-027-20260915.json",
+        "docs/engineering/behavioral-parity-contract-prod-027.json",
+        "docs/027-matriz-comportamental-11-areas.md",
+        "scripts/validate-prod-027-behavioral-parity-contract.mjs",
+        "scripts/validate-prod-027-behavioral-parity-contract.test.mjs",
+        "artifacts/state-of-art/PROD-027/attempt-20260915T154928Z-R1/REPORT.md",
+        "artifacts/state-of-art/PROD-027/attempt-20260915T154928Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md",
+        "artifacts/state-of-art/PROD-027/attempt-20260915T154928Z-R1/SHA256SUMS",
+        ".agent/verification.jsonl#VER-PROD-027-R1-20260915",
+        ".agent/verification.jsonl#VER-PROD-027-R1-FRESH-CRITIC-UNAVAILABLE-20260915"
       ],
-      "does_not_satisfy_dependency": "PROD-003",
-      "does_not_promote_card": true,
-      "basis": "A prova LOCAL pode avançar por replanejamento explícito, mas não satisfaz a dependência integral nem o DONE de ALVO."
+      "execution_scope": "CONTRACT_ONLY_PREPARATION",
+      "dependency_replan": {
+        "decision": "ALLOW_LOCAL_PREPARATION_ONLY",
+        "full_acceptance_dependencies_preserved": [
+          "PROD-001",
+          "PROD-003"
+        ],
+        "does_not_satisfy_dependency": "PROD-003",
+        "does_not_promote_card": true,
+        "basis": "A prova LOCAL pode avançar por replanejamento explícito, mas não satisfaz a dependência integral nem o DONE de ALVO."
+      },
+      "next_action": {
+        "id": "PROD-027:PROD-027-PRODUCT-QA-DOMAIN-OWNER-20260915",
+        "kind": "WAIT",
+        "summary": "Direção do usuário: preparar synthetic-first; Vetus somente após aprovação formal do dono do dataset. Obter antes a decisão versionada de Product/QA/donos de domínio e manter PROD-003 como dependência integral; a direção não equivale a aceite nem libera fixtures.",
+        "target": "docs/027-matriz-comportamental-11-areas.md; docs/engineering/behavioral-parity-contract-prod-027.json; .agent/authority.jsonl; artifacts/state-of-art/PROD-027/attempt-20260915T154928Z-R1/REPORT.md",
+        "completion_signal": "Decisões C1-C6, donos por área, delta 45→46 e cenários/aplicabilidade aprovados em registro versionado. Depois preparar fixtures sintéticas em ambiente isolado; só executar após authority gate permitir. Vetus exige registro formal separado do dono do dataset e revisão de privacidade. Reexecutar contrato e crítica fresh; preservar BLOCKED até os gates passarem."
+      }
     },
-    "next_action": {
-      "id": "PROD-027:PROD-027-PRODUCT-QA-DOMAIN-OWNER-20260915",
-      "kind": "WAIT",
-      "summary": "Obter crítica independente fresh atual ou substituto autorizado e decisão formal de Product/QA/donos de domínio; preservar PROD-003 e não alegar paridade.",
-      "target": "artifacts/state-of-art/PROD-027/attempt-20260915T154928Z-R1/REPORT.md; artifacts/state-of-art/PROD-027/attempt-20260915T154928Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md; .agent/authority.jsonl",
-      "completion_signal": "Revisor fresh atual ou substituto autorizado e decisão de Product/QA/domínio registrados; depois reexecutar contrato, reconciliação 45→46 e evidência comportamental antes de qualquer DONE."
-    }
-  },
     {
       "id": "PROD-028",
       "title": "Homologar laboratório e equipamentos",
@@ -1499,11 +1499,11 @@
         "completion_signal": "Criterios do cartao PROD-047 atendidos com prova e revisao."
       }
     },
-  {
-    "id": "PROD-048",
-    "title": "PII em docs/vetus/guides e copias relacionadas",
-    "stage": "BUILD",
-    "priority": "P0",
+    {
+      "id": "PROD-048",
+      "title": "PII em docs/vetus/guides e copias relacionadas",
+      "stage": "BUILD",
+      "priority": "P0",
       "status": "BLOCKED",
       "origin": "BACKLOG-PROD-20260914",
       "dependencies": [
@@ -1519,14 +1519,14 @@
         "artifacts/state-of-art/PROD-048/attempt-20260915T131500Z-R1/REPORT.md",
         "artifacts/state-of-art/PROD-048/attempt-20260915T131500Z-R1/SHA256SUMS"
       ],
-    "next_action": {
+      "next_action": {
         "id": "PROD-048:PROD-048-DPO-OWNER-20260915",
         "kind": "WAIT",
         "summary": "Obter revisao restrita de Segurança/DPO para os 28 digests/localizacoes, decidir exemplos sinteticos autorizados e definir ACL, retencao, restauracao e destino duravel; nao expor valores.",
         "target": "artifacts/state-of-art/PROD-048/attempt-20260915T131500Z-R1/REPORT.md; artifacts/state-of-art/PROD-048/attempt-20260915T131500Z-R1/logs/document-pii-audit.json; .agent/authority.jsonl",
         "completion_signal": "Owner Segurança/DPO identificado e decisao registrada no ledger de autoridade, com tratamento permitido/rejeitado para os candidatos e politica de acesso/retencao/restauracao; depois repetir critica fresh ou registrar aceite autorizado."
-    }
-  },
+      }
+    },
     {
       "id": "PROD-049",
       "title": "Docs 132, ADR-011, RELEASE_IDENTITY e runbooks: matriz ambiente->runtime",
@@ -1606,37 +1606,37 @@
         "completion_signal": "Criterios do cartao PROD-051 atendidos com prova e revisao."
       }
     },
-  {
-    "id": "PROD-052",
-    "title": "Contrato de pontos e expiresAt (decisao, sem alterar saldos)",
-    "stage": "BUILD",
-    "priority": "P1",
-    "status": "BLOCKED",
+    {
+      "id": "PROD-052",
+      "title": "Contrato de pontos e expiresAt (decisao, sem alterar saldos)",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "BLOCKED",
       "origin": "BACKLOG-PROD-20260914",
       "dependencies": [
         "PROD-001"
       ],
       "owner": "lead",
-    "acceptance_summary": "R1 IMPLEMENTADA / REVIEW_REQUIRED: contrato comparativo cobre vencimento, timezone, corte temporal, ordem de consumo, saldo legado e restituição; alternativas/impacto permanecem não vinculantes até Product/Financeiro. Probe atual é observação, não violação presumida; nenhum saldo foi alterado. Crítica fresh indisponível.",
-    "evidence_refs": [
-      "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
-      ".agent/gates/implementation-ready-prod-052-20260915.json",
-      "docs/engineering/loyalty-expiration-contract-prod-052.json",
-      "docs/052-contrato-expiracao-pontos.md",
-      "artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/REPORT.md",
-      "artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md",
-      "artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/SHA256SUMS",
-      ".agent/verification.jsonl#VER-PROD-052-R1-20260915",
-      ".agent/verification.jsonl#VER-PROD-052-R1-FRESH-CRITIC-UNAVAILABLE-20260915"
-    ],
-    "next_action": {
-      "id": "PROD-052:PROD-052-PRODUCT-FINANCE-OWNER-20260915",
-      "kind": "WAIT",
-      "summary": "Obter crítica independente fresh current ou substituto autorizado e decisão formal Product/Financeiro sobre C1-C6/R1-R6, relógio, corte, ordem, legado e restituição; não alterar saldos nem inferir autoridade.",
-      "target": "artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/REPORT.md; artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md; .agent/authority.jsonl",
-      "completion_signal": "Parecer independente current e autoridade Product/Financeiro registrados; repetir contrato, PROD-053, provas concorrentes e reconciliação antes de promover DONE/AAA."
-    }
-  },
+      "acceptance_summary": "R1 IMPLEMENTADA / REVIEW_REQUIRED: contrato comparativo cobre vencimento, timezone, corte temporal, ordem de consumo, saldo legado e restituição; alternativas/impacto permanecem não vinculantes até Product/Financeiro. Probe atual é observação, não violação presumida; nenhum saldo foi alterado. Crítica fresh indisponível.",
+      "evidence_refs": [
+        "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+        ".agent/gates/implementation-ready-prod-052-20260915.json",
+        "docs/engineering/loyalty-expiration-contract-prod-052.json",
+        "docs/052-contrato-expiracao-pontos.md",
+        "artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/REPORT.md",
+        "artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md",
+        "artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/SHA256SUMS",
+        ".agent/verification.jsonl#VER-PROD-052-R1-20260915",
+        ".agent/verification.jsonl#VER-PROD-052-R1-FRESH-CRITIC-UNAVAILABLE-20260915"
+      ],
+      "next_action": {
+        "id": "PROD-052:PROD-052-PRODUCT-FINANCE-OWNER-20260915",
+        "kind": "WAIT",
+        "summary": "Obter crítica independente fresh current ou substituto autorizado e decisão formal Product/Financeiro sobre C1-C6/R1-R6, relógio, corte, ordem, legado e restituição; não alterar saldos nem inferir autoridade.",
+        "target": "artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/REPORT.md; artifacts/state-of-art/PROD-052/attempt-20260915T152016Z-R1/CRITIC-FRESH-UNAVAILABLE-20260915.md; .agent/authority.jsonl",
+        "completion_signal": "Parecer independente current e autoridade Product/Financeiro registrados; repetir contrato, PROD-053, provas concorrentes e reconciliação antes de promover DONE/AAA."
+      }
+    },
     {
       "id": "PROD-053",
       "title": "Saldo/resgate de fidelidade conforme contrato aprovado",
@@ -2023,6 +2023,1866 @@
         "summary": "Validar a identidade no freeze limpo e obter CI/release/target/UAT/recuperação e autoridade externos, sem promover o estado local.",
         "target": "docs/triple-a/evidence/local-candidate-51982f48.json; docs/triple-a/P0_REGISTRY.json; docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json; .github/workflows/ci.yml",
         "completion_signal": "Gauntlet local reconciliado; CI17/17 candidate-bound, release/OCI/Trivy/attestation, target/RLS/restore/soak/UAT e autoridade permanecem explícitos até prova."
+      }
+    },
+    {
+      "id": "REM-001",
+      "title": "Preservar refs/blobs e plano de history rewrite",
+      "stage": "AUDIT",
+      "priority": "P0",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-001 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-001-verification-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-001-VERIFY-BACKUP-AND-DRY-RUN-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-001-20260922.json",
+        "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/SHA256SUMS",
+        "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/repository-all-refs.bundle",
+        "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/history-rewrite-dry-run.txt"
+      ],
+      "next_action": {
+        "id": "REM-001:REOPEN-IF-DRIFT",
+        "kind": "REOPEN",
+        "summary": "Reabrir se o backup, bundle, refs, blob protegido, recuperação ou dry-run perderem integridade; manter rewrite proibido sem autoridade.",
+        "target": "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001; .agent/gates/verified-remediacao-integral-rem-001-20260922.json",
+        "completion_signal": "Drift reproduzido e revalidado com SHA256SUMS/bundle/recovery e gate superseding; nenhuma autorização de rewrite é inferida."
+      }
+    },
+    {
+      "id": "REM-002",
+      "title": "Remover blob proibido do intervalo publicável",
+      "stage": "AUDIT",
+      "priority": "P0",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-001"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-002 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-002-control-pointer-recovery-20260922.txt",
+        ".agent/gates/blocked-remediacao-integral-rem-002-wait-authority-20260922.json",
+        ".agent/gates/passed-remediacao-integral-rem-002-audit-resolved-20260923.json",
+        ".agent/authority.jsonl#AUTH-REM-002-HISTORY-REWRITE-20260923",
+        ".agent/evidence/rem-002-history-rewrite-20260923.txt",
+        ".agent/verification.jsonl#VER-REM-002-REWRITE-20260923",
+        ".agent/verification.jsonl#VER-REM-002-PUSH-20260923",
+        ".agent/gates/verified-remediacao-integral-rem-002-pushed-20260923.json"
+      ],
+      "next_action": {
+        "id": "REM-002:REOPEN-IF-DRIFT",
+        "kind": "REOPEN",
+        "summary": "Reabrir somente se o remote main, o intervalo publicável ou o inventário de objetos divergir do candidato verificado.",
+        "target": ".agent/evidence/rem-002-history-rewrite-20260923.txt; origin:refs/heads/main",
+        "completion_signal": "Qualquer drift é caracterizado com nova prova e encaminhado para um gate supersedente sem apagar a evidência atual."
+      }
+    },
+    {
+      "id": "REM-003",
+      "title": "Fixar runtime Node 22.23.2 e pnpm 10.33.0",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-003 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-003-runtime-baseline-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-003-RUNTIME-20260921"
+      ],
+      "next_action": {
+        "id": "REM-003:REOPEN",
+        "kind": "REOPEN",
+        "summary": "Reabrir somente se a versão de runtime, o package manager ou a instalação frozen divergirem do contrato.",
+        "target": ".agent/evidence/rem-003-runtime-baseline-20260921.txt; package.json; .node-version; pnpm-lock.yaml",
+        "completion_signal": "Nova divergência caracterizada com comando reprodutível e evidência vinculada."
+      }
+    },
+    {
+      "id": "REM-004",
+      "title": "Atualizar contrato de startup secrets",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-004 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-004-005-contracts-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-004-CONTRACT-20260921",
+        ".agent/evidence/rem-004-005-aggregate-repair-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-004-AGGREGATE-REPAIR-20260921",
+        ".agent/evidence/rem-006-coverage-20260921.txt"
+      ],
+      "next_action": {
+        "id": "REM-004:REOPEN",
+        "kind": "REOPEN",
+        "summary": "Reabrir se startup secrets deixar de mapear METRICS_AUTH_TOKEN ou se os testes focais/agregados regressarem.",
+        "target": "apps/api/src/startup-secrets.ts; apps/api/src/startup-secrets.test.ts; tests/unit/api/startup-secrets-runtime.test.ts",
+        "completion_signal": "Regressão reproduzida e correção vinculada ao contrato de secret manager."
+      }
+    },
+    {
+      "id": "REM-005",
+      "title": "Congelar contrato de erro 413",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-005 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-004-005-contracts-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-005-CONTRACT-20260921",
+        ".agent/evidence/rem-004-005-aggregate-repair-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-005-AGGREGATE-REPAIR-RECONCILED-20260921",
+        ".agent/evidence/rem-006-coverage-20260921.txt"
+      ],
+      "next_action": {
+        "id": "REM-005:REOPEN",
+        "kind": "REOPEN",
+        "summary": "Reabrir se payload excedido deixar de produzir erro público 413 ou o teste agregado de HTTP helpers regredir.",
+        "target": "apps/api/src/helpers/request-body.ts; packages/shared/errors/src/index.ts; tests/unit/http-command-helpers.test.ts",
+        "completion_signal": "Regressão reproduzida e contrato HTTP 413 corrigido com teste focal/agregado."
+      }
+    },
+    {
+      "id": "REM-006",
+      "title": "Elevar branch coverage sem reduzir threshold",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-004",
+        "REM-005"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-006 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-006-coverage-20260921.txt",
+        ".agent/evidence/rem-006-coverage-rerun-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-006-COVERAGE-RERUN-20260921",
+        ".agent/evidence/rem-006-behavioral-tests-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-006-BEHAVIORAL-TESTS-20260921",
+        ".agent/evidence/rem-006-coverage-rerun-behavioral-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-006-COVERAGE-RERUN-BEHAVIORAL-20260921",
+        ".agent/evidence/rem-006-remaining-branches-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-006-REMAINING-BRANCHES-20260921",
+        ".agent/evidence/rem-006-coverage-rerun-four-branches-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-006-COVERAGE-RERUN-FOUR-BRANCHES-20260921",
+        ".agent/evidence/rem-006-response-buffer-branches-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-006-RESPONSE-BUFFER-BRANCHES-20260921",
+        ".agent/evidence/rem-006-coverage-rerun-response-buffer-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-006-COVERAGE-RERUN-RESPONSE-BUFFER-20260921",
+        ".agent/evidence/rem-006-vitest-response-buffer-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-006-VITEST-RESPONSE-BUFFER-20260921",
+        ".agent/evidence/rem-006-coverage-rerun-vitest-response-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-006-COVERAGE-RERUN-VITEST-RESPONSE-20260921",
+        ".agent/evidence/rem-006-branch-threshold-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-006-BRANCH-THRESHOLD-20260921",
+        ".agent/evidence/rem-026-server-composition-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-006-COMPOSITE-20260921"
+      ],
+      "next_action": {
+        "id": "REM-006:REOPEN",
+        "kind": "REOPEN",
+        "summary": "Reabrir somente se a cobertura branch ou o gate composto local regredir.",
+        "target": "tests/unit/infra/complexity-hotspots.test.ts; apps/api/src/server.ts; coverage/coverage-final.json",
+        "completion_signal": "Regressão reproduzida com evidência current antes de nova execução."
+      }
+    },
+    {
+      "id": "REM-007",
+      "title": "Tornar teste raiz canônico e fail-closed",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-007 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/plans/remediacao-integral-20260921.md",
+        ".agent/evidence/rem-007-runner-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-007-RUNNER-CONTRACT-20260921",
+        ".agent/verification.jsonl#VER-REM-007-CANONICAL-ROOT-20260921",
+        ".agent/gates/implementation-ready-remediacao-integral-runner-20260921.json",
+        ".agent/evidence/rem-026-server-composition-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-007-CANONICAL-20260921"
+      ],
+      "next_action": {
+        "id": "REM-007:REOPEN",
+        "kind": "REOPEN",
+        "summary": "Reabrir somente se o runner canônico deixar de executar root e workspaces em ordem fail-closed.",
+        "target": "package.json; scripts/run-root-test-suite.mjs; tests/unit/infra/root-test-runner-contract.test.ts; apps/api/src/server.ts; tests/unit/infra/complexity-hotspots.test.ts",
+        "completion_signal": "Regressão reproduzida com evidência current antes de nova execução."
+      }
+    },
+    {
+      "id": "REM-008",
+      "title": "Reexecutar crypto/runtime no Node oficial",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-008 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-008-crypto-runtime-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-008-CRYPTO-RUNTIME-20260921",
+        ".agent/gates/verified-remediacao-integral-rem-008-20260921.json"
+      ],
+      "next_action": {
+        "id": "REM-008:REOPEN",
+        "kind": "REOPEN",
+        "summary": "Reabrir somente se o runtime oficial, a matriz crypto ou os testes focais regredirem.",
+        "target": ".node-version; package.json; packages/modules/mfa/src; apps/api/src; testes focais de crypto/runtime",
+        "completion_signal": "Regressão reproduzida com evidência current antes de nova execução."
+      }
+    },
+    {
+      "id": "REM-009",
+      "title": "Executar gate local integrado em checkout limpo",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-006",
+        "REM-007",
+        "REM-008",
+        "REM-015",
+        "REM-026"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-009 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-009-integrated-gate-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-009-INTEGRATED-CURRENT-20260921",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-009-20260921.json",
+        ".agent/gates/verified-remediacao-integral-rem-009-20260921.json",
+        ".agent/evidence/rem-009-clean-candidate-20260922.json",
+        ".agent/verification.jsonl#VER-REM-009-CLEAN-CANDIDATE-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-009-20260922-clean.json"
+      ],
+      "next_action": {
+        "id": "REM-009:REOPEN",
+        "kind": "REOPEN",
+        "summary": "Reabrir somente se código, lockfile, workflow, scripts ou evidência source-bound mudarem; a condição de checkout limpo foi satisfeita no candidato descartável.",
+        "target": ".agent/gates/verified-remediacao-integral-rem-009-20260922-clean.json; .agent/verification.jsonl",
+        "completion_signal": "Drift reproduzido e novo gate candidate-bound registrado sem apagar o histórico."
+      }
+    },
+    {
+      "id": "REM-010",
+      "title": "Congelar identidade local publicável",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-002",
+        "REM-009"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-010 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/plans/melhorias-20260923.md",
+        ".agent/evidence/m50-rem-crosswalk-20260923.md",
+        ".agent/evidence/m01-history-reconciliation-20260923.json",
+        ".agent/evidence/m01-reconciliation-critique-20260923.md",
+        ".agent/evidence/m50-crosswalk-review-20260923.md",
+        ".agent/evidence/m02-inventory-20260923.jsonl",
+        ".agent/evidence/m02-workspace-manifest-review-20260923.json",
+        ".agent/evidence/m02-content-scope-review-20260923.json",
+        ".agent/evidence/m03-backup-gate-20260923.json",
+        ".agent/evidence/m02-source-review-round1-20260923.json",
+        ".agent/evidence/m02-source-review-round2-20260923.json",
+        ".agent/evidence/m02-source-review-round3-20260923.json",
+        ".agent/evidence/m02-source-review-round4-20260923.json",
+        ".agent/evidence/m02-source-review-round5-20260923.json",
+        ".agent/evidence/m02-source-review-round6-20260923.json",
+        ".agent/evidence/m02-source-review-round7-20260923.json",
+        ".agent/evidence/m02-source-review-round8-20260923.json",
+        ".agent/evidence/m02-source-review-round9-20260923.json",
+        ".agent/evidence/m02-source-review-round10-20260923.json",
+        ".agent/evidence/m02-source-review-round11-20260923.json",
+        ".agent/evidence/m02-source-review-round12-20260923.json",
+        ".agent/evidence/m02-source-review-round13-20260923.json",
+        ".agent/evidence/m02-source-review-round14-20260923.json",
+        ".agent/evidence/m02-source-review-round15-20260923.json",
+        ".agent/evidence/m02-source-review-round16-20260923.json",
+        ".agent/evidence/m02-source-review-round17-20260923.json",
+        ".agent/evidence/m02-source-review-round18-20260923.json",
+        ".agent/evidence/m02-source-review-round19-20260923.json",
+        ".agent/evidence/m02-source-review-round20-20260923.json",
+        ".agent/evidence/m02-source-review-round21-20260923.json",
+        ".agent/evidence/m02-source-review-round22-20260923.json",
+        ".agent/evidence/m02-source-review-round23-20260923.json",
+        ".agent/evidence/m02-source-review-round24-20260923.json",
+        ".agent/evidence/m02-source-review-round25-20260923.json",
+        ".agent/evidence/m02-source-review-round26-20260923.json",
+        ".agent/evidence/m02-source-review-round27-20260923.json",
+        ".agent/evidence/m02-source-review-round28-20260923.json",
+        ".agent/evidence/m02-source-review-round29-20260923.json",
+        ".agent/evidence/m02-readme-correction-round30-20260923.json",
+        ".agent/evidence/m02-source-review-round31-20260923.json",
+        ".agent/evidence/m02-source-review-round32-20260923.json",
+        ".agent/evidence/m02-source-review-round33-20260923.json",
+        ".agent/evidence/m02-source-review-round34-20260923.json",
+        ".agent/evidence/m02-source-review-round35-20260923.json",
+        ".agent/evidence/m02-source-review-round36-20260923.json",
+        ".agent/evidence/m02-source-review-round37-20260923.json",
+        ".agent/evidence/m02-source-review-round38-20260923.json",
+        ".agent/evidence/m02-source-review-round39-20260923.json",
+        ".agent/evidence/m02-source-review-round40-20260923.json",
+        ".agent/evidence/m02-source-review-round41-20260923.json",
+        ".agent/evidence/m02-worktree-reconciliation-20260923.json",
+        ".agent/evidence/m02-package-manifest-review-20260923.json",
+        ".agent/evidence/m02-sensitivity-provenance-20260923.json",
+        ".agent/evidence/m02-nonloopback-db-url-provenance-20260923.json",
+        ".agent/evidence/m02-unbound-review-a-20260923.json",
+        ".agent/evidence/m02-unbound-review-b-20260923.json",
+        ".agent/evidence/m02-postinventory-review-a-20260923.json",
+        ".agent/evidence/m02-postinventory-review-b-20260923.json",
+        ".agent/evidence/m02-legacy-134-rebind-20260923.json",
+        ".agent/evidence/m02-current-worktree-inventory-20260923.json",
+        ".agent/evidence/m02-tooling-safety-followup-20260923.json",
+        ".agent/evidence/m02-current-worktree-inventory-20260924.json",
+        ".agent/evidence/m02-current-worktree-inventory-20260926-r22.json",
+        ".agent/evidence/m02-current-worktree-inventory-20260926-r23.json",
+        "docs/engineering/PROD-027-SYNTHETIC-FIRST-APPROVAL-PACKET.md",
+        "docs/engineering/behavioral-parity-contract-prod-027.json",
+        ".agent/verification.jsonl#VER-REM-010-PROD027-PACKET-R2-20260926",
+        ".agent/execution-log.jsonl#EVT-REM-010-PROD027-PACKET-R2-20260926"
+      ],
+      "next_action": {
+        "id": "REM-010:WAIT-PROD027-AUTHORITY",
+        "kind": "WAIT",
+        "summary": "Aguardar decisões versionadas de Product, QA/release e donos de domínio sobre C1–C6, o delta 45→46/workflows e cada escopo sintético; nenhuma fixture ou execução antes de autorização específica.",
+        "target": "docs/engineering/PROD-027-SYNTHETIC-FIRST-APPROVAL-PACKET.md; docs/engineering/behavioral-parity-contract-prod-027.json; docs/027-matriz-comportamental-11-areas.md; registro formal de autoridade no sistema aprovado",
+        "completion_signal": "Decisões e aprovadores nomeados/versionados para o escopo de contrato, reconciliação workflows e fases sintéticas; autorização separada do dono do dataset e Privacy/Security antes de qualquer Vetus. O aceite final continua exigindo dataset Vetus autorizado e lacunas explícitas sob o contrato atual, salvo alteração de contrato aprovada e versionada."
+      }
+    },
+    {
+      "id": "REM-011",
+      "title": "Reconciliar README, Quality Bar e scorecards",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-010"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-011 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-011:PREPARE",
+        "kind": "INSPECT",
+        "summary": "Preparar superfície, contrato, known-bad, teste focal e comando seguro da tarefa.",
+        "target": "docs/2026-09-21-backlog-remediacao-integral.md; código/testes/configuração da tarefa",
+        "completion_signal": "Superfície, dependências, known-bad, teste focal, autoridade e evidência esperada estão registrados."
+      }
+    },
+    {
+      "id": "REM-012",
+      "title": "Atualizar registro P0 com evidência atual",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-010",
+        "REM-011"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-012 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-012:PREPARE",
+        "kind": "INSPECT",
+        "summary": "Preparar superfície, contrato, known-bad, teste focal e comando seguro da tarefa.",
+        "target": "docs/2026-09-21-backlog-remediacao-integral.md; código/testes/configuração da tarefa",
+        "completion_signal": "Superfície, dependências, known-bad, teste focal, autoridade e evidência esperada estão registrados."
+      }
+    },
+    {
+      "id": "REM-013",
+      "title": "Uniformizar lint semântico",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-013 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/plans/remediacao-integral-20260921.md",
+        ".agent/evidence/rem-013-semantic-lint-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-013-LINT-TYPECHECK-20260921",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-013-20260921.json",
+        ".agent/gates/verified-remediacao-integral-rem-013-20260921.json"
+      ],
+      "next_action": {
+        "id": "REM-013:REOPEN",
+        "kind": "REOPEN",
+        "summary": "Reabrir somente se algum workspace perder o contrato semântico/typecheck ou se a evidência current regressar.",
+        "target": "scripts/run-semantic-lint.mjs; .eslintrc.semantic.cjs; manifests apps/packages; tests/unit/infra/lint-contract.test.ts",
+        "completion_signal": "Regressão reproduzida com evidência current antes de nova execução."
+      }
+    },
+    {
+      "id": "REM-014",
+      "title": "Padronizar shards e política de skips",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-007"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-014 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/plans/remediacao-integral-20260921.md",
+        ".agent/evidence/rem-014-skip-policy-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-014-SKIP-POLICY-REVALIDATION-20260921",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-014-20260921.json",
+        ".agent/gates/verified-remediacao-integral-rem-014-20260921.json"
+      ],
+      "next_action": {
+        "id": "REM-014:REOPEN",
+        "kind": "REOPEN",
+        "summary": "Reabrir somente se a política, allowlist, shards, wiring de CI ou evidência current regressarem.",
+        "target": "docs/engineering/test-skip-policy.json; scripts/validate-test-skip-policy.mjs; scripts/run-redis-rate-limiter-shard.mjs; .github/workflows/ci.yml; testes de contrato",
+        "completion_signal": "Regressão reproduzida com evidência current antes de nova execução."
+      }
+    },
+    {
+      "id": "REM-015",
+      "title": "Executar Helm real em todos os ambientes",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-015 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/plans/remediacao-integral-20260921.md",
+        ".agent/evidence/rem-015-helm-real-validation-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-015-HELM-REAL-20260921",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-015-20260921.json",
+        ".agent/gates/verified-remediacao-integral-rem-015-20260921.json"
+      ],
+      "next_action": {
+        "id": "REM-015:REOPEN",
+        "kind": "REOPEN",
+        "summary": "Reabrir somente se o pin Helm, chart, overlays ou lint/template real regredirem.",
+        "target": "infra/helm/cvg-his-v2; infra/scripts/validate-helm.mjs; .github/workflows/ci.yml; testes de Helm",
+        "completion_signal": "Regressão reproduzida com evidência current antes de nova execução."
+      }
+    },
+    {
+      "id": "REM-016",
+      "title": "Criar harness local de migrations e rollback",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-016 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-016-migration-harness-20260921.txt",
+        ".agent/evidence/rem-016-migration-harness-final-20260921.json",
+        ".agent/verification.jsonl#VER-REM-016-MIGRATION-HARNESS-20260921",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-016-20260921.json",
+        ".agent/gates/verified-remediacao-integral-rem-016-20260921.json",
+        "scripts/run-rem016-migration-harness.mjs",
+        "tests/unit/infra/migration-harness-contract.test.ts",
+        "package.json",
+        ".github/workflows/ci.yml"
+      ],
+      "next_action": {
+        "id": "REM-016:REOPEN",
+        "kind": "REOPEN",
+        "summary": "Reabrir somente se o harness, os known-bads, o relatório ou os contratos de CI regredirem.",
+        "target": "scripts/run-rem016-migration-harness.mjs; tests/unit/infra/migration-harness-contract.test.ts; .github/workflows/ci.yml; .agent/evidence/rem-016-migration-harness-final-20260921.json",
+        "completion_signal": "Regressão reproduzida com evidência current antes de nova execução."
+      }
+    },
+    {
+      "id": "REM-017",
+      "title": "Validar pipeline local de supply chain",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-017 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-017-supply-chain-validation-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-017-SUPPLY-CHAIN-20260921",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-017-20260921.json",
+        ".agent/gates/verified-remediacao-integral-rem-017-20260921.json",
+        "scripts/validate-supply-chain.mjs",
+        "scripts/validate-supply-chain.test.mjs",
+        "scripts/validate-dependency-policy.mjs",
+        ".github/workflows/release-artifacts.yml"
+      ],
+      "next_action": {
+        "id": "REM-017:REOPEN",
+        "kind": "REOPEN",
+        "summary": "Reabrir somente se a imutabilidade, a matriz de known-bads, a política de dependências ou o encadeamento candidate-bound regredirem.",
+        "target": "scripts/validate-supply-chain.mjs; scripts/validate-supply-chain.test.mjs; scripts/validate-dependency-policy.mjs; .github/workflows/release-artifacts.yml",
+        "completion_signal": "Regressão reproduzida com evidência current antes de nova execução."
+      }
+    },
+    {
+      "id": "REM-018",
+      "title": "Congelar candidato local final",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-009",
+        "REM-010",
+        "REM-011",
+        "REM-012",
+        "REM-013",
+        "REM-014",
+        "REM-015",
+        "REM-016",
+        "REM-017"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-018 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-018:PREPARE",
+        "kind": "INSPECT",
+        "summary": "Preparar superfície, contrato, known-bad, teste focal e comando seguro da tarefa.",
+        "target": "docs/2026-09-21-backlog-remediacao-integral.md; código/testes/configuração da tarefa",
+        "completion_signal": "Superfície, dependências, known-bad, teste focal, autoridade e evidência esperada estão registrados."
+      }
+    },
+    {
+      "id": "REM-019",
+      "title": "Publicar candidato e obter required checks",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-018"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-019 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-019:WAIT-AUTHORITY",
+        "kind": "WAIT",
+        "summary": "Aguardar autorização/decisão humana específica antes da fronteira externa ou destrutiva.",
+        "target": ".agent/authority.jsonl",
+        "completion_signal": "Decisão CONFIRMED vinculada ao escopo exato registrada antes da ação."
+      }
+    },
+    {
+      "id": "REM-020",
+      "title": "Construir imagens publicadas e gerar SBOM/scan",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-019"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-020 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-020:WAIT-EXTERNAL",
+        "kind": "WAIT",
+        "summary": "Aguardar ambiente, credencial, provider ou registro externo aprovado; manter preparação local.",
+        "target": "ambiente/serviço externo aprovado; .agent/authority.jsonl",
+        "completion_signal": "Dependência externa disponível e observável, com credenciais/escopo autorizados e evidência atual."
+      }
+    },
+    {
+      "id": "REM-021",
+      "title": "Assinar, atestar e encadear release sem rebuild",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-020"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-021 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-021:WAIT-EXTERNAL",
+        "kind": "WAIT",
+        "summary": "Aguardar ambiente, credencial, provider ou registro externo aprovado; manter preparação local.",
+        "target": "ambiente/serviço externo aprovado; .agent/authority.jsonl",
+        "completion_signal": "Dependência externa disponível e observável, com credenciais/escopo autorizados e evidência atual."
+      }
+    },
+    {
+      "id": "REM-022",
+      "title": "Provar RLS/FORCE RLS no target",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-021"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-022 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        "docs/operations/REM_TARGET_CERTIFICATION_RUNBOOK.md",
+        ".agent/evidence/rem-target-pack-preparation-20260922.txt",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-target-pack-20260922.json"
+      ],
+      "next_action": {
+        "id": "REM-022:WAIT-EXTERNAL",
+        "kind": "WAIT",
+        "summary": "Aguardar ambiente, credencial, provider ou registro externo aprovado; manter preparação local.",
+        "target": "ambiente/serviço externo aprovado; .agent/authority.jsonl",
+        "completion_signal": "Dependência externa disponível e observável, com credenciais/escopo autorizados e evidência atual."
+      }
+    },
+    {
+      "id": "REM-023",
+      "title": "Certificar recovery do worker no target",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-021"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-023 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        "docs/operations/REM_TARGET_CERTIFICATION_RUNBOOK.md",
+        ".agent/evidence/rem-target-pack-preparation-20260922.txt",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-target-pack-20260922.json"
+      ],
+      "next_action": {
+        "id": "REM-023:WAIT-EXTERNAL",
+        "kind": "WAIT",
+        "summary": "Aguardar ambiente, credencial, provider ou registro externo aprovado; manter preparação local.",
+        "target": "ambiente/serviço externo aprovado; .agent/authority.jsonl",
+        "completion_signal": "Dependência externa disponível e observável, com credenciais/escopo autorizados e evidência atual."
+      }
+    },
+    {
+      "id": "REM-024",
+      "title": "Executar restore/rollback e medir RPO/RTO",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-021"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-024 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        "docs/operations/REM_TARGET_CERTIFICATION_RUNBOOK.md",
+        ".agent/evidence/rem-target-pack-preparation-20260922.txt",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-target-pack-20260922.json"
+      ],
+      "next_action": {
+        "id": "REM-024:WAIT-AUTHORITY",
+        "kind": "WAIT",
+        "summary": "Aguardar autorização/decisão humana específica antes da fronteira externa ou destrutiva.",
+        "target": ".agent/authority.jsonl",
+        "completion_signal": "Decisão CONFIRMED vinculada ao escopo exato registrada antes da ação."
+      }
+    },
+    {
+      "id": "REM-025",
+      "title": "Executar carga/soak e validar SLOs",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-021"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-025 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        "docs/operations/REM_TARGET_CERTIFICATION_RUNBOOK.md",
+        ".agent/evidence/rem-target-pack-preparation-20260922.txt",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-target-pack-20260922.json"
+      ],
+      "next_action": {
+        "id": "REM-025:WAIT-AUTHORITY",
+        "kind": "WAIT",
+        "summary": "Aguardar autorização/decisão humana específica antes da fronteira externa ou destrutiva.",
+        "target": ".agent/authority.jsonl",
+        "completion_signal": "Decisão CONFIRMED vinculada ao escopo exato registrada antes da ação."
+      }
+    },
+    {
+      "id": "REM-026",
+      "title": "Decompor composição de server.ts",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-026 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-026-server-composition-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-026-FOCUSED-20260921",
+        ".agent/verification.jsonl#VER-REM-026-CANONICAL-20260921",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-026-20260921.json"
+      ],
+      "next_action": {
+        "id": "REM-026:REOPEN",
+        "kind": "REOPEN",
+        "summary": "Reabrir somente se o orçamento congelado ou os contratos extraídos regressarem.",
+        "target": "docs/engineering/complexity-hotspots.json; apps/api/src/server.ts; apps/api/src/helpers/api-server-boundaries.ts",
+        "completion_signal": "Regressão reproduzida com evidência current antes de nova execução."
+      }
+    },
+    {
+      "id": "REM-027",
+      "title": "Atualizar inventário e limites de hotspots",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-009"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-027 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-027-hotspot-inventory-20260922.txt",
+        ".agent/evidence/rem-027-hotspot-inventory-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-027-PREPARE-20260922",
+        ".agent/verification.jsonl#VER-REM-027-IMPLEMENT-20260922",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-027-20260922.json",
+        ".agent/gates/verified-remediacao-integral-rem-027-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-027-IMPLEMENTATION-GATE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-027-CHECKPOINT-IMPLEMENT-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-027-VERIFY-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-027-VERIFIED-GATE-20260922",
+        ".agent/evidence/rem-027-hotspot-measurement-reconciliation-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-027-hotspot-reconciliation-20260922.json"
+      ],
+      "next_action": {
+        "id": "REM-027:VERIFY-INVENTORY",
+        "kind": "REOPEN",
+        "summary": "Reabrir a medição se o guard, a classificação de risco, os owners ou os limites do inventário mudarem.",
+        "target": "docs/engineering/complexity-hotspots.json; scripts/check-complexity-hotspots.mjs; tests/unit/infra/complexity-hotspots.test.ts; scripts/generate-architecture-concentration-evidence.mjs; docs/engineering/OWNERSHIP_AND_COMPLEXITY.md",
+        "completion_signal": "Gate VERIFIED current e verification PASS permanecem vinculados; qualquer mudança posterior reabre a medição e exige revisão de owners antes de novo compromisso."
+      }
+    },
+    {
+      "id": "REM-028",
+      "title": "Dividir páginas SPA por domínio e estado",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-027"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-028 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/plans/remediacao-integral-20260921.md",
+        ".agent/execution-log.jsonl#EVT-REM-028-READY-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-START-20260922",
+        ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-PREPARE-20260922",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-028-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-IMPLEMENTATION-GATE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-20260922",
+        ".agent/evidence/rem-028-patient-timeline-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-IMPLEMENT-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-patient-timeline-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-FIRST-SEAM-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-NEXT-20260922",
+        ".agent/evidence/rem-028-clinical-navigator-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-CLINICAL-NAVIGATOR-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-clinical-navigator-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-SECOND-SEAM-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-CONTEXT-20260922",
+        ".agent/evidence/rem-028-clinical-context-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-CLINICAL-CONTEXT-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-clinical-context-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-THIRD-SEAM-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-SALES-SHELL-20260922",
+        ".agent/evidence/rem-028-counter-sales-kpi-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-KPI-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-counter-sales-kpi-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-FOURTH-SEAM-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-SALES-CARDS-20260922",
+        ".agent/evidence/rem-028-counter-sales-cards-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-CARDS-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-counter-sales-cards-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-FIFTH-SEAM-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-SALES-WORKBENCH-20260922",
+        ".agent/evidence/rem-028-counter-sales-workbench-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-WORKBENCH-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-counter-sales-workbench-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-SIXTH-SEAM-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-SALES-CATALOG-PAYMENTS-20260922",
+        ".agent/evidence/rem-028-counter-sales-catalog-payments-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-CATALOG-PAYMENTS-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-counter-sales-catalog-payments-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-CATALOG-PAYMENTS-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-SALES-REMAINING-SURFACES-20260922",
+        ".agent/evidence/rem-028-reports-result-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-REPORTS-RESULT-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-reports-result-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-REPORTS-RESULT-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-REPORTS-QUERY-20260922",
+        ".agent/evidence/rem-028-reports-query-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-REPORTS-QUERY-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-reports-query-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-REPORTS-QUERY-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-REPORTS-EXPORT-20260922",
+        ".agent/evidence/rem-028-reports-export-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-REPORTS-EXPORT-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-reports-export-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-REPORTS-EXPORT-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-REPORTS-SHELL-20260922",
+        ".agent/evidence/rem-028-reports-shell-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-REPORTS-SHELL-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-reports-shell-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-REPORTS-SHELL-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-REPORTS-FILTER-20260922",
+        ".agent/evidence/rem-028-reports-filter-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-REPORTS-FILTER-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-reports-filter-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-REPORTS-FILTER-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-REPORTS-SUMMARY-20260922",
+        ".agent/evidence/rem-028-reports-summary-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-REPORTS-SUMMARY-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-reports-summary-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-REPORTS-SUMMARY-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-PREPARE-APPOINTMENTS-20260922",
+        ".agent/evidence/rem-028-appointments-preparation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-PREPARE-20260922",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-028-appointments-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-APPOINTMENTS-PREPARE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-APPOINTMENTS-CALENDAR-20260922",
+        ".agent/evidence/rem-028-appointments-calendar-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-CALENDAR-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-appointments-calendar-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-APPOINTMENTS-CALENDAR-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-PREPARE-APPOINTMENTS-ACTION-20260922",
+        ".agent/evidence/rem-028-appointments-action-preparation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-ACTION-PREPARE-20260922",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-028-appointments-action-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-APPOINTMENTS-ACTION-PREPARE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-APPOINTMENTS-ACTION-20260922",
+        ".agent/evidence/rem-028-appointments-action-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-ACTION-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-appointments-action-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-APPOINTMENTS-ACTION-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-PREPARE-APPOINTMENTS-OVERVIEW-20260922",
+        ".agent/evidence/rem-028-appointments-overview-preparation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-OVERVIEW-PREPARE-20260922",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-028-appointments-overview-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-APPOINTMENTS-OVERVIEW-PREPARE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-APPOINTMENTS-OVERVIEW-20260922",
+        ".agent/evidence/rem-028-appointments-overview-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-OVERVIEW-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-appointments-overview-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-APPOINTMENTS-OVERVIEW-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-PREPARE-APPOINTMENTS-CREATE-20260922",
+        ".agent/evidence/rem-028-appointments-create-preparation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-CREATE-PREPARE-20260922",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-028-appointments-create-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-APPOINTMENTS-CREATE-PREPARE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-IMPLEMENT-APPOINTMENTS-CREATE-20260922",
+        ".agent/evidence/rem-028-appointments-create-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-CREATE-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-appointments-create-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFY-APPOINTMENTS-CREATE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-APPOINTMENTS-CREATE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-CHECKPOINT-REVIEW-APPOINTMENTS-AGGREGATE-20260922",
+        ".agent/evidence/rem-028-appointments-aggregate-review-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-AGGREGATE-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-appointments-aggregate-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFY-APPOINTMENTS-AGGREGATE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-APPOINTMENTS-AGGREGATE-20260922",
+        ".agent/evidence/rem-028-visual-revalidation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-VISUAL-REVALIDATION-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-028-visual-revalidation-20260922.json",
+        ".agent/execution-log.jsonl#EVT-REM-028-VISUAL-REVALIDATION-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-028-VERIFIED-VISUAL-REVALIDATION-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-029-CHECKPOINT-PREPARE-20260922"
+      ],
+      "next_action": {
+        "id": "REM-028:REOPEN-IF-DRIFT",
+        "kind": "REOPEN",
+        "summary": "Reabrir a revalidação visual de appointments se browser/health, owners, contratos, snapshots ou qualquer seam mudarem.",
+        "target": ".agent/gates/verified-remediacao-integral-rem-028-visual-revalidation-20260922.json; seams de appointments; snapshots e owners",
+        "completion_signal": "O gate de revalidação visual PASS_WITH_CONDITIONS permanece vinculado; qualquer drift de seam, ownership, runtime ou snapshot reabre a medição antes de novo compromisso."
+      }
+    },
+    {
+      "id": "REM-029",
+      "title": "Decompor relatórios e worker runner",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-027"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-029 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-029-preparation-20260922.txt",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-029-20260922.json",
+        ".agent/evidence/rem-029-worker-report-sources-implementation-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-029-worker-report-sources-20260922.json",
+        ".agent/evidence/rem-029-worker-report-sources-verify-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-029-worker-report-sources-verify-20260922.json",
+        ".agent/evidence/rem-029-reports-rendering-preparation-20260922.txt",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-029-reports-rendering-20260922.json",
+        ".agent/verification.jsonl#VER-REM-029-PREPARE-20260922",
+        ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-WORKER-REPORT-SOURCES-20260922",
+        ".agent/verification.jsonl#VER-REM-029-VERIFY-WORKER-REPORT-SOURCES-20260922",
+        ".agent/verification.jsonl#VER-REM-029-PREPARE-REPORTS-RENDERING-20260922",
+        ".agent/evidence/rem-029-reports-rendering-implementation-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-029-reports-rendering-20260922.json",
+        ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-REPORTS-RENDERING-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-029-VERIFIED-REPORTS-RENDERING-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-029-CHECKPOINT-PREPARE-REPORTS-PERSISTENCE-20260922",
+        ".agent/evidence/rem-029-reports-persistence-preparation-20260922.txt",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-029-reports-persistence-20260922.json",
+        ".agent/verification.jsonl#VER-REM-029-PREPARE-REPORTS-PERSISTENCE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-029-VERIFIED-PREPARE-REPORTS-PERSISTENCE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-029-CHECKPOINT-IMPLEMENT-REPORTS-PERSISTENCE-20260922",
+        ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-029-reports-persistence-20260922.json",
+        ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-REPORTS-PERSISTENCE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-029-VERIFIED-REPORTS-PERSISTENCE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-029-CHECKPOINT-VERIFY-REPORTS-PERSISTENCE-20260922",
+        ".agent/evidence/rem-029-reports-persistence-verify-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-029-reports-persistence-verify-20260922.json",
+        ".agent/verification.jsonl#VER-REM-029-VERIFY-REPORTS-PERSISTENCE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-029-VERIFIED-PERSISTENCE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-029-CHECKPOINT-AGGREGATE-VERIFY-20260922",
+        ".agent/evidence/rem-029-reports-aggregate-verify-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-029-aggregate-20260922.json",
+        ".agent/verification.jsonl#VER-REM-029-AGGREGATE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-029-VERIFIED-AGGREGATE-20260922",
+        ".agent/execution-log.jsonl#EVT-REM-029-CHECKPOINT-REM-030-WAIT-AUTHORITY-20260922",
+        ".agent/evidence/rem-029-aggregate-revalidation-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-029-aggregate-revalidation-20260922.json"
+      ],
+      "next_action": {
+        "id": "REM-029:REOPEN-IF-DRIFT",
+        "kind": "REOPEN",
+        "summary": "Reabrir REM-029 se sources, rendering, persistence, contratos, claims/leases ou evidência agregada apresentarem drift.",
+        "target": ".agent/gates/verified-remediacao-integral-rem-029-aggregate-revalidation-20260922.json; .agent/evidence/rem-029-aggregate-revalidation-20260922.txt; apps/worker/src/runner.ts; packages/modules/reports/src/index.ts",
+        "completion_signal": "Qualquer drift observado gera nova preparação/implementação/verificação com gate superseding; sem drift, o DONE local permanece condicionado às fronteiras externas."
+      }
+    },
+    {
+      "id": "REM-030",
+      "title": "Certificar migrations no target",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-016",
+        "REM-021"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-030 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        "docs/operations/REM_TARGET_CERTIFICATION_RUNBOOK.md",
+        ".agent/evidence/rem-target-pack-preparation-20260922.txt",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-target-pack-20260922.json"
+      ],
+      "next_action": {
+        "id": "REM-030:WAIT-AUTHORITY",
+        "kind": "WAIT",
+        "summary": "Aguardar autorização/decisão humana específica antes da fronteira externa ou destrutiva.",
+        "target": ".agent/authority.jsonl",
+        "completion_signal": "Decisão CONFIRMED vinculada ao escopo exato registrada antes da ação."
+      }
+    },
+    {
+      "id": "REM-031",
+      "title": "Executar golden path clínico candidate-bound",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-022",
+        "REM-023",
+        "REM-030"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-031 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-031:WAIT-EXTERNAL",
+        "kind": "WAIT",
+        "summary": "Aguardar ambiente, credencial, provider ou registro externo aprovado; manter preparação local.",
+        "target": "ambiente/serviço externo aprovado; .agent/authority.jsonl",
+        "completion_signal": "Dependência externa disponível e observável, com credenciais/escopo autorizados e evidência atual."
+      }
+    },
+    {
+      "id": "REM-032",
+      "title": "Provar invariantes de autoria e auditoria clínica",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-031"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-032 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-032:WAIT-EXTERNAL",
+        "kind": "WAIT",
+        "summary": "Aguardar ambiente, credencial, provider ou registro externo aprovado; manter preparação local.",
+        "target": "ambiente/serviço externo aprovado; .agent/authority.jsonl",
+        "completion_signal": "Dependência externa disponível e observável, com credenciais/escopo autorizados e evidência atual."
+      }
+    },
+    {
+      "id": "REM-033",
+      "title": "Congelar matriz de paridade 11/11",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-018"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-033 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-033:WAIT-AUTHORITY",
+        "kind": "WAIT",
+        "summary": "Aguardar autorização/decisão humana específica antes da fronteira externa ou destrutiva.",
+        "target": ".agent/authority.jsonl",
+        "completion_signal": "Decisão CONFIRMED vinculada ao escopo exato registrada antes da ação."
+      }
+    },
+    {
+      "id": "REM-034",
+      "title": "Homologar laboratório e equipamentos",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-033"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-034 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-034:WAIT-EXTERNAL",
+        "kind": "WAIT",
+        "summary": "Aguardar ambiente, credencial, provider ou registro externo aprovado; manter preparação local.",
+        "target": "ambiente/serviço externo aprovado; .agent/authority.jsonl",
+        "completion_signal": "Dependência externa disponível e observável, com credenciais/escopo autorizados e evidência atual."
+      }
+    },
+    {
+      "id": "REM-035",
+      "title": "Homologar ciclo fiscal",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-033"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-035 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-035:WAIT-EXTERNAL",
+        "kind": "WAIT",
+        "summary": "Aguardar ambiente, credencial, provider ou registro externo aprovado; manter preparação local.",
+        "target": "ambiente/serviço externo aprovado; .agent/authority.jsonl",
+        "completion_signal": "Dependência externa disponível e observável, com credenciais/escopo autorizados e evidência atual."
+      }
+    },
+    {
+      "id": "REM-036",
+      "title": "Homologar cartão/PIX e conciliação",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-033"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-036 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-036:WAIT-EXTERNAL",
+        "kind": "WAIT",
+        "summary": "Aguardar ambiente, credencial, provider ou registro externo aprovado; manter preparação local.",
+        "target": "ambiente/serviço externo aprovado; .agent/authority.jsonl",
+        "completion_signal": "Dependência externa disponível e observável, com credenciais/escopo autorizados e evidência atual."
+      }
+    },
+    {
+      "id": "REM-037",
+      "title": "Homologar marketing, provider e consentimento",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-033"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-037 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-037:WAIT-EXTERNAL",
+        "kind": "WAIT",
+        "summary": "Aguardar ambiente, credencial, provider ou registro externo aprovado; manter preparação local.",
+        "target": "ambiente/serviço externo aprovado; .agent/authority.jsonl",
+        "completion_signal": "Dependência externa disponível e observável, com credenciais/escopo autorizados e evidência atual."
+      }
+    },
+    {
+      "id": "REM-038",
+      "title": "Completar família de relatórios Vetus",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-033"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-038 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-038:PREPARE",
+        "kind": "INSPECT",
+        "summary": "Preparar superfície, contrato, known-bad, teste focal e comando seguro da tarefa.",
+        "target": "docs/2026-09-21-backlog-remediacao-integral.md; código/testes/configuração da tarefa",
+        "completion_signal": "Superfície, dependências, known-bad, teste focal, autoridade e evidência esperada estão registrados."
+      }
+    },
+    {
+      "id": "REM-039",
+      "title": "Fechar usuários, acessos e LGPD",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-033"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-039 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-039:WAIT-AUTHORITY",
+        "kind": "WAIT",
+        "summary": "Aguardar autorização/decisão humana específica antes da fronteira externa ou destrutiva.",
+        "target": ".agent/authority.jsonl",
+        "completion_signal": "Decisão CONFIRMED vinculada ao escopo exato registrada antes da ação."
+      }
+    },
+    {
+      "id": "REM-040",
+      "title": "Homologar integrações Live Pet/Lab/Vetus",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-033"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-040 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-040:WAIT-EXTERNAL",
+        "kind": "WAIT",
+        "summary": "Aguardar ambiente, credencial, provider ou registro externo aprovado; manter preparação local.",
+        "target": "ambiente/serviço externo aprovado; .agent/authority.jsonl",
+        "completion_signal": "Dependência externa disponível e observável, com credenciais/escopo autorizados e evidência atual."
+      }
+    },
+    {
+      "id": "REM-041",
+      "title": "Executar browser matrix e acessibilidade",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-031",
+        "REM-033",
+        "REM-034",
+        "REM-035",
+        "REM-036",
+        "REM-037",
+        "REM-038",
+        "REM-039",
+        "REM-040"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-041 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-041:WAIT-AUTHORITY",
+        "kind": "WAIT",
+        "summary": "Aguardar autorização/decisão humana específica antes da fronteira externa ou destrutiva.",
+        "target": ".agent/authority.jsonl",
+        "completion_signal": "Decisão CONFIRMED vinculada ao escopo exato registrada antes da ação."
+      }
+    },
+    {
+      "id": "REM-042",
+      "title": "Conduzir UAT hospitalar",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-031",
+        "REM-041"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-042 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-042:WAIT-AUTHORITY",
+        "kind": "WAIT",
+        "summary": "Aguardar autorização/decisão humana específica antes da fronteira externa ou destrutiva.",
+        "target": ".agent/authority.jsonl",
+        "completion_signal": "Decisão CONFIRMED vinculada ao escopo exato registrada antes da ação."
+      }
+    },
+    {
+      "id": "REM-043",
+      "title": "Obter decisões formais de release",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-021",
+        "REM-022",
+        "REM-023",
+        "REM-024",
+        "REM-025",
+        "REM-030",
+        "REM-031",
+        "REM-032",
+        "REM-033",
+        "REM-034",
+        "REM-035",
+        "REM-036",
+        "REM-037",
+        "REM-038",
+        "REM-039",
+        "REM-040",
+        "REM-041",
+        "REM-042"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-043 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-043:WAIT-AUTHORITY",
+        "kind": "WAIT",
+        "summary": "Aguardar autorização/decisão humana específica antes da fronteira externa ou destrutiva.",
+        "target": ".agent/authority.jsonl",
+        "completion_signal": "Decisão CONFIRMED vinculada ao escopo exato registrada antes da ação."
+      }
+    },
+    {
+      "id": "REM-044",
+      "title": "Reduzir refs/objetos Git com retenção segura",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-002"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-044 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/gates/verified-remediacao-integral-rem-002-pushed-20260923.json",
+        ".agent/execution-log.jsonl#EVT-REM-044-READY-AFTER-REM-002-20260923",
+        ".agent/evidence/rem-044-preparation-20260923.txt",
+        "docs/operations/REM_044_GIT_OBJECT_RETENTION_RUNBOOK.md",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-044-20260923.json",
+        ".agent/verification.jsonl#VER-REM-044-PREPARE-20260923"
+      ],
+      "next_action": {
+        "id": "REM-044:WAIT-AUTHORITY",
+        "kind": "WAIT",
+        "summary": "Aguardar autoridade humana para refs/objetos exatos, prazo de retenção, owner de rollback e operação destrutiva permitida.",
+        "target": ".agent/authority.jsonl; docs/operations/REM_044_GIT_OBJECT_RETENTION_RUNBOOK.md",
+        "completion_signal": "Decisão CONFIRMED vinculada ao gate REM-044 com conjunto exato, prazo, owner e operação antes de qualquer prune/gc/reflog expiration/ref deletion."
+      }
+    },
+    {
+      "id": "REM-045",
+      "title": "Definir TTL/quota/ACL de artefatos",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-001"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-045 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-045-preparation-20260922.txt",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-045-20260922.json",
+        ".agent/evidence/rem-045-artifact-retention-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-045-IMPLEMENT-20260922",
+        ".agent/verification.jsonl#VER-REM-045-VERIFIED-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-045-20260922.json",
+        ".agent/evidence/rem-045-revalidation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-045-REVALIDATE-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-045-revalidation-20260922.json",
+        "docs/engineering/artifact-retention-policy.json",
+        "docs/operations/ARTIFACT_RETENTION_POLICY.md",
+        "scripts/artifact-retention-dry-run.mjs",
+        "scripts/artifact-retention-dry-run.test.mjs"
+      ],
+      "next_action": {
+        "id": "REM-045:REOPEN-IF-DRIFT",
+        "kind": "REOPEN",
+        "summary": "Reabrir se raízes, classes, TTL/quota/ACL, marcadores de proteção ou workflows de retenção sofrerem drift; qualquer limpeza efetiva exige autoridade explícita.",
+        "target": "docs/engineering/artifact-retention-policy.json; scripts/artifact-retention-dry-run.mjs; .agent/gates/verified-remediacao-integral-rem-045-20260922.json",
+        "completion_signal": "Drift ou autorização de limpeza reproduzido, novo dry-run executado e gate superseding registrado sem excluir evidência por inferência."
+      }
+    },
+    {
+      "id": "REM-046",
+      "title": "Reduzir ruído e duplicação de testes",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-007"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-046 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-046-test-feedback-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-046-IMPLEMENT-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-046-20260922.json",
+        "scripts/run-root-test-suite.mjs",
+        "tests/unit/infra/root-test-runner-contract.test.ts",
+        "apps/api/package.json",
+        "apps/worker/package.json",
+        ".github/workflows/ci.yml"
+      ],
+      "next_action": {
+        "id": "REM-046:REOPEN-IF-DRIFT",
+        "kind": "REOPEN",
+        "summary": "Reabrir se o runner, o contrato de build preparado ou o reporter voltarem a duplicar trabalho ou ocultarem diagnóstico útil.",
+        "target": "scripts/run-root-test-suite.mjs; apps/api/package.json; apps/worker/package.json; .github/workflows/ci.yml; tests/unit/infra/root-test-runner-contract.test.ts",
+        "completion_signal": "Qualquer regressão futura reproduzida e revalidada com evidência candidate-bound, sem tratar o gate local como prova de CI remoto."
+      }
+    },
+    {
+      "id": "REM-047",
+      "title": "Adicionar testes aos pacotes sem cobertura",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-013"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-047 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-047-preparation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-047-PREPARE-20260922",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-047-20260922.json",
+        ".agent/evidence/rem-047-test-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-047-IMPLEMENT-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-047-20260922.json",
+        "packages/chaos/package.json",
+        "packages/chaos/src/chaos-engine.test.ts",
+        "packages/chaos/src/faults.test.ts",
+        "packages/chaos/src/experiments.test.ts",
+        "packages/shared/contracts/package.json",
+        "packages/shared/contracts/src/upload-limits.test.ts",
+        "packages/shared/types/package.json",
+        "packages/shared/types/src/types.test.ts",
+        "packages/shared/types/src/event-envelope.test.ts"
+      ],
+      "next_action": {
+        "id": "REM-047:REOPEN-IF-DRIFT",
+        "kind": "REOPEN",
+        "summary": "Reabrir se os manifests voltarem a declarar no-tests, os testes perderem wiring ou os contratos runtime cobertos sofrerem drift.",
+        "target": "packages/chaos; packages/shared/contracts; packages/shared/types; .agent/gates/verified-remediacao-integral-rem-047-20260922.json",
+        "completion_signal": "Drift reproduzido e revalidado com teste focal, typecheck/build e gate superseding; sem drift, o DONE local permanece condicionado às fronteiras externas."
+      }
+    },
+    {
+      "id": "REM-048",
+      "title": "Reduzir any nas fronteiras críticas",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-013"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-048 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-048-preparation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-048-PREPARE-20260922",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-048-20260922.json",
+        ".agent/evidence/rem-048-any-boundaries-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-048-IMPLEMENT-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-048-20260922.json",
+        "apps/api/src/payment-gateway.ts",
+        "apps/api/src/payment-gateway.test.ts",
+        "packages/contracts/src/integration.ts",
+        "packages/contracts/src/__tests__/contracts.test.ts",
+        "packages/contracts/src/__tests__/integration.test.ts"
+      ],
+      "next_action": {
+        "id": "REM-048:REOPEN-IF-DRIFT",
+        "kind": "REOPEN",
+        "summary": "Reabrir se payment-gateway/integration voltar a usar any, perder guards ou divergir do inventário/testes vinculados.",
+        "target": "apps/api/src/payment-gateway.ts; packages/contracts/src/integration.ts; testes focais; .agent/gates/verified-remediacao-integral-rem-048-20260922.json",
+        "completion_signal": "Drift reproduzido e revalidado com teste focal, typecheck/build e gate superseding; a dívida residual fora da fatia permanece trabalho separado."
+      }
+    },
+    {
+      "id": "REM-049",
+      "title": "Corrigir warning ESM do validador OpenAPI",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-049 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-049-openapi-esm-preparation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-049-PREPARE-20260922",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-049-20260922.json",
+        ".agent/evidence/rem-049-openapi-esm-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-049-IMPLEMENT-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-049-20260922.json",
+        "scripts/validate-openapi.mjs",
+        "scripts/validate-openapi.js",
+        "docs/engineering/critical-coverage-scope.json"
+      ],
+      "next_action": {
+        "id": "REM-049:REOPEN-IF-DRIFT",
+        "kind": "REOPEN",
+        "summary": "Reabrir REM-049 se o entrypoint, a semântica do validador, o contrato OpenAPI ou o execution input crítico apresentarem drift.",
+        "target": "scripts/validate-openapi.mjs; scripts/validate-openapi.js; package.json; tests/integration/openapi-runtime.test.ts; docs/engineering/critical-coverage-scope.json",
+        "completion_signal": "Qualquer drift reproduzido gera nova preparação/implementação/verificação com gate superseding; sem drift, o DONE local permanece condicionado às fronteiras externas."
+      }
+    },
+    {
+      "id": "REM-050",
+      "title": "Corrigir política de lockfile no gitignore",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-003"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-050 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-050-lockfile-policy-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-050-IMPLEMENT-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-050-20260922.json",
+        ".gitignore",
+        "tests/unit/infra/lockfile-gitignore.test.ts"
+      ],
+      "next_action": {
+        "id": "REM-050:REOPEN-IF-DRIFT",
+        "kind": "REOPEN",
+        "summary": "Reabrir REM-050 se o lockfile canônico, a regra de ignore ou o teste de clean checkout sofrerem drift.",
+        "target": ".gitignore; pnpm-lock.yaml; tests/unit/infra/lockfile-gitignore.test.ts; scripts/validate-dependency-policy.mjs",
+        "completion_signal": "Qualquer drift reproduzido gera nova verificação com gate superseding; sem drift, o DONE local permanece condicionado às fronteiras externas."
+      }
+    },
+    {
+      "id": "REM-051",
+      "title": "Melhorar nomes de testes FK",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "DONE",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-007"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-051 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/evidence/rem-051-fk-test-names-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-051-IMPLEMENT-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-051-20260922.json",
+        "tests/integration/database/fk.test.ts"
+      ],
+      "next_action": {
+        "id": "REM-051:REOPEN-IF-DRIFT",
+        "kind": "REOPEN",
+        "summary": "Reabrir REM-051 se a lista ESSENTIAL_FKS, o template dos títulos ou o teste focal sofrer drift.",
+        "target": "tests/integration/database/fk.test.ts; .agent/gates/verified-remediacao-integral-rem-051-20260922.json",
+        "completion_signal": "Qualquer drift reproduzido gera nova verificação em banco efêmero e gate superseding; sem drift, o DONE local permanece condicionado às fronteiras externas."
+      }
+    },
+    {
+      "id": "REM-052",
+      "title": "Automatizar identidade, P0, freshness e links",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "TODO",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-011",
+        "REM-012"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-052 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-052:PREPARE",
+        "kind": "INSPECT",
+        "summary": "Preparar superfície, contrato, known-bad, teste focal e comando seguro da tarefa.",
+        "target": "docs/2026-09-21-backlog-remediacao-integral.md; código/testes/configuração da tarefa",
+        "completion_signal": "Superfície, dependências, known-bad, teste focal, autoridade e evidência esperada estão registrados."
+      }
+    },
+    {
+      "id": "REM-053",
+      "title": "Reconciliar identidade, P0, Quality Bar e docs",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-021",
+        "REM-022",
+        "REM-023",
+        "REM-024",
+        "REM-025",
+        "REM-026",
+        "REM-027",
+        "REM-028",
+        "REM-029",
+        "REM-030",
+        "REM-031",
+        "REM-032",
+        "REM-033",
+        "REM-034",
+        "REM-035",
+        "REM-036",
+        "REM-037",
+        "REM-038",
+        "REM-039",
+        "REM-040",
+        "REM-041",
+        "REM-042",
+        "REM-043",
+        "REM-044",
+        "REM-045",
+        "REM-046",
+        "REM-047",
+        "REM-048",
+        "REM-049",
+        "REM-050",
+        "REM-051",
+        "REM-052"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-053 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-053:PREPARE",
+        "kind": "INSPECT",
+        "summary": "Preparar superfície, contrato, known-bad, teste focal e comando seguro da tarefa.",
+        "target": "docs/2026-09-21-backlog-remediacao-integral.md; código/testes/configuração da tarefa",
+        "completion_signal": "Superfície, dependências, known-bad, teste focal, autoridade e evidência esperada estão registrados."
+      }
+    },
+    {
+      "id": "REM-054",
+      "title": "Executar reauditoria independente completa",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "TODO",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-053"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-054 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-054:PREPARE",
+        "kind": "INSPECT",
+        "summary": "Preparar superfície, contrato, known-bad, teste focal e comando seguro da tarefa.",
+        "target": "docs/2026-09-21-backlog-remediacao-integral.md; código/testes/configuração da tarefa",
+        "completion_signal": "Superfície, dependências, known-bad, teste focal, autoridade e evidência esperada estão registrados."
+      }
+    },
+    {
+      "id": "REM-055",
+      "title": "Registrar decisão humana go/no-go",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "BLOCKED",
+      "origin": "REMEDIACAO-INTEGRAL-20260921",
+      "dependencies": [
+        "REM-043",
+        "REM-054"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Escopo e aceite observável conforme REM-055 no documento docs/2026-09-21-backlog-remediacao-integral.md; nenhum aceite externo ou humano é inferido.",
+      "evidence_refs": [
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "next_action": {
+        "id": "REM-055:WAIT-AUTHORITY",
+        "kind": "WAIT",
+        "summary": "Aguardar autorização/decisão humana específica antes da fronteira externa ou destrutiva.",
+        "target": ".agent/authority.jsonl",
+        "completion_signal": "Decisão CONFIRMED vinculada ao escopo exato registrada antes da ação."
+      }
+    },
+    {
+      "id": "REM-056",
+      "title": "Validar localmente o gate de consistência backup/restore",
+      "stage": "BUILD",
+      "priority": "P0",
+      "status": "DONE",
+      "origin": "MELHORIAS-50-20260923",
+      "dependencies": [],
+      "owner": "lead",
+      "acceptance_summary": "O checker local resolve o roadmap W3 selecionado pela governança e os requisitos de recuperação REM-024; o comando focal, seis testes totais (um positivo e cinco mutações negativas), 15 verificações estáticas e diff check passam. O aceite exclui restore/rollback real, certificação de target e medição RPO/RTO, que permanecem no REM-024/M-14.",
+      "evidence_refs": [
+        ".agent/evidence/m50-rem-crosswalk-20260923.md",
+        ".agent/evidence/m03-backup-gate-20260923.json",
+        "infra/scripts/validate-backup-restore.mjs",
+        "infra/scripts/validate-backup-restore.test.mjs",
+        "docs/2026-09-23-roadmap-melhorias.md",
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/verification.jsonl#VER-REM-056-LOCAL-20260923",
+        ".agent/evidence/rem-056-local-verification-20260923.txt",
+        ".agent/gates/verified-melhorias-rem-056-20260923.json",
+        ".agent/evidence/rem-056-gate-recovery-20260923.md",
+        ".agent/verification.jsonl#VER-REM-056-LOCAL-RECOVERY-20260923",
+        ".agent/evidence/rem-056-local-verification-recovery-20260923.txt",
+        ".agent/gates/verified-melhorias-rem-056-v2-20260923.json"
+      ],
+      "next_action": {
+        "id": "REM-056:REOPEN-IF-DRIFT",
+        "kind": "REOPEN",
+        "summary": "Reabrir se o checker, as mutações negativas, o roadmap selecionado ou as cláusulas REM-024 divergirem do aceite validado.",
+        "target": ".agent/evidence/m03-backup-gate-20260923.json; .agent/gates/verified-melhorias-rem-056-v2-20260923.json",
+        "completion_signal": "Drift reproduzido e um gate supersedente avalia o escopo afetado sem ampliar o claim local."
+      }
+    },
+    {
+      "id": "REM-057",
+      "title": "Validar migration 0175 com principal mínimo em PostgreSQL descartável",
+      "stage": "BUILD",
+      "priority": "P1",
+      "status": "IN_PROGRESS",
+      "origin": "MELHORIAS-50-20260923",
+      "dependencies": [
+        "REM-016"
+      ],
+      "owner": "lead",
+      "acceptance_summary": "Prova local e candidate-bound da migration 0175 em PostgreSQL realmente descartável, executada por login não-superuser sem privilégios de criação de database/roles/replicação/bypass RLS; secret sintético fora do Git e dos logs; validar catálogo/checksum e documentar rollout misto/rollback. A prova local intermediária não fecha M-04/M-05 antes do refresh do candidato.",
+      "evidence_refs": [
+        "docs/2026-09-23-backlog-melhorias.md",
+        ".agent/evidence/m50-rem-crosswalk-20260923.md",
+        ".agent/evidence/rem-016-migration-harness-final-20260921.json",
+        "packages/db/migrations/0175_access_control_change_versions.sql",
+        "packages/db/src/migrate.ts",
+        ".agent/evidence/rem-057-m04-m05-0175-disposable-20260923.json"
+      ],
+      "next_action": {
+        "id": "REM-057:PREPARE",
+        "kind": "TEST",
+        "summary": "Prova local descartável de 0175 passou com login restrito, isolamento e dados sintéticos; concluir a documentação de mixed-version/rollback e repetir no SHA candidato com canal de segredo aprovado antes de fechar REM-057.",
+        "target": ".agent/evidence/rem-057-m04-m05-0175-disposable-20260923.json; packages/db/migrations/0175_access_control_change_versions.sql; identidade e credencial aprovadas para o target; SHA candidato isolado",
+        "completion_signal": "Repetição candidate-bound confirma checksum, schema, RLS, functions, triggers e idempotência; caminho mixed-version/rollback é documentado; credencial chega pelo canal aprovado sem aparecer em Git/logs; nenhum target compartilhado é alterado."
+      }
+    },
+    {
+      "id": "PROD-066",
+      "title": "Preflight somente leitura do banco local e modo persistente opt-in",
+      "stage": "BUILD",
+      "priority": "P2",
+      "status": "BLOCKED",
+      "origin": "MELHORIAS-50-20260923",
+      "dependencies": [],
+      "owner": "lead",
+      "acceptance_summary": "M-31 não possui REM dedicado no crosswalk (adjacentes: REM-016/PROD-003/PROD-049/PROD-061); PROD-066 documenta o escopo novo. M31-LOCAL passou por crítica I1: CLI rejeita credencial ausente e destino não-loopback sem imprimir URL; verifica PostgreSQL 16, checksums e migrations pendentes, e tabelas/colunas Drizzle em transação somente leitura e limitada. API/testes persistentes são opt-in; a suite fixa a URL testada, não reseta, migra, semeia ou remove o banco. M31-LIVE permanece BLOCKED/NOT_RUN até prova atual, stale e drifted em PostgreSQL 16 descartável autorizado; nenhum DB foi acessado nesta rodada.",
+      "evidence_refs": [
+        "docs/2026-09-23-lista-50-melhorias.md#M-31",
+        ".agent/evidence/m50-rem-crosswalk-20260923.md#M-31",
+        ".agent/evidence/m31-operational-reconciliation-20260924.json",
+        ".agent/evidence/m31-local-preflight-review-20260924.json",
+        ".agent/evidence/m31-database-preflight-pure-tests-20260924.txt",
+        ".agent/evidence/m31-migration-assessment-tests-20260924.txt",
+        ".agent/evidence/m31-db-typecheck-20260924.txt",
+        ".agent/evidence/m31-no-credential-fast-fail-20260924.txt",
+        ".agent/evidence/m31-nonloopback-fast-fail-20260924.txt"
+      ],
+      "next_action": {
+        "id": "PROD-066:WAIT-DISPOSABLE-PG16",
+        "kind": "WAIT",
+        "summary": "Aguardar escopo autorizado para exercitar somente um banco PostgreSQL 16 local realmente descartável; o bloqueio atual proíbe qualquer conexão a banco/serviço.",
+        "target": "banco PostgreSQL 16 descartável autorizado; .agent/evidence/m31-local-preflight-review-20260924.json",
+        "completion_signal": "Prova atual, stale e drifted contra DB descartável confirma autenticação, versão, ledger/checksums, schema e snapshots iguais antes/depois; nenhum banco compartilhado é alterado."
       }
     }
   ]

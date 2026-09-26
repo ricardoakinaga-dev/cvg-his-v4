@@ -1,0 +1,103 @@
+{
+  "checks": [
+    {
+      "check": "openapi",
+      "exit_code": 0,
+      "started_at": "2026-09-25T10:30:46.271515-03:00",
+      "finished_at": "2026-09-25T10:30:47.956251-03:00",
+      "output": "✅ OpenAPI valid: CVG HIS API v1.0.0 (431 paths)\n   Paths: 431 | Tags: 41 | Schemas: 527\n✅ All structural checks passed\n"
+    },
+    {
+      "check": "namespaces",
+      "exit_code": 0,
+      "started_at": "2026-09-25T10:30:46.271685-03:00",
+      "finished_at": "2026-09-25T10:30:50.526593-03:00",
+      "output": "Package namespace boundary clean: canonical packages under apps, packages\n"
+    },
+    {
+      "check": "migration-source",
+      "exit_code": 0,
+      "started_at": "2026-09-25T10:30:46.272323-03:00",
+      "finished_at": "2026-09-25T10:30:46.346393-03:00",
+      "output": "[migration-source] PASS packages/db db:migrate points to the checksum-aware runner\n[migration-source] PASS packages/db db:seed points to the canonical seed entrypoint\n[migration-source] PASS .github/workflows/ci.yml invokes the canonical migration rail\n[migration-source] PASS docker-compose.v2.yml invokes the canonical migration rail\n[migration-source] PASS infra/scripts/prepare-test-db.mjs invokes the canonical migration rail\n[migration-source] PASS infra/scripts/cutover-v2.sh invokes the canonical migration rail\n[migration-source] PASS infra/helm/cvg-his-v2/templates/database-maintenance-jobs.yaml invokes the canonical migration rail\n[migration-source] PASS historical shared-database SQL is absent from the active source tree\n[migration-source] PASS packages/db/src/migrate.js is absent; TypeScript runner and generated dist output remain canonical\n[migration-source] PASS packages/db/src/migrate.d.ts is absent; TypeScript runner and generated dist output remain canonical\n[migration-source] PASS packages/db/src/migrate.js.map is absent; TypeScript runner and generated dist output remain canonical\n[migration-source] PASS packages/db/src/migrate.d.ts.map is absent; TypeScript runner and generated dist output remain canonical\n[migration-source] PASS packages/db/src/connection.js is absent; TypeScript runner and generated dist output remain canonical\n[migration-source] PASS packages/db/src/connection.js.map is absent; TypeScript runner and generated dist output remain canonical\n[migration-source] PASS packages/db/src/connection.d.ts is absent; TypeScript runner and generated dist output remain canonical\n[migration-source] PASS packages/db/src/connection.d.ts.map is absent; TypeScript runner and generated dist output remain canonical\n[migration-source] PASS packages/db/drizzle.config.ts is absent; TypeScript runner and generated dist output remain canonical\n[migration-source] canonical migration source-of-truth is consistent\n"
+    },
+    {
+      "check": "environment-contract",
+      "exit_code": 0,
+      "started_at": "2026-09-25T10:30:46.347055-03:00",
+      "finished_at": "2026-09-25T10:30:46.527372-03:00",
+      "output": "[environment-runtime] PASS matrix=docs/engineering/environment-runtime-matrix.json environments=5\n"
+    },
+    {
+      "check": "clinical-workflow",
+      "exit_code": 0,
+      "started_at": "2026-09-25T10:30:46.528022-03:00",
+      "finished_at": "2026-09-25T10:30:46.602129-03:00",
+      "output": "[clinical-workflow] PASS schema, migration, API and worker control-plane sources are present\n"
+    },
+    {
+      "check": "documentation",
+      "exit_code": 0,
+      "started_at": "2026-09-25T10:30:46.603114-03:00",
+      "finished_at": "2026-09-25T10:30:46.776262-03:00",
+      "output": "Documentação válida: baseline, plano, roadmap, backlog, histórico e links locais conferidos.\n"
+    },
+    {
+      "check": "current-snapshot",
+      "exit_code": 0,
+      "started_at": "2026-09-25T10:30:46.777090-03:00",
+      "finished_at": "2026-09-25T10:30:46.907482-03:00",
+      "output": "Triple-A current snapshot valid: current documents are bound to the candidate commit.\n"
+    },
+    {
+      "check": "dependency-policy",
+      "exit_code": 0,
+      "started_at": "2026-09-25T10:30:46.911921-03:00",
+      "finished_at": "2026-09-25T10:30:47.037568-03:00",
+      "output": "[dependency-policy] PASS 69 active manifests; lockfile and specifier policy are valid\n"
+    },
+    {
+      "check": "observability-contract",
+      "exit_code": 0,
+      "started_at": "2026-09-25T10:30:47.039159-03:00",
+      "finished_at": "2026-09-25T10:30:47.164922-03:00",
+      "output": "# Observability Contract: PASS\nMetrics, scrape targets, alerts, dashboard panels and runbooks are connected.\n"
+    },
+    {
+      "check": "complexity",
+      "exit_code": 0,
+      "started_at": "2026-09-25T10:30:47.342111-03:00",
+      "finished_at": "2026-09-25T10:30:47.667605-03:00",
+      "output": "Orçamento de complexidade válido: hotspots, owners e limites conferidos.\n"
+    },
+    {
+      "check": "supply-chain",
+      "exit_code": 0,
+      "started_at": "2026-09-25T10:30:47.668313-03:00",
+      "finished_at": "2026-09-25T10:30:49.002311-03:00",
+      "output": "Supply-chain action references scanned: 132\nSupply-chain workflow images scanned: 14\nSupply-chain Compose images scanned: 15\nSupply-chain Helm static images scanned: 0\nSupply-chain Docker base images scanned: 6\nSupply-chain runtime script images scanned: 4\nPASS: all external actions and container images are immutable.\n"
+    },
+    {
+      "check": "remediation-target",
+      "exit_code": 0,
+      "started_at": "2026-09-25T10:30:47.956939-03:00",
+      "finished_at": "2026-09-25T10:30:48.029788-03:00",
+      "output": "[remediation-target-pack] PASS 20 files, 15 markers, 9 package scripts\n"
+    },
+    {
+      "check": "skip-policy",
+      "exit_code": 0,
+      "started_at": "2026-09-25T10:30:48.030983-03:00",
+      "finished_at": "2026-09-25T10:31:07.006478-03:00",
+      "output": "TEST_SKIP_POLICY PASS: 36 allowlisted skip occurrences\n"
+    },
+    {
+      "check": "p0-registry",
+      "exit_code": 1,
+      "started_at": "2026-09-25T10:30:47.165619-03:00",
+      "finished_at": "2026-09-25T10:30:47.341183-03:00",
+      "output": "P0 registry invalid (1 problem(s)):\n- current candidate identity: candidate identity requires a clean worktree; freeze source and control bytes before validation\n"
+    }
+  ],
+  "note": "These are source/configuration validators, not production or provider certification."
+}

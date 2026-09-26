@@ -1,0 +1,509 @@
+{
+  "rubric": {
+    "I": 35,
+    "R": 25,
+    "V": 25,
+    "O": 15
+  },
+  "overall_weighted_score": 68.86,
+  "overall_rounded_score": 69,
+  "areas": [
+    {
+      "id": "A01",
+      "area": "Arquitetura e modularidade",
+      "weight": 4,
+      "components": {
+        "I": 85,
+        "R": 78,
+        "V": 82,
+        "O": 55
+      },
+      "unrounded_score": 78.0,
+      "score": 78,
+      "rationale": "Monorepo modular funcional; composição e páginas ainda concentradas.",
+      "actions": [
+        28,
+        29,
+        30
+      ]
+    },
+    {
+      "id": "A02",
+      "area": "Build, tipos e dependências",
+      "weight": 4,
+      "components": {
+        "I": 94,
+        "R": 85,
+        "V": 95,
+        "O": 72
+      },
+      "unrounded_score": 88.7,
+      "score": 89,
+      "rationale": "Build e auditoria de dependências passaram; Vue fora do lint semântico e 161 avisos.",
+      "actions": [
+        26,
+        27
+      ]
+    },
+    {
+      "id": "A03",
+      "area": "API, contratos e fronteiras de domínio",
+      "weight": 3,
+      "components": {
+        "I": 86,
+        "R": 78,
+        "V": 84,
+        "O": 65
+      },
+      "unrounded_score": 80.35,
+      "score": 80,
+      "rationale": "OpenAPI e contratos exercitados; reduzir concentração e completar deadlines.",
+      "actions": [
+        17,
+        28,
+        44
+      ]
+    },
+    {
+      "id": "A04",
+      "area": "Banco, migrações e integridade estrutural",
+      "weight": 5,
+      "components": {
+        "I": 90,
+        "R": 88,
+        "V": 90,
+        "O": 55
+      },
+      "unrounded_score": 84.25,
+      "score": 84,
+      "rationale": "Migrações e integridade testadas em banco novo; upgrade e restore do alvo pendentes.",
+      "actions": [
+        14,
+        32
+      ]
+    },
+    {
+      "id": "A05",
+      "area": "Autenticação, MFA e sessão",
+      "weight": 5,
+      "components": {
+        "I": 62,
+        "R": 72,
+        "V": 70,
+        "O": 62
+      },
+      "unrounded_score": 66.5,
+      "score": 67,
+      "rationale": "Sessão e desafios persistentes existem; MFA voluntário fora do ramo de login.",
+      "actions": [
+        1,
+        45
+      ]
+    },
+    {
+      "id": "A06",
+      "area": "Autorização, tenant e controles de segurança",
+      "weight": 5,
+      "components": {
+        "I": 88,
+        "R": 88,
+        "V": 90,
+        "O": 68
+      },
+      "unrounded_score": 85.5,
+      "score": 86,
+      "rationale": "RLS e testes de isolamento fortes; scanner/storage e enforcement externo não homologados.",
+      "actions": [
+        23,
+        35
+      ]
+    },
+    {
+      "id": "A07",
+      "area": "Recepção, agenda, triagem e atendimento",
+      "weight": 3,
+      "components": {
+        "I": 88,
+        "R": 82,
+        "V": 90,
+        "O": 65
+      },
+      "unrounded_score": 83.55,
+      "score": 84,
+      "rationale": "Jornadas e persistência exercitadas; lembrete externo e UAT humana pendentes.",
+      "actions": [
+        7,
+        16
+      ]
+    },
+    {
+      "id": "A08",
+      "area": "Prontuários e histórico clínico",
+      "weight": 4,
+      "components": {
+        "I": 88,
+        "R": 86,
+        "V": 88,
+        "O": 62
+      },
+      "unrounded_score": 83.6,
+      "score": 84,
+      "rationale": "Vínculos, revisões e integridade exercitados; complexidade de telas e UAT pendentes.",
+      "actions": [
+        16,
+        29
+      ]
+    },
+    {
+      "id": "A09",
+      "area": "Internação, cirurgia e alta",
+      "weight": 5,
+      "components": {
+        "I": 84,
+        "R": 82,
+        "V": 84,
+        "O": 56
+      },
+      "unrounded_score": 79.3,
+      "score": 79,
+      "rationale": "Módulos e jornadas automatizadas existem; profundidade desigual e aceitação hospitalar pendente.",
+      "actions": [
+        16,
+        32
+      ]
+    },
+    {
+      "id": "A10",
+      "area": "Prescrição e execução de medicação",
+      "weight": 4,
+      "components": {
+        "I": 90,
+        "R": 88,
+        "V": 90,
+        "O": 63
+      },
+      "unrounded_score": 85.45,
+      "score": 85,
+      "rationale": "Contratos de execução e persistência testados; falta homologação operacional do uso real.",
+      "actions": [
+        16,
+        25
+      ]
+    },
+    {
+      "id": "A11",
+      "area": "Diagnóstico, laboratório e imagem",
+      "weight": 4,
+      "components": {
+        "I": 84,
+        "R": 77,
+        "V": 83,
+        "O": 50
+      },
+      "unrounded_score": 76.9,
+      "score": 77,
+      "rationale": "Ordens, laudos e ingresso testados; equipamento efetivo não homologado.",
+      "actions": [
+        36,
+        49
+      ]
+    },
+    {
+      "id": "A12",
+      "area": "Produtos, estoque e suprimentos",
+      "weight": 3,
+      "components": {
+        "I": 83,
+        "R": 82,
+        "V": 83,
+        "O": 60
+      },
+      "unrounded_score": 79.3,
+      "score": 79,
+      "rationale": "Regras de estoque e venda testadas; migração e operação real precisam aceitação.",
+      "actions": [
+        16,
+        32
+      ]
+    },
+    {
+      "id": "A13",
+      "area": "Faturamento, caixa e financeiro interno",
+      "weight": 4,
+      "components": {
+        "I": 84,
+        "R": 80,
+        "V": 84,
+        "O": 58
+      },
+      "unrounded_score": 79.1,
+      "score": 79,
+      "rationale": "Persistência e contratos testados; fechamento com provedores e capacidade no alvo pendentes.",
+      "actions": [
+        16,
+        33,
+        37
+      ]
+    },
+    {
+      "id": "A14",
+      "area": "Pagamentos externos: Pix e cartões",
+      "weight": 6,
+      "components": {
+        "I": 57,
+        "R": 37,
+        "V": 50,
+        "O": 22
+      },
+      "unrounded_score": 45.0,
+      "score": 45,
+      "rationale": "Cartão possui trilha durável; Pix vinculado sintético e criação direta com risco de duplicação.",
+      "actions": [
+        5,
+        6,
+        37
+      ]
+    },
+    {
+      "id": "A15",
+      "area": "Fiscal e NFS-e",
+      "weight": 3,
+      "components": {
+        "I": 50,
+        "R": 38,
+        "V": 48,
+        "O": 15
+      },
+      "unrounded_score": 41.25,
+      "score": 41,
+      "rationale": "Ciclo fiscal implementado; guard de credenciais incoerente e homologação ausente.",
+      "actions": [
+        10,
+        38
+      ]
+    },
+    {
+      "id": "A16",
+      "area": "WhatsApp, email, SMS e Calendar",
+      "weight": 5,
+      "components": {
+        "I": 55,
+        "R": 30,
+        "V": 43,
+        "O": 22
+      },
+      "unrounded_score": 40.8,
+      "score": 41,
+      "rationale": "Adapters existem; durabilidade, credenciais e atualização remota têm lacunas.",
+      "actions": [
+        7,
+        8,
+        9,
+        18,
+        19,
+        34,
+        39
+      ]
+    },
+    {
+      "id": "A17",
+      "area": "Anexos, armazenamento e inspeção",
+      "weight": 4,
+      "components": {
+        "I": 67,
+        "R": 52,
+        "V": 70,
+        "O": 32
+      },
+      "unrounded_score": 58.75,
+      "score": 59,
+      "rationale": "Controles presentes; compensação de reenvio ameaça objetos já confirmados.",
+      "actions": [
+        2,
+        14,
+        35
+      ]
+    },
+    {
+      "id": "A18",
+      "area": "Privacidade, consentimento e auditoria",
+      "weight": 3,
+      "components": {
+        "I": 50,
+        "R": 40,
+        "V": 58,
+        "O": 35
+      },
+      "unrounded_score": 47.25,
+      "score": 47,
+      "rationale": "Trilha de auditoria presente; conclusão de solicitações não garante efeito persistido.",
+      "actions": [
+        3,
+        4,
+        15
+      ]
+    },
+    {
+      "id": "A19",
+      "area": "Eventos, outbox, workers e concorrência",
+      "weight": 4,
+      "components": {
+        "I": 85,
+        "R": 75,
+        "V": 78,
+        "O": 44
+      },
+      "unrounded_score": 74.6,
+      "score": 75,
+      "rationale": "Claims/retries e cadeia durável funcionam em teste configurado; readiness não mede progresso recente.",
+      "actions": [
+        7,
+        11,
+        48
+      ]
+    },
+    {
+      "id": "A20",
+      "area": "Interface, navegação e acessibilidade",
+      "weight": 4,
+      "components": {
+        "I": 86,
+        "R": 75,
+        "V": 85,
+        "O": 62
+      },
+      "unrounded_score": 79.4,
+      "score": 79,
+      "rationale": "300 visitas de navegação passaram; fechamento do menu compacto falhou.",
+      "actions": [
+        20,
+        29,
+        42,
+        43,
+        44,
+        45
+      ]
+    },
+    {
+      "id": "A21",
+      "area": "Testes, cobertura e confiabilidade das suítes",
+      "weight": 4,
+      "components": {
+        "I": 85,
+        "R": 65,
+        "V": 74,
+        "O": 56
+      },
+      "unrounded_score": 72.9,
+      "score": 73,
+      "rationale": "Grande base de testes; cobertura crítica atual e execução visual completa não comprovadas.",
+      "actions": [
+        25,
+        31,
+        42,
+        43,
+        47,
+        48,
+        50
+      ]
+    },
+    {
+      "id": "A22",
+      "area": "Observabilidade, tracing e alertas",
+      "weight": 3,
+      "components": {
+        "I": 73,
+        "R": 45,
+        "V": 55,
+        "O": 33
+      },
+      "unrounded_score": 55.5,
+      "score": 56,
+      "rationale": "Instrumentação local validada; labels, razão de erros e entrega de alertas exigem trabalho.",
+      "actions": [
+        11,
+        21,
+        22,
+        40,
+        41,
+        46
+      ]
+    },
+    {
+      "id": "A23",
+      "area": "Implantação, backup e recuperação",
+      "weight": 4,
+      "components": {
+        "I": 77,
+        "R": 48,
+        "V": 42,
+        "O": 30
+      },
+      "unrounded_score": 53.95,
+      "score": 54,
+      "rationale": "Infra e scripts existem; hook inicial e recuperação do banco externo/S3 pendentes.",
+      "actions": [
+        12,
+        14,
+        15,
+        32
+      ]
+    },
+    {
+      "id": "A24",
+      "area": "Release, documentação e coerência de evidências",
+      "weight": 3,
+      "components": {
+        "I": 80,
+        "R": 45,
+        "V": 48,
+        "O": 34
+      },
+      "unrounded_score": 56.35,
+      "score": 56,
+      "rationale": "Governança explícita; candidato local não consolidado e P0 bloqueado corretamente.",
+      "actions": [
+        13,
+        23,
+        24,
+        46
+      ]
+    },
+    {
+      "id": "A25",
+      "area": "Automação analítica, heurísticas e OCR/ML",
+      "weight": 1,
+      "components": {
+        "I": 48,
+        "R": 35,
+        "V": 40,
+        "O": 22
+      },
+      "unrounded_score": 38.85,
+      "score": 39,
+      "rationale": "Parsing e heurísticas existem; extração de imagem e calibração não demonstradas.",
+      "actions": [
+        49
+      ]
+    },
+    {
+      "id": "A26",
+      "area": "Desempenho, resiliência e capacidade no alvo",
+      "weight": 3,
+      "components": {
+        "I": 68,
+        "R": 42,
+        "V": 25,
+        "O": 28
+      },
+      "unrounded_score": 44.75,
+      "score": 45,
+      "rationale": "Mecanismos presentes; faltam carga/endurance e identidade do deployment medido.",
+      "actions": [
+        17,
+        24,
+        33
+      ]
+    }
+  ]
+}

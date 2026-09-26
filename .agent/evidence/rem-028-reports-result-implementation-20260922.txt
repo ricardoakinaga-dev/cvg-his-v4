@@ -1,0 +1,26 @@
+REM-028 — extração presentation-bound dos resultados de relatórios
+Data: 2026-09-22
+Runtime: Node v22.23.2; pnpm 10.33.0; Linux local; worktree dirty compartilhado preservado.
+
+Escopo executado:
+- Extraída a superfície de resultados da ReportWorkbenchPage para ReportResultTable.vue.
+- O componente recebe props readonly tipadas para spec, caption, rows, loading, estados de erro/prontidão, filtros ativos, executionId e formatação financeira.
+- O componente emite somente as intenções retry e reset-filters; services, router, stores, URL, execução server-side, exportação e mutações continuam no boundary da ReportWorkbenchPage.
+- Mantidos os estados de loading, falha, sem resultados filtrados, caption especial de Cheques, formatação monetária/data e slots de células.
+- Adicionado teste focal ReportResultTable.test.ts cobrindo renderização/formatadores e recuperação por retry/limpeza de filtros.
+
+Verificações executadas:
+- PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/reports/__tests__/ReportResultTable.test.ts src/pages/reports/__tests__/ReportWorkbenchPage.test.ts — PASS, 2 arquivos / 81 testes.
+- PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit — PASS.
+- PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa lint — PASS, 0 erros e 32 warnings preexistentes de no-explicit-any.
+- PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa build — PASS, Vite/PWA com 838 módulos transformados.
+- git diff --check — PASS.
+- Auditoria estática do boundary — PASS: ReportResultTable.vue não contém referências runtime a services, router ou stores.
+
+Artefatos e fingerprints:
+- apps/spa/src/pages/reports/ReportWorkbenchPage.vue — sha256 c4928c28c3b786f46eeb16b5411ef7239e2de46b62efa854d25fda055d7388f9; 2942 linhas.
+- apps/spa/src/pages/reports/ReportResultTable.vue — sha256 3107ac2b57b8e9db576e3111a165cd39832cc0931097a43d3b332ed43e58c501; 254 linhas.
+- apps/spa/src/pages/reports/__tests__/ReportResultTable.test.ts — sha256 a55e25abd987e4a7768224373d2f7d89094e790b4058451423d7b958b0b35269; 89 linhas.
+
+Resultado: PASS_WITH_CONDITIONS para esta fatia local. A prova browser/visual não foi executada porque o runtime/API local permanece unhealthy; não houve pixel diff, inspeção real de foco/teclado, dark/mobile ou atualização de snapshots. A suíte SPA integral pós-seam, crítica adversarial E7 e aprovação de owners continuam abertas.
+Próxima ação: REM-028:IMPLEMENT-REPORTS-QUERY-SEAM.

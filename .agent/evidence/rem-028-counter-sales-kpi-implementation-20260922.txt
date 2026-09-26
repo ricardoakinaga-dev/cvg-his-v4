@@ -1,0 +1,54 @@
+REM-028 — quarto seam local: CounterSalesKpiSummary
+Data: 2026-09-22
+Escopo: primeiro slice presentation-bound do shell de vendas da CounterSalesPage
+Superfície: `apps/spa/src/pages/sales/CounterSalesPage.vue`
+Decisão: PASS_WITH_CONDITIONS; validação browser/visual segue aberta
+
+## Mudança
+
+`CounterSalesKpiSummary.vue` recebeu a apresentação dos quatro indicadores
+operacionais das comandas: abertas, fechadas, saldo aberto e faturamento bruto.
+O módulo recebe somente labels tipadas já formatadas pelo page e não importa
+services, stores, rotas ou workflows.
+
+`CounterSalesPage.vue` continua dono de `sales`, filtros, carregamento, dashboard,
+seleção da comanda, criação/edição, pagamentos, fechamento, cancelamento,
+integrações e efeitos externos. A extração preserva os valores dos tokens e a
+grade `auto-fit` existente, adicionando apenas um rótulo semântico ao agrupamento.
+
+Linhas observadas após a extração: page `3462`, módulo `27`, teste focal `23`.
+
+## Verificações executadas
+
+Runtime: Node v22.23.2, pnpm 10.33.0, worktree compartilhado dirty preservado.
+
+- teste focal de KPI + page: `2` arquivos, `13` testes, exit 0;
+- `pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit`: exit 0;
+- `pnpm --filter @cvg-his-v2/spa run lint`: exit 0, 0 erros e 32 avisos `any`
+  preexistentes fora do módulo novo;
+- `pnpm --filter @cvg-his-v2/spa run build`: exit 0, Vite transformou 826 módulos e
+  gerou build/PWA;
+- `git diff --check`: exit 0.
+
+Hashes dos artefatos da extração no momento desta evidência:
+
+- `CounterSalesPage.vue`: `ad6979f31c7a15c650847d48823b74b55f0382e7fb85136ba1e4cefc16d5c8a3`;
+- `CounterSalesKpiSummary.vue`: `33a18dd2a4bcceae986ff1f17a85bbe0e5023062cce20142241508e00415472a`;
+- `CounterSalesKpiSummary.test.ts`: `4685927b2cafdb490373f50d2ce9867e7aecd7bd033b4a642fcbc5d4771b8d01`.
+
+## Validação visual e limite
+
+Não houve nova tentativa de Playwright para este seam: o runtime visual local
+continua condicionado pela tentativa anterior bloqueada quando `/health` da API
+respondeu `unhealthy` após 30s. Nenhum snapshot foi atualizado.
+
+Esta verificação prova contrato presentation-bound, teste focal, types, lint, build
+e integração da page, mas não prova pixel diff, responsividade renderizada, foco
+real, dark/mobile, screen reader ou performance. O gate fica condicionado ao
+runtime E2E saudável e à reexecução visual/interativa antes de qualquer claim UX,
+a11y ou atualização de baseline.
+
+## Próxima ação
+
+Continuar pela extração dos cards/lista de comandas, mantendo seleção, filtros,
+server state, links e mutações no boundary da `CounterSalesPage`.

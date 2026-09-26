@@ -1,0 +1,113 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-COVERAGE-20260921",
+  "timestamp": "2026-09-21T17:18:00.000000+00:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "REM-006 aggregate coverage rerun after REM-004/REM-005 contract-test synchronization; local evidence only",
+  "scope_ref": "REM-006",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "REM-001 recovery evidence and the active ExecPlan preserve the candidate before another local gate run.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "docs/2026-09-21-rem-001-backup-manifest.md",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The prohibited blob remains preserved and no history rewrite is authorized."
+    },
+    {
+      "id": "IR-002",
+      "description": "REM-003, REM-004 and REM-005 have current local evidence on Node 22 before the aggregate rerun.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-003-runtime-baseline-20260921.txt",
+        ".agent/evidence/rem-004-005-aggregate-repair-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-005-AGGREGATE-REPAIR-RECONCILED-20260921"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The prior full coverage run failed; this gate authorizes only a fresh rerun."
+    },
+    {
+      "id": "IR-003",
+      "description": "The rerun keeps the branch threshold and excludes unchanged and separates complexity residuals from coverage results.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-006-coverage-20260921.txt",
+        "package.json",
+        "vitest.config.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A passing local rerun cannot establish CI, target, UAT, release or independent final certification."
+    }
+  ],
+  "evidence": [
+    ".agent/plans/remediacao-integral-20260921.md",
+    ".agent/evidence/rem-003-runtime-baseline-20260921.txt",
+    ".agent/evidence/rem-004-005-aggregate-repair-20260921.txt",
+    ".agent/evidence/rem-006-coverage-20260921.txt",
+    "package.json",
+    "vitest.config.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-REM-006-THRESHOLD",
+      "description": "The rerun must use the existing global branch threshold and exclude list exactly as declared.",
+      "non_blocking": true,
+      "impact": "Any threshold reduction or new exclusion invalidates this gate and the coverage claim.",
+      "owner": "lead",
+      "due_or_trigger": "During the REM-006 rerun",
+      "due_at": "2026-09-21T18:30:00.000000+00:00",
+      "verification_method": "Inspect command line/package.json/vitest config and record exit status plus coverage summary.",
+      "evidence_refs": [
+        ".agent/evidence/rem-006-coverage-20260921.txt",
+        "package.json",
+        "vitest.config.ts"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-006-RESIDUALS",
+      "description": "Complexity, independent critique and all external/human boundaries remain separate residual obligations.",
+      "non_blocking": true,
+      "impact": "This gate cannot be interpreted as local release readiness.",
+      "owner": "lead",
+      "due_or_trigger": "Before REM-009 and final re-audit",
+      "due_at": "2026-09-21T18:30:00.000000+00:00",
+      "verification_method": "Reconcile REM-026, critic limitation, CI/target/UAT and authority records in later gates.",
+      "evidence_refs": [
+        ".agent/backlog.json",
+        ".agent/state.json"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "REM-006 aggregate coverage rerun after REM-004/REM-005 contract-test synchronization; local evidence only",
+    "decision": "The user instruction permits the reversible local rerun; no external or destructive action is included.",
+    "evidence_ref": ".agent/plans/remediacao-integral-20260921.md",
+    "expires_or_revalidates": "Revalidate before changing thresholds/excludes or crossing an external, target, UAT or release boundary."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-006:RESUME-COVERAGE-AFTER-CONTRACTS",
+  "revalidation_triggers": [
+    "The aggregate coverage command completes.",
+    "The threshold, excludes, source/control plane or candidate changes.",
+    "The scope expands beyond local coverage evidence."
+  ],
+  "supersedes": null
+}

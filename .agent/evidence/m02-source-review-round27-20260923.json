@@ -1,0 +1,100 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND27-20260923",
+  "recorded_at": "2026-09-23T09:51:48Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "tests/unit/api/startup-secrets-runtime.test.ts",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "4f36e8db116e010a78918eb64e5511414af48f2d291b647a66f9cfa6d1452c45",
+      "current_sha256": "4f36e8db116e010a78918eb64e5511414af48f2d291b647a66f9cfa6d1452c45",
+      "sha_matches_inventory": true,
+      "scope_classification": "TEST_OR_QUALITY_CONTRACT",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Adds METRICS_AUTH_TOKEN descriptor coverage, optional setup-token absence behavior, and production/non-production rotation readiness. Vault, config and bootstrap-token modules are mocked; inputs are synthetic, and test code passes explicit env objects rather than mutating process.env."
+    },
+    {
+      "path": "tests/unit/http-command-helpers.test.ts",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "9a7a2e9a1d03583e3c0dd5dadcb1351dd13e3413af3dd17a120e263398e5016d",
+      "current_sha256": "9a7a2e9a1d03583e3c0dd5dadcb1351dd13e3413af3dd17a120e263398e5016d",
+      "sha_matches_inventory": true,
+      "scope_classification": "TEST_OR_QUALITY_CONTRACT",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Adds typed 413 assertions for JSON body limits and string/array/malformed/oversized content-length cases. Existing cases use fake unit-of-work callbacks, in-memory streams and local HMAC tokens; no real database client is invoked."
+    }
+  ],
+  "candidate_relative_change": {
+    "startup_secrets": "Extends the existing Vitest contract for METRICS_AUTH_TOKEN stage/development/production descriptor wiring, absent optional SETUP_BOOTSTRAP_TOKEN, and rotation readiness with/without a previous secret. No production source change in this path.",
+    "http_helpers": "Imports PayloadTooLargeError, adds a helper for synthetic request headers, and extends readJsonBody tests with a 413 error contract plus valid/array/malformed/oversized content-length inputs. No production source change in this path."
+  },
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config vitest.unit.config.ts tests/unit/api/startup-secrets-runtime.test.ts tests/unit/http-command-helpers.test.ts",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "2 files passed; 19 tests passed. Node environment; no setup/globalSetup; Vault and config dependencies are mocked and database transaction scope is a fake AsyncLocalStorage scope.",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0; Vitest 4.1.11."
+  },
+  "boundary_review": {
+    "credentials": "Credential-shaped strings and keyrings are synthetic fixtures; no real secret source is read. Vault client is mocked and no network is used.",
+    "database": "Command tests provide fake unit-of-work callbacks. runWithDatabaseTransactionScope only establishes an in-memory AsyncLocalStorage scope here; no pool/client query is invoked.",
+    "http": "Request bodies are in-memory Readable streams; no real HTTP server/socket runs."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-METRICS-SECRET-BLANK-VALUE-ASSERTION",
+      "classification": "HOLD_TEST_ASSERTION_COVERAGE",
+      "observation": "The test includes a blank provider METRICS_AUTH_TOKEN value and the title says blank provider values are ignored, but it does not explicitly assert the resulting METRICS_AUTH_TOKEN remains absent. The current resolver code checks hasConfiguredValue before copying; this round records a test assertion gap, not an observed source failure."
+    },
+    {
+      "id": "M02-API-HELPER-TESTS-ARE-MOCKED-UNIT-SCOPE",
+      "classification": "HOLD_RUNTIME_BOUNDARY",
+      "observation": "The tests verify unit contracts with mocked Vault/config/command dependencies and synthetic streams. They do not prove Vault integration, transaction serialization against PostgreSQL, actual HTTP request parsing or server response behavior."
+    }
+  ],
+  "candidate_actions": [
+    "Keep fake credentials and providers isolated from live secrets; the current test setup does this.",
+    "Add an explicit assertion for omitted blank METRICS_AUTH_TOKEN if this descriptor behavior is an acceptance criterion.",
+    "Leave production/runtime Vault and database verification to an approved isolated boundary."
+  ],
+  "limitations": [
+    "Only two dirty test paths were reviewed; production sources are clean baseline paths.",
+    "No Vault, provider, database, network, target, browser, full workspace suite, candidate checkout, overlay or CI was used.",
+    "Self-review only; 40 original inventory paths remain pending and independent M-02 critique is open."
+  ],
+  "checkpoint_validation": {
+    "docs_validate": {
+      "result": "PASS",
+      "command": "pnpm docs:validate"
+    },
+    "json_and_jsonl_parse": {
+      "result": "PASS",
+      "scope": "state, backlog, content-scope, round-27 evidence, execution log and verification log"
+    },
+    "git_diff_check": {
+      "result": "PASS",
+      "command": "git diff --check"
+    },
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 26; no new REM-010/M-02 finding and no gate-v2 finding. The global controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T09:53:25Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 290,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 416,
+    "status_sha256": "fda2bc8363d69a9ebac4eb929ac8a4c0a210b7974f69fca7a0f1a802bd589299",
+    "note": "Read-only porcelain status after M-02 round 27 and checkpoint validation; original 386-path denominator unchanged. Round-27 evidence is the thirtieth post-inventory artifact."
+  }
+}

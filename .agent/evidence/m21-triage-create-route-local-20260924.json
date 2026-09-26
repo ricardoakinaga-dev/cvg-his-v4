@@ -1,0 +1,110 @@
+{
+  "evidence_id": "M21-TRIAGE-CREATE-ROUTE-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T09:03:43Z",
+  "scope": "M-21/M-23 extraction of the POST /triage handler coordinating triage, encounter, and queue state.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to this dirty worktree at the recorded HEAD; it is not candidate or release evidence."
+  },
+  "extraction": {
+    "source_path": "apps/api/src/server.ts",
+    "server_lines_before": 4072,
+    "server_lines_after": 4021,
+    "server_line_delta": -51,
+    "dispatch_placement": "The route-specific create handler remains between triage read dispatch and the PATCH update handler.",
+    "path_behavior_preserved": [
+      "pathname === '/triage'",
+      "POST method requirement"
+    ],
+    "call_order_preserved": [
+      "requirePrincipal(request, 'triage.manage')",
+      "read CreateTriageRequest body",
+      "requireNonEmptyString(encounterId)",
+      "requireEncounterForAccount(encounterId, accountId)",
+      "await triage.createTriage(actor, payload, accountId)",
+      "if prior encounter status is reception, transition to in_triage and sync queue",
+      "append triage_recorded timeline event",
+      "transition encounter to requested destination and sync queue",
+      "await encounters.waitForPersistence()",
+      "append high-risk create audit",
+      "HTTP 201 with created record"
+    ],
+    "dependency_boundary": "Triage create, encounter transition/timeline/persistence methods, principal authorization, account guard, queue synchronizer, and audit callback are injected."
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/routes/triage-create-routes.ts",
+      "sha256": "23b1d6db532b51010dc3a6fca3a1bc259eda552f727503122090b94b49d433a6",
+      "physical_lines": 109
+    },
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "7208e85d89106164b637da5b5878575fec66155296ed20ad685a8e007d9d0f50",
+      "physical_lines": 4021
+    },
+    {
+      "path": "apps/api/src/server.test.ts",
+      "sha256": "8367deeaca3556ffe1dff6a6267513504b81b647c07d101a9f4addfab943ae9e",
+      "physical_lines": 6448
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "e9596c70d37068415f9647ba6908839d72adfa6219d9ebf899c948924f021e05",
+      "server_budget": {
+        "current_lines": 4021,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test pnpm exec tsx --test --test-reporter=spec --test-name-pattern='triage validation does not transition a reception encounter before persistence|triage creation rejects a closed encounter without speculative list or timeline state|triage HTTP collections and history remain isolated across authenticated accounts' apps/api/src/server.test.ts",
+      "result": "PASS, three selected in-process HTTP tests; validation ordering, closed-encounter rejection, and cross-account create denial covered locally and in I1 rerun.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsc -p apps/api/tsconfig.json --noEmit",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; server.ts=4,021, cap=8,323, previous maximum=8,335.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/routes/triage-create-routes.ts apps/api/src/server.ts docs/engineering/complexity-hotspots.json && git diff --check -- apps/api/src/routes/triage-create-routes.ts apps/api/src/server.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    }
+  ],
+  "independent_review": {
+    "result": "PASS",
+    "critic_id": "critic_m21_triage_create_i1",
+    "independence": "Fresh I1 context fork; read-only comparison with HEAD/index and three focused in-process HTTP tests.",
+    "reviewed_sha256": [
+      {
+        "path": "apps/api/src/routes/triage-create-routes.ts",
+        "sha256": "23b1d6db532b51010dc3a6fca3a1bc259eda552f727503122090b94b49d433a6"
+      },
+      {
+        "path": "apps/api/src/server.ts",
+        "sha256": "7208e85d89106164b637da5b5878575fec66155296ed20ad685a8e007d9d0f50"
+      },
+      {
+        "path": "docs/engineering/complexity-hotspots.json",
+        "sha256": "e9596c70d37068415f9647ba6908839d72adfa6219d9ebf899c948924f021e05"
+      }
+    ],
+    "findings": "No behavior delta found. Matcher, dispatch order, validation, account scope, IDs, cross-service effects, audit, and response/error pathways were confirmed."
+  },
+  "limitations": [
+    "Focused tests use in-memory services and do not prove persisted transaction/rollback consistency across triage, encounter, and queue state.",
+    "PostgreSQL/RLS behavior, explicit role-denial behavior, persisted audit records, and full PROD-041 acceptance remain open.",
+    "The worktree remains dirty and no candidate SHA, CI, target, UAT, or release acceptance is asserted.",
+    "No database, listener, service, container, or port was started."
+  ]
+}

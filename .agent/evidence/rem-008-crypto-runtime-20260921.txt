@@ -1,0 +1,58 @@
+# REM-008 — crypto/runtime matrix — 2026-09-21
+
+## Scope
+
+Reexecute the crypto/runtime surface on the repository's supported local runtime, Node.js 22.23.2, and document whether product paths depend on experimental Node behavior. No real secrets, providers, target systems, network calls, or release actions were used.
+
+## Runtime contract
+
+- `.node-version`: `22.23.2`
+- `package.json` `engines.node`: `22.23.2`
+- `package.json` `packageManager`: `pnpm@10.33.0`
+- `packages/modules/mfa/package.json`: `@simplewebauthn/server` `14.0.2`
+- Observed runtime: `node v22.23.2`, `pnpm 10.33.0`
+
+## Static check
+
+Command:
+
+```text
+rg -n --glob '!node_modules/**' --glob '!dist/**' --glob '!coverage/**' -- '--experimental|experimental-' package.json pnpm-workspace.yaml .github infra scripts apps packages tests
+```
+
+Result: `NO_EXPERIMENTAL_FLAGS_FOUND_IN_PRODUCT_PATHS`.
+
+The check covered product scripts, application/package source, infrastructure scripts and tests. It does not reinterpret the historical audit run under Node 24 as supported; it only establishes that the current Node 22 product paths do not request experimental flags.
+
+## Native runtime smoke
+
+Command: an inline Node 22 script using only stable `node:crypto` and global Web Crypto APIs.
+
+Result: PASS — AES-256-GCM encrypt/decrypt round trip, HMAC-SHA-256, `timingSafeEqual`, UUID generation, EC P-256 sign/verify, and `crypto.getRandomValues` all passed using synthetic non-secret data.
+
+## Focused product tests
+
+```text
+CI=1 pnpm exec vitest run \
+  tests/unit/mfa/crypto.test.ts \
+  tests/unit/mfa/totp.test.ts \
+  tests/unit/modules/webauthn-service.test.ts \
+  tests/unit/api/pix-provider-webhook-verifier.test.ts \
+  --config vitest.config.ts --no-file-parallelism
+```
+
+Result: PASS — 4 files, 55 tests.
+
+```text
+NODE_ENV=test pnpm exec tsx --test \
+  apps/api/src/tracing.test.ts \
+  apps/api/src/laboratory-provider-ingress.test.ts
+```
+
+Result: PASS — 7 tests.
+
+## Conclusion
+
+REM-008's local crypto/runtime acceptance is PASS on the official Node 22.23.2/pnpm 10.33.0 matrix. No source change was required: the audited surfaces already use stable `node:crypto` primitives and the supported Web Crypto API. This evidence is local-only and does not prove CI/OCI identity, Node 24 compatibility, target behavior, provider integration, UAT, release readiness, or human approval.
+
+Observed at: `2026-09-21T20:00:55.000000+00:00` (runtime/static checks); focused tests completed in the same Node 22.23.2 session.

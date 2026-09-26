@@ -26,6 +26,7 @@ import {
 import {
   createWorkerHealthResponse,
   createWorkerLivenessResponse,
+  isWorkerLoopStalled,
   createWorkerReadinessResponse,
   sanitizeWorkerDiagnostic
 } from './health.js';
@@ -53,6 +54,17 @@ import {
 } from './metrics-auth.js';
 
 let config: ReturnType<typeof loadWorkerConfig>;
+let workerLoopStalledAfterMs = 0;
+
+/**
+ * Liveness fails (and the orchestrator restarts the pod) when no tick completes
+ * within this window. Generous by default so long report ticks are not killed.
+ */
+function resolveWorkerLoopStalledAfterMs(intervalMs: number): number {
+  const configured = Number(process.env.WORKER_LOOP_STALLED_AFTER_MS);
+  if (Number.isSafeInteger(configured) && configured > 0) return configured;
+  return Math.max(intervalMs * 10, 15 * 60 * 1000);
+}
 let logger = createLogger('cvg-his-v2-worker');
 let workerObservabilityShutdown: (() => Promise<void>) | null = null;
 let workerHealthServer: ReturnType<typeof createServer> | undefined;
@@ -177,6 +189,7 @@ process.on('unhandledRejection', (error) => {
 
 async function main() {
   config = loadWorkerConfig(process.env);
+  workerLoopStalledAfterMs = resolveWorkerLoopStalledAfterMs(config.intervalMs);
   assertWorkerMetricsAuthConfigured(config.environment, config.metricsAuthToken);
   logger = createLogger(config.appName);
   const configuredWorkerReportsUserId = resolveWorkerReportsUserId(config.workerReportsUserId);
@@ -331,6 +344,8 @@ async function main() {
           persistenceMode: workerState.persistenceMode,
           ticksCompleted: workerState.ticksCompleted,
           lastTickAt: workerState.lastTickAt,
+          loopStartedAt: workerState.startedAt,
+          stalledAfterMs: workerLoopStalledAfterMs,
           lastError: workerState.lastError,
           initialized: true,
           draining: workerShutdownRequested,
@@ -357,14 +372,20 @@ async function main() {
       res.writeHead(200);
       res.end(JSON.stringify(payload));
     } else if (req.url === '/live' || req.url === '/health/live') {
+      const stalled = isWorkerLoopStalled({
+        lastTickAt: workerState.lastTickAt,
+        loopStartedAt: workerState.startedAt,
+        stalledAfterMs: workerLoopStalledAfterMs
+      });
       const payload = createWorkerLivenessResponse(
         'worker',
         config.environment,
         '0.1.0',
         req,
-        true
+        true,
+        stalled
       );
-      res.writeHead(200);
+      res.writeHead(stalled ? 503 : 200);
       res.end(JSON.stringify(payload));
     } else if (req.url === '/ready') {
       const payload = createWorkerReadinessResponse('worker', config.environment, '0.1.0', req, {
@@ -374,6 +395,8 @@ async function main() {
         persistenceMode: workerState.persistenceMode,
         ticksCompleted: workerState.ticksCompleted,
         lastTickAt: workerState.lastTickAt,
+        loopStartedAt: workerState.startedAt,
+        stalledAfterMs: workerLoopStalledAfterMs,
         lastError: workerState.lastError,
         initialized: true,
         draining: workerShutdownRequested,
@@ -395,6 +418,8 @@ async function main() {
         persistenceMode: workerState.persistenceMode,
         ticksCompleted: workerState.ticksCompleted,
         lastTickAt: workerState.lastTickAt,
+        loopStartedAt: workerState.startedAt,
+        stalledAfterMs: workerLoopStalledAfterMs,
         lastError: workerState.lastError,
         initialized: true,
         draining: workerShutdownRequested,
@@ -438,6 +463,8 @@ async function main() {
             startedAt: workerState.startedAt,
             ticksCompleted: workerState.ticksCompleted,
             lastTickAt: workerState.lastTickAt,
+            loopStartedAt: workerState.startedAt,
+            stalledAfterMs: workerLoopStalledAfterMs,
             lastTickDurationMs: workerState.lastTickDurationMs,
             errors: workerState.errors,
             lastError: sanitizeWorkerDiagnostic(workerState.lastError),

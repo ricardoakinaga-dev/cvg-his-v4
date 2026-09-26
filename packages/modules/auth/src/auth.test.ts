@@ -258,6 +258,21 @@ test('AuthService: login does not require MFA for non-critical role', async () =
   assert.equal(result.principal.user.username, 'vet');
 });
 
+test('AuthService: login requires MFA for a non-critical role that enrolled voluntarily', async () => {
+  const mfa = new MfaService({ repository: new InMemoryMfaRepository() });
+  const auth = createAuthService({ mfa });
+  const setup = await mfa.initiateSetup(ACCOUNT_ID, 'user_vet', 'vet@cvg-his.local');
+  await mfa.confirmSetup(ACCOUNT_ID, 'user_vet', generateCurrentTOTP(setup.secret));
+
+  const result = await auth.login({ username: 'vet', password: 'seed_vet' }, 'corr-test-voluntary');
+
+  assert.ok('requiresMfa' in result);
+  assert.equal(result.requiresMfa, true);
+  assert.deepEqual(result.mfaMethods, ['totp']);
+  assert.equal(result.enrollmentRequired, false);
+  assert.equal('accessToken' in result, false);
+});
+
 test('AuthService: completeMfaLogin returns session after valid TOTP', async () => {
   const mfa = new MfaService({ repository: new InMemoryMfaRepository() });
   const auth = createAuthService({ mfa });

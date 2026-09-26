@@ -910,3 +910,28 @@ describe('InMemoryAuditRepository', () => {
     expect(all).toHaveLength(3);
   });
 });
+
+describe('AuditService hot cache bound', () => {
+  it('keeps only the newest events in memory when a durable repository exists', async () => {
+    const service = new AuditService({
+      auditRepository: { create: async () => undefined, list: async () => [] } as never
+    });
+    for (let index = 0; index < 51_500; index += 1) {
+      service.write({
+        actorId: 'system',
+        accountId: 'acc_cache' as AccountId,
+        module: 'audit',
+        action: 'cache_bound',
+        entityType: 'event',
+        entityId: String(index),
+        payloadSummary: 'bounded',
+        riskLevel: 'low'
+      });
+    }
+    await service.waitForPersistence();
+
+    const cached = service.list();
+    expect(cached.length).toBeLessThanOrEqual(51_000);
+    expect(cached[0]?.entityId).toBe('51499');
+  });
+});

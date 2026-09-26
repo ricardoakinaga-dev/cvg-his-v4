@@ -1,0 +1,150 @@
+{
+  "evidence_id": "M02-REM010-DOCUMENT-CLOSURE-REVIEW-20260925",
+  "recorded_at_utc": "2026-09-25T05:20:15.168Z",
+  "reviewer": "Pauli (read-only subagent review)",
+  "source_inventory": ".agent/evidence/m02-current-worktree-inventory-20260925-r18.json",
+  "source_inventory_status": "stale after four database lifecycle files changed; all 28 documentation file hashes revalidated against R18 and the live files",
+  "candidate_base_sha": "ad2f0373f68635f2579253b013a4382219906921",
+  "decision": "PROVISIONAL_INCLUDE_RECOMMENDATION; FINAL_I1_PENDING",
+  "scope": "Documentation metadata, local-link dependency closure, exact path/hash review. Not semantic code review or overlay authorization.",
+  "findings": [
+    "The exact R18 75-path proposal is not a valid documentation closure.",
+    "The six primary closure paths reconcile the 2026-09-20 re-audit with the current 2026-09-21 governance manifest and audit/plan/roadmap/backlog docs.",
+    "The closure also requires the 2026-09-21 Codex prompt, current docs README and source-of-truth index, and 19 historical documents whose front matter aligns with the current governance manifest.",
+    "Pauli reports a read-only validator-rule simulation with 27 issues for the 75 paths plus the first seven additions, and zero issues with all 28 additions.",
+    "All four 2026-09-21 governed documents have front matter matching their kinds/effective dates and their mutual relative links resolve.",
+    "The 19 historical files have unchanged bodies; the candidate edits only document_status/superseded_by metadata."
+  ],
+  "document_pii_audit": {
+    "method": "scripts/lib/document-pii-audit.mjs auditDocumentPii({scopes:[\"docs\"]}); findings filtered to the 28 reviewed paths",
+    "scope": "docs",
+    "scanned_file_count": 18338,
+    "reviewed_candidate_path_count": 28,
+    "reviewed_path_findings": 0,
+    "review_required_findings": 0
+  },
+  "limitations": [
+    "No .gauntlet files were read.",
+    "Pauli did not run docs:validate; the reported 27/0 results came from a read-only simulation of its metadata and link rules.",
+    "This review is provisional and does not accept R18, authorize I1, or authorize a worktree/overlay."
+  ],
+  "review_submission_ids": [
+    "01a0d6e9-1edb-7050-a046-5232a86ea118",
+    "01a0d6ec-5a1c-7c50-9941-4031bb1d6411",
+    "01a0d6f2-042b-7662-804e-e795069fc08b"
+  ],
+  "reviewed_paths": [
+    {
+      "path": "docs/2026-09-20-reauditoria-candidato-a9ff1b1a.md",
+      "sha256": "e97519fc88951775706ffb84b782e14180f6f4d76845c65184331c15ab045d04"
+    },
+    {
+      "path": "docs/document-governance.json",
+      "sha256": "01fad7cd641d9ec98da16d7bdc0b26371e399e2f78dc8e45081ff86d7e213afe"
+    },
+    {
+      "path": "docs/2026-09-21-auditoria-profunda-repositorio.md",
+      "sha256": "62a643b37990920ac6b6d7dff854c6889f31c8e209e7ae09e3236f778485aff3"
+    },
+    {
+      "path": "docs/2026-09-21-backlog-remediacao-integral.md",
+      "sha256": "bde12b58cac6a4260ca213ae53f27fcf7c5612f6593823d1f142c94d973ec16c"
+    },
+    {
+      "path": "docs/2026-09-21-plano-executivo-remediacao-integral.md",
+      "sha256": "5d422634e19e805900f884be8fb198688442640ab9914701515edaa864ac77a3"
+    },
+    {
+      "path": "docs/2026-09-21-roadmap-remediacao-integral.md",
+      "sha256": "b871fe3009b05d7dd78719729382e7e359e07a81a160fc929c3aa1da51b2df0e"
+    },
+    {
+      "path": "docs/2026-09-21-prompt-codex-remediacao-integral.md",
+      "sha256": "a1a70433b211ba65493b03af47770a7d9e405f0a1beddea0c3e7e7da1125fd2c"
+    },
+    {
+      "path": "docs/README.md",
+      "sha256": "c58417bc91554d9602bdc708e651f2b765507981860ad6c9abb5caa1c43009cd"
+    },
+    {
+      "path": "docs/430-fonte-de-verdade-documental.md",
+      "sha256": "9544d6cf66a916151f0da335b3beab97afa78697815212424b8d6063af6ebeec"
+    },
+    {
+      "path": "docs/2026-09-06-backlog-erp-state-of-art-triplo-aaa.md",
+      "sha256": "ad1eb05d3b95693af89bfc17e4ce5a02d8c8adc63a30d07d0a3382e5fd93d75f"
+    },
+    {
+      "path": "docs/2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md",
+      "sha256": "639ff84616bd8e0e48d51345b3dccf55959b9eaf57e529c2f249ddff6595a46e"
+    },
+    {
+      "path": "docs/2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md",
+      "sha256": "ba04f6496b4d31acbc34782ee2dee5b586b94b85e90ea7519feebcf46c34647d"
+    },
+    {
+      "path": "docs/2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md",
+      "sha256": "719dc637713c8f1a15b1384e176e4551d34f0323e76aec333693c42ecbf49886"
+    },
+    {
+      "path": "docs/2026-09-13-backlog-prontidao-producao.md",
+      "sha256": "4fdc4bab18b405c91d2eee972bc1f968a0bdb2dc05c3f4cbbff80fa9e16f2a42"
+    },
+    {
+      "path": "docs/2026-09-13-plano-executivo-prontidao-producao.md",
+      "sha256": "98b8db99bd5b9e370d8afb0a19f9c2e7310e3e130621a33ee560087ec8564b6d"
+    },
+    {
+      "path": "docs/2026-09-13-relatorio-estado-atual-erp-cvg-his-v4.md",
+      "sha256": "3085c715c050565ff322fe3490a7d37e98115260a8afb396a049999df99f9f0a"
+    },
+    {
+      "path": "docs/2026-09-13-roadmap-prontidao-producao.md",
+      "sha256": "215f7b44e0ce9c0c668c9a58ee4225a4f43e55f51c1f65e979d102279a8a8833"
+    },
+    {
+      "path": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+      "sha256": "b4d546f0eba8b46a67cafe2b78eef21c4a8c992f9f497d37a09e2b1bbdc51bee"
+    },
+    {
+      "path": "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md",
+      "sha256": "c0a1ed4e577755e0ac7c9e84f0c5e6331a1119909b0cbb37ef8b1787b05fae2c"
+    },
+    {
+      "path": "docs/2026-09-14-relatorio-completo-estado-construcao.md",
+      "sha256": "c7c2c3d026a463182a47760fe509164cb680b9131dc0d4f3c0383fb6215858a0"
+    },
+    {
+      "path": "docs/2026-09-14-roadmap-state-of-art-triplo-aaa.md",
+      "sha256": "8ff82deadf24094ce04fd06fcdee593938a6b4c0243919e79c11df5050481a30"
+    },
+    {
+      "path": "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
+      "sha256": "19fcb609e2310d5a5f07b396af6ab2c4cd4c349d75074630208c8c96418220df"
+    },
+    {
+      "path": "docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md",
+      "sha256": "25e21b5b5bd999a3b4b4e6bebd21ef7850bf3001ad8196eac475fd59ec037930"
+    },
+    {
+      "path": "docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md",
+      "sha256": "c874e76ebdbf2a11957b715efccfc1c46e66388bc1cf035a93065e5606824aee"
+    },
+    {
+      "path": "docs/2026-09-20-auditoria-scorecard-db07cd02.md",
+      "sha256": "5fa5d1166a7f9fc6d81dfcb841acbdce2511a2b2d7f227f55d731572f5d3a6a1"
+    },
+    {
+      "path": "docs/2026-09-20-backlog-nova-rodada-melhorias.md",
+      "sha256": "4820367fef5c754c76c6c173afe97092aef9b0d80e5cc529b5680bd35ce63e47"
+    },
+    {
+      "path": "docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md",
+      "sha256": "d33147abef658d9135c8145ce1a6be4813438a0c8ba8b3a58801a627a4488944"
+    },
+    {
+      "path": "docs/2026-09-20-roadmap-nova-rodada-melhorias.md",
+      "sha256": "da9f6918709a5c6ed9a24021c06d1ee6b9bc63f6ce2588c82ede244b7c33beac"
+    }
+  ]
+}

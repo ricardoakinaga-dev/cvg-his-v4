@@ -1,0 +1,22 @@
+REM-029 — VERIFICAÇÃO AGREGADA DE SOURCES, RENDERING E PERSISTENCE
+Observado em: 2026-09-22T08:38:20Z
+HEAD observado: ad2f0373f68635f2579253b013a4382219906921
+Ambiente: Linux local; Node v22.23.2/pnpm 10.33.0 para a cadeia validada; PostgreSQL local descartável já limpo no gate processual; agente primário único em modo Direct; worktree compartilhado dirty preservado
+
+RECONCILIAÇÃO DOS TRÊS BOUNDARIES
+- Sources worker: gate processual `verified-remediacao-integral-rem-029-worker-report-sources-verify-20260922.json`, fingerprint `b550b59e4e4d67a33ad282aa98e8bcc921e89ed49943a0cff8326a2c45ac093b`; `runner.ts` preserva `resolveScheduledReportRows`, factories e ticks.
+- Rendering reports: gate `verified-remediacao-integral-rem-029-reports-rendering-20260922.json`, fingerprint `fd9b5eb3a30c8826061cf26f0df62ac90ef51ff838abbf60d5bbd14ab22f47d0`; `report-renderers.ts` não carrega persistência/tenant/provider.
+- Persistence reports: gate de verify `verified-remediacao-integral-rem-029-reports-persistence-verify-20260922.json`, fingerprint `182683649bf0e61fe0953e68d43668464616c49f1640dd1028b4cfee7740131e`; `report-database-repository.ts` isolou SQL/mapeadores/leases e `index.ts` ficou com 1.750 linhas.
+- Auditoria agregada confirmou que sources, renderer e repository não importam router/store/API unscopeados; `index.ts` não importa mais `shared-database`/`tenant-context`; os exports runtime de `DatabaseReportRepository`, `ReportsService` e catálogo continuam funções.
+- Ledgers, state/backlog/plan, hashes e `git diff --check` foram parseados/verificados; não há `PENDING_HASH` nos novos gates.
+
+REGRESSÕES CONSOLIDADAS
+- Reports passou 5 arquivos/40 testes, incluindo renderer e persistence focal; build, typecheck e lint passaram.
+- Worker passou as suítes declaradas, incluindo runner 65/65, fontes 2/2 e scheduled-report-job 11/11; typecheck/lint passaram.
+- PostgreSQL/run-once passou 28/28 em banco efêmero explícito com migrations, seed, integridade e teardown, cobrindo tenant isolation, claims, concorrência, retries, SIGKILL, delivery identity e fencing.
+- `pnpm complexity:check` continua falhando somente pelas quatro medições SPA divergentes do manifesto; o hotspot reports foi reconciliado para 1.750 linhas.
+
+VEREDITO E TRANSIÇÃO
+- REM-029 fica `DONE` somente no escopo local candidate-bound, com gate agregado `PASS_WITH_CONDITIONS`; isso não é aceite organizacional, release readiness ou go/no-go.
+- Permanecem abertos: crítica independente E7, owners REPORTS/RUNTIME, quatro medições SPA, CI/OCI, target, provider real, UAT, browser visual/a11y e autoridade humana.
+- A próxima ação canônica é `REM-030:WAIT-AUTHORITY`, já `BLOCKED` no backlog, aguardando autoridade explícita para target/migrations/rollback/owners. Nenhuma ação externa foi executada.

@@ -1,0 +1,44 @@
+REM-051 — nomes diagnósticos dos testes de foreign keys
+observed_at: 2026-09-22T09:40:44.000000Z
+task: REM-051
+agent_mode: Direct; agente primário único; sem crítica independente disponível
+
+Baseline conhecido
+- `tests/integration/database/fk.test.ts` usava `it.each(ESSENTIAL_FKS)` com
+  interpolação de placeholders (`$table`, `$column`, `$refTable`) que o runner
+  não resolvia nesse formato; o output conhecido-bad era
+  `FK undefined.undefined → undefined.id should exist`.
+- A primeira execução no banco compartilhado exibiu os nomes ainda corretos
+  para o bloco de existência, mas falhou os cinco testes de enforcement por
+  `permission denied for table tenants` (SQLSTATE 42501), uma precondição de
+  ambiente e não uma falha da correção de diagnóstico.
+
+Implementação
+- Substituído o `it.each` por um loop explícito sobre `ESSENTIAL_FKS`, criando
+  cada caso com `it()` e interpolação direta de `table`, `column` e `refTable`.
+- A consulta de `information_schema`, os critérios de existência, fixtures,
+  SQL de enforcement e asserções não foram alterados.
+- O known-bad agora produz títulos acionáveis, por exemplo:
+  `FK users.account_id → accounts.id should exist`.
+
+Verificação candidate-bound
+- Com Node 22.23.2 e pnpm 10.33.0, foi executado:
+  `DATABASE_URL_TEST=postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_test DATABASE_URL=postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_test REQUIRE_TEST_DB=1 TEST_DB_EPHEMERAL=1 TEST_DB_SUFFIX=rem051_fk_20260922_node22 pnpm exec vitest run tests/integration/database/fk.test.ts --config vitest.integration.config.ts --no-file-parallelism --reporter=verbose`
+- O harness criou, migrou, semeou e removeu o banco efêmero
+  `cvg_his_v2_test_rem051_fk_20260922_node22`; o schema reportou 189 tabelas,
+  43 enums e 530 FKs.
+- Resultado: 1 arquivo PASS; 42/42 testes PASS, sendo 37/37 casos de
+  existência com nomes reais e 5/5 casos de enforcement contra referências
+  inválidas.
+- A execução terminou com teardown do banco efêmero; nenhum banco compartilhado
+  foi resetado, nenhum target, provider, credential, push, deploy, UAT ou
+  release foi acionado.
+
+Resultado
+`PASS_WITH_CONDITIONS`: o aceite local observável de REM-051 está satisfeito e
+o resultado permanece condicionado às fronteiras externas e à ausência de
+crítica independente sob a regra de agente primário único.
+
+Limitações
+Não prova CI remoto, branch protection, target, owners, UAT, browser/a11y,
+release, go/no-go ou crítica independente fresca.

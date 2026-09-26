@@ -3,7 +3,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import { createHmac } from 'node:crypto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ValidationError } from '@cvg-his-v2/shared-errors';
+import { PayloadTooLargeError, ValidationError } from '@cvg-his-v2/shared-errors';
 import { runWithDatabaseTransactionScope } from '../../packages/shared/database/src/transaction-scope';
 
 import {
@@ -23,6 +23,15 @@ function request(headers: Record<string, string | string[]> = {}): IncomingMessa
 
 function readableRequest(chunks: readonly (string | Buffer)[]): IncomingMessage {
   return Readable.from(chunks) as unknown as IncomingMessage;
+}
+
+function readableRequestWithHeaders(
+  chunks: readonly (string | Buffer)[],
+  headers: Record<string, string | string[]>
+): IncomingMessage {
+  const request = readableRequest(chunks);
+  Object.assign(request, { headers });
+  return request;
 }
 
 describe('HTTP command helper boundaries', () => {
@@ -294,9 +303,29 @@ describe('HTTP command helper boundaries', () => {
     await expect(readJsonBodyOrEmpty(readableRequest(['not-json']))).rejects.toBeInstanceOf(
       ValidationError
     );
+    await expect(readJsonBody(readableRequest(['12345']), 2)).rejects.toMatchObject({
+      name: 'PayloadTooLargeError',
+      code: 'PAYLOAD_TOO_LARGE',
+      statusCode: 413
+    });
     await expect(readJsonBody(readableRequest(['12345']), 2)).rejects.toBeInstanceOf(
-      ValidationError
+      PayloadTooLargeError
     );
+    await expect(
+      readJsonBody(readableRequestWithHeaders(['{}'], { 'content-length': ['2'] }), 10)
+    ).resolves.toEqual({});
+    await expect(
+      readJsonBody(readableRequestWithHeaders(['{}'], { 'content-length': '2' }), 10)
+    ).resolves.toEqual({});
+    await expect(
+      readJsonBody(readableRequestWithHeaders(['{}'], { 'content-length': 'not-a-number' }), 10)
+    ).resolves.toEqual({});
+    await expect(
+      readJsonBody(
+        readableRequestWithHeaders(['{}'], { 'content-length': '999999999999999999999999' }),
+        10
+      )
+    ).rejects.toMatchObject({ statusCode: 413, code: 'PAYLOAD_TOO_LARGE' });
 
     const empty = readableRequest([]);
     await expect(readJsonBody(empty)).rejects.toBeInstanceOf(ValidationError);

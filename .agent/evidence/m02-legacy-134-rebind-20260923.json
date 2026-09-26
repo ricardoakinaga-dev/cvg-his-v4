@@ -1,0 +1,3842 @@
+{
+  "evidence_id": "M02-LEGACY-134-REBIND-20260923-01",
+  "recorded_at_utc": "2026-09-23T13:03:26+00:00",
+  "scope": {
+    "source_reconciliation_ref": ".agent/evidence/m02-worktree-reconciliation-20260923.json",
+    "source_reconciliation_sha256": "3daba1b775f9a8c44eeac662fb0c8032d72491d9bf2cb72cf32067628b696515",
+    "selected_path_count": 134,
+    "selection": {
+      "DIRECT_PATH_REVIEW_HASH_BOUND": 128,
+      "DIRECT_PATH_REVIEW_HASH_DRIFT": 6
+    },
+    "method": "For each selected path, resolve its sole path_reviewed row from rounds 1–41, hash current regular-file bytes, and compare only against that row current_sha256. No semantic re-review of file contents was performed.",
+    "candidate_approval": "NOT_GRANTED"
+  },
+  "counts": {
+    "current_hash_match": 124,
+    "current_hash_drift": 10,
+    "not_read": 0,
+    "declared_review_hash_invalid": 1,
+    "declared_current_differs_inventory": 4,
+    "decision_not_stated": 67,
+    "decision_explicit_hold_or_pending": 55,
+    "decision_explicit_not_approved": 12,
+    "decision_explicit_other": 0,
+    "review_round_mismatch_with_reconciliation": 0,
+    "reconciliation_hash_mismatch_with_source_report": 0
+  },
+  "sensitivity_scan": {
+    "scope": "Only candidate_overlay_decision strings eligible for copying; no second scan of the 134 file bodies was performed.",
+    "decision_strings_examined": 67,
+    "decision_rows_with_sensitive_pattern_hits": 0,
+    "pattern_match_counts": {
+      "url": 0,
+      "email": 0,
+      "credential_assignment": 0,
+      "private_key_marker": 0,
+      "cpf_shape": 0,
+      "phone_shape": 0,
+      "absolute_local_path": 0,
+      "tilde_local_path": 0,
+      "person_record_assignment": 0
+    },
+    "raw_decision_strings_copied": 67,
+    "content_review_or_review_notes_copied": 0,
+    "absolute_workstation_paths_copied": 0,
+    "note": "Sensitive-pattern matches are count-only. A decision with any listed pattern is replaced by a redaction marker; no matched literal is stored."
+  },
+  "decision_semantics": {
+    "decision_field": "candidate_overlay_decision from the last direct path row in its referenced source round",
+    "absent_field_value": "NOT_STATED",
+    "no_include_inference": true,
+    "drift_handling": "Historical decision is retained as recorded, but current content is HOLD and receives no hash rebind when current bytes differ from the declared review hash."
+  },
+  "source_reports": [
+    {
+      "ref": ".agent/evidence/m02-source-review-round1-20260923.json",
+      "sha256": "7fcfd8a9c8826fda70bfc73c59536f09145e49f976d8282dfaaece22fa26bfd1"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round2-20260923.json",
+      "sha256": "f1a5a54b4b08ddda9a571f481d4876a9866473ebc17d7e5667d25bfb7eddab2c"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round3-20260923.json",
+      "sha256": "d3042c603780f282640f67b8c838f56ee8eb79d0127e2009f70b5df3313bf2ae"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+      "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round5-20260923.json",
+      "sha256": "454a7eaa60136ae543b9ae7cbd38ccbca3ffad8aeab940aa92be177416185783"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round6-20260923.json",
+      "sha256": "53dc0352301e2fc7c8ddcd5a5f15d8ffb613e0d46522d75e8f42f693eb48485c"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round7-20260923.json",
+      "sha256": "78cea2269da101e471a49c3d3ee4b8fbe7024e8c9bc2d3a951151121fcf7989f"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round8-20260923.json",
+      "sha256": "ed142ba03dbf3aba6e554e0582ffa1e917125116200bcc81c91b71eb5e4a8f86"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round9-20260923.json",
+      "sha256": "52b971e54e3cb5eaa82fdf4b555c022d951484198db88d18f051f8a6aa9fda26"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round10-20260923.json",
+      "sha256": "05ee190047f67f3d4c45a173c8980c6866083d7ae1a87967e69c797353a814ce"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round11-20260923.json",
+      "sha256": "f009d83ea423a35e5ed6ee9e953f14fe3eed8815509edb62462dd434d31b4eed"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round12-20260923.json",
+      "sha256": "d4d3582cbd52c067f93a58dce37765cddbadbef0f84d0e70394c010df655df43"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round13-20260923.json",
+      "sha256": "73b7bc7ab83b8f0f18590599dfe97aa31c0e6f02dfd6ecd3e7384415e117fec5"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round14-20260923.json",
+      "sha256": "1d099ed951edfb35855a4c986feb56d5a817038d4f790f16e31d066a3c6d5ce9"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round15-20260923.json",
+      "sha256": "71dab45565b0e981da4ab98234df9882b52d27712e3012ebe1f0746002001285"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round16-20260923.json",
+      "sha256": "acd55cc2181f1b1b3e781d4c7fdce5fc4a85a29f8d8542742bf817de2b3ded37"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round17-20260923.json",
+      "sha256": "ad88865b946501846a4ddd0168ad380dfb6129cda9fd25fc988004b9ba5d24aa"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round18-20260923.json",
+      "sha256": "c41e7f934364625d6464cc29656b3188f30c0c2eebcd597b155863f2cc402fc8"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round19-20260923.json",
+      "sha256": "13d346cc555123199587cb603a8a6152ee62ffb5b4c79622e1f01181c5fda62f"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round20-20260923.json",
+      "sha256": "3d19f18cc7739ab0d74a751f61149e6461f9400a5492d6d4d68c345d01e4306d"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round21-20260923.json",
+      "sha256": "b12139ab19aa0499231105f4d3cf1dd9bcdb3861f2d56cc5778eac06c059b485"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round22-20260923.json",
+      "sha256": "f4a8b4a66fa9972c89fd6d763a691717131d46181bddc39170f3ebba7a12aff1"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round23-20260923.json",
+      "sha256": "eff8e7cc34dbdb1731e9d95026eedce4a05a3a05a0b9926ad5208d746909f4c7"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round24-20260923.json",
+      "sha256": "533e46e2b90efc81d8a56b9da57558be5bd705456ec772eb7d65ad5bf0241dc1"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round25-20260923.json",
+      "sha256": "5aace5fc0a4ed9a4314a9c90495cfbe2dae77e6a1e42593fde639e4218fec963"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round26-20260923.json",
+      "sha256": "166636809afc01109b7f9c87a248a2e0921cf06583fd24d8e6e7856cb68fb0f3"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round27-20260923.json",
+      "sha256": "5d620a84b757c6c979bac12bac00a185c1f1979942aa529d1b4e86c026c7b20b"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round28-20260923.json",
+      "sha256": "1288c93718f9cc8c6ed64520dc0a8d8ae28238f03696b52888feaf8d8dd2d51a"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round29-20260923.json",
+      "sha256": "d9c8aed82bfb62e21fe9fc50ba027d6387f921f67aa04054c5ca7bc81fcefbf1"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round31-20260923.json",
+      "sha256": "b388270d61ab37662319bde0009d6d6fc84855da4f84a02b41087084d20ad016"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round32-20260923.json",
+      "sha256": "cc14ba435f50fe8ed15c64ab0c81f1a6bbe6ff8768b9ba87cfb9508553bf5674"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round33-20260923.json",
+      "sha256": "3642ac052a0bc73a6bdec4014e814169cdaa161a52f2b12b93249bc1ad0c39b7"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round34-20260923.json",
+      "sha256": "da5aa9fea5235993335da26bf8f5ddaeed0cbebeea73efb5d5cfae8e3cbe2623"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round35-20260923.json",
+      "sha256": "615171a4d7a640ee2c12c468ec8ab89f71f16809b714e3ea61cd4ff431e3ed8a"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round36-20260923.json",
+      "sha256": "5d6991e03ded3e14fff2e6a77d70c39e759bb4ed7decfba06993861d17ef035f"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round37-20260923.json",
+      "sha256": "a784df8c37f50a52a2627cce294a199cfffde5d756e44e1e0c0276c55a20271f"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round38-20260923.json",
+      "sha256": "a789557e56ea7fc10ad5ef1596f9f05290d0024a8c966e64dd194a0c0cdacc46"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round39-20260923.json",
+      "sha256": "c53f074100d278a0b65634284b391a95ba84e382fa30eca60d04cd3ead4b6f3f"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round40-20260923.json",
+      "sha256": "aa2b9b7741538395eebd1d41fb941bad68591b60df9ac1102e341a3168410493"
+    },
+    {
+      "ref": ".agent/evidence/m02-source-review-round41-20260923.json",
+      "sha256": "fcd2143328fde82f1895a790519218b25d7b45a000acdecc4179bbd78836f71f"
+    }
+  ],
+  "paths": [
+    {
+      "path": ".agent/authority.jsonl",
+      "current_sha256": "a4fb9fce1b991299ad4095c4c373994e643b1c1b41a820cd4172e5daa6f1b0fd",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round40-20260923.json",
+        "round": 40,
+        "sha256": "aa2b9b7741538395eebd1d41fb941bad68591b60df9ac1102e341a3168410493"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "a4fb9fce1b991299ad4095c4c373994e643b1c1b41a820cd4172e5daa6f1b0fd",
+        "inventory_sha256": "a4fb9fce1b991299ad4095c4c373994e643b1c1b41a820cd4172e5daa6f1b0fd",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": ".agent/backlog.json",
+      "current_sha256": "e6e9f347d345d5066c28454e89e7d5818c4ab008134ba014aa95f18583bd6133",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round40-20260923.json",
+        "round": 40,
+        "sha256": "aa2b9b7741538395eebd1d41fb941bad68591b60df9ac1102e341a3168410493"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "3969e8d156c76ddd440b62a479a4e13c6697a12d74c7415cd0a192f0d5033721",
+        "inventory_sha256": "9f91adaf003e742f3380425b435e758ec95eb983a98cd628b29a225244a88321",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": false,
+        "sha_matches_inventory_flag_in_report": false
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "HASH_DRIFT_HOLD_NO_REBIND",
+        "rebind_current_sha": false,
+        "current_disposition": "HOLD_CURRENT_HASH_DRIFT"
+      }
+    },
+    {
+      "path": ".agent/execution-log.jsonl",
+      "current_sha256": "7806b4c8ad487b6ee7bbd9bd9f6f6a1532b01653464096909b7f565e5b95ce0b",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round40-20260923.json",
+        "round": 40,
+        "sha256": "aa2b9b7741538395eebd1d41fb941bad68591b60df9ac1102e341a3168410493"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "feadcd7e413094f004518d9e2596c3b9f41c30980201433fec080e8f40980503",
+        "inventory_sha256": "ad7b9d12a65537570e22b50c31294f94e654a761d4b1966dc8a42719ce4237df",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": false,
+        "sha_matches_inventory_flag_in_report": false
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "HASH_DRIFT_HOLD_NO_REBIND",
+        "rebind_current_sha": false,
+        "current_disposition": "HOLD_CURRENT_HASH_DRIFT"
+      }
+    },
+    {
+      "path": ".agent/plans/remediacao-integral-20260921.md",
+      "current_sha256": "c6c71f0b652085fbe9ac5692ddede8c5eebea6fd15be6d5c70cace98ad16a278",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round40-20260923.json",
+        "round": 40,
+        "sha256": "aa2b9b7741538395eebd1d41fb941bad68591b60df9ac1102e341a3168410493"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "c6c71f0b652085fbe9ac5692ddede8c5eebea6fd15be6d5c70cace98ad16a278",
+        "inventory_sha256": "c6c71f0b652085fbe9ac5692ddede8c5eebea6fd15be6d5c70cace98ad16a278",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": ".agent/state.json",
+      "current_sha256": "8ad5c002d92f9030288c2246e3ba1db6d4ea92134a4d37ef8215a71d87d2f1ea",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round40-20260923.json",
+        "round": 40,
+        "sha256": "aa2b9b7741538395eebd1d41fb941bad68591b60df9ac1102e341a3168410493"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "c752337f9faf1ef4047a1b8e507d01c6a37dd93bcbc5f3f8388c94d29b691ed0",
+        "inventory_sha256": "e434ee0d050d194201f346eeec93f556a5b29b3b66881550d7b8ebbdd61b7aa8",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": false,
+        "sha_matches_inventory_flag_in_report": false
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "HASH_DRIFT_HOLD_NO_REBIND",
+        "rebind_current_sha": false,
+        "current_disposition": "HOLD_CURRENT_HASH_DRIFT"
+      }
+    },
+    {
+      "path": ".agent/verification.jsonl",
+      "current_sha256": "9c366268f0510968e8f34535dec001dfde3f436c6df6bf0064b810732b3e0690",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round40-20260923.json",
+        "round": 40,
+        "sha256": "aa2b9b7741538395eebd1d41fb941bad68591b60df9ac1102e341a3168410493"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "ab277433e32a3f49690db6ba1da8c6f971bdca60c5626369d7f00b1da77f9272",
+        "inventory_sha256": "64d82962fb45a475b136f465d40fcff20277f5dd3a5983df4330a3ba7a4b353b",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": false,
+        "sha_matches_inventory_flag_in_report": false
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "HASH_DRIFT_HOLD_NO_REBIND",
+        "rebind_current_sha": false,
+        "current_disposition": "HOLD_CURRENT_HASH_DRIFT"
+      }
+    },
+    {
+      "path": ".eslintrc.semantic.cjs",
+      "current_sha256": "e02d3c9f043192b6df13005f665af1ff135dbceeeac0d268e00a1698122cea52",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round13-20260923.json",
+        "round": 13,
+        "sha256": "73b7bc7ab83b8f0f18590599dfe97aa31c0e6f02dfd6ecd3e7384415e117fec5"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "e02d3c9f043192b6df13005f665af1ff135dbceeeac0d268e00a1698122cea52",
+        "inventory_sha256": "e02d3c9f043192b6df13005f665af1ff135dbceeeac0d268e00a1698122cea52",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": ".github/workflows/ci.yml",
+      "current_sha256": "42df3738c40e9eab1488012473b23b1e9ac1c35f9d1046c18ce14b3d7e31c754",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round14-20260923.json",
+        "round": 14,
+        "sha256": "1d099ed951edfb35855a4c986feb56d5a817038d4f790f16e31d066a3c6d5ce9"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "42df3738c40e9eab1488012473b23b1e9ac1c35f9d1046c18ce14b3d7e31c754",
+        "inventory_sha256": "42df3738c40e9eab1488012473b23b1e9ac1c35f9d1046c18ce14b3d7e31c754",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": ".gitignore",
+      "current_sha256": "d8039ee1a5924bb539735541a7eea2af0523e7a305ec8894ed50d4c9bccbe4f5",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round24-20260923.json",
+        "round": 24,
+        "sha256": "533e46e2b90efc81d8a56b9da57558be5bd705456ec772eb7d65ad5bf0241dc1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "d8039ee1a5924bb539735541a7eea2af0523e7a305ec8894ed50d4c9bccbe4f5",
+        "inventory_sha256": "d8039ee1a5924bb539735541a7eea2af0523e7a305ec8894ed50d4c9bccbe4f5",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/api/src/helpers/api-server-boundaries.test.ts",
+      "current_sha256": "d81726ba77f0a5ba9cabac8d263435949965ba00d7b0bd8c168cfd9daac089e5",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round1-20260923.json",
+        "round": 1,
+        "sha256": "7fcfd8a9c8826fda70bfc73c59536f09145e49f976d8282dfaaece22fa26bfd1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "d81726ba77f0a5ba9cabac8d263435949965ba00d7b0bd8c168cfd9daac089e5",
+        "inventory_sha256": "d81726ba77f0a5ba9cabac8d263435949965ba00d7b0bd8c168cfd9daac089e5",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required",
+        "classification": "EXPLICIT_NOT_APPROVED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/api/src/helpers/api-server-boundaries.ts",
+      "current_sha256": "67b6111cd4c4c4f4497ebbfd93914359b7aa2bde4ad7c7e1c90271b6ca730df6",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round1-20260923.json",
+        "round": 1,
+        "sha256": "7fcfd8a9c8826fda70bfc73c59536f09145e49f976d8282dfaaece22fa26bfd1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "67b6111cd4c4c4f4497ebbfd93914359b7aa2bde4ad7c7e1c90271b6ca730df6",
+        "inventory_sha256": "67b6111cd4c4c4f4497ebbfd93914359b7aa2bde4ad7c7e1c90271b6ca730df6",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required",
+        "classification": "EXPLICIT_NOT_APPROVED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/api/src/helpers/response-buffer.test.ts",
+      "current_sha256": "b4faacccc3816c930fbbbdcf7428056f619f1e1163321f82e318bf070d94a9ee",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round1-20260923.json",
+        "round": 1,
+        "sha256": "7fcfd8a9c8826fda70bfc73c59536f09145e49f976d8282dfaaece22fa26bfd1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "b4faacccc3816c930fbbbdcf7428056f619f1e1163321f82e318bf070d94a9ee",
+        "inventory_sha256": "b4faacccc3816c930fbbbdcf7428056f619f1e1163321f82e318bf070d94a9ee",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required",
+        "classification": "EXPLICIT_NOT_APPROVED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/api/src/payment-gateway.ts",
+      "current_sha256": "495dc51f7112d634b19e842e2b0efa13d219ba0238dafa5f6f65b0e178407563",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round1-20260923.json",
+        "round": 1,
+        "sha256": "7fcfd8a9c8826fda70bfc73c59536f09145e49f976d8282dfaaece22fa26bfd1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "495dc51f7112d634b19e842e2b0efa13d219ba0238dafa5f6f65b0e178407563",
+        "inventory_sha256": "495dc51f7112d634b19e842e2b0efa13d219ba0238dafa5f6f65b0e178407563",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_APPROVED_BY_THIS_REVIEW; financial/provider boundary requires full candidate-bound review and independent critique",
+        "classification": "EXPLICIT_NOT_APPROVED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/api/src/server.ts",
+      "current_sha256": "6b102f8ef01cc77c8acedef6ad2d429507c985ad00a78698457c94e5c39cb319",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round2-20260923.json",
+        "round": 2,
+        "sha256": "f1a5a54b4b08ddda9a571f481d4876a9866473ebc17d7e5667d25bfb7eddab2c"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "6b102f8ef01cc77c8acedef6ad2d429507c985ad00a78698457c94e5c39cb319",
+        "inventory_sha256": "6b102f8ef01cc77c8acedef6ad2d429507c985ad00a78698457c94e5c39cb319",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition, independent critique and candidate-bound verification remain required",
+        "classification": "EXPLICIT_NOT_APPROVED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/package.json",
+      "current_sha256": "ba0a8b115a55dbd85d8e028a32dc6eb3ad15a1f31ef8a6af4e239c84da4ae0c4",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round13-20260923.json",
+        "round": 13,
+        "sha256": "73b7bc7ab83b8f0f18590599dfe97aa31c0e6f02dfd6ecd3e7384415e117fec5"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "ba0a8b115a55dbd85d8e028a32dc6eb3ad15a1f31ef8a6af4e239c84da4ae0c4",
+        "inventory_sha256": "ba0a8b115a55dbd85d8e028a32dc6eb3ad15a1f31ef8a6af4e239c84da4ae0c4",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/AgendaCalendarOrList.vue",
+      "current_sha256": "317316931b9707125bb1535bdf68d42e440bce584282ef32e35674bef395ad0c",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round11-20260923.json",
+        "round": 11,
+        "sha256": "f009d83ea423a35e5ed6ee9e953f14fe3eed8815509edb62462dd434d31b4eed"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "317316931b9707125bb1535bdf68d42e440bce584282ef32e35674bef395ad0c",
+        "inventory_sha256": "317316931b9707125bb1535bdf68d42e440bce584282ef32e35674bef395ad0c",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_GRID_ACCESSIBILITY_REVIEW_AND_COMPLETE_INVENTORY_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/AppointmentCreateFlow.vue",
+      "current_sha256": "a64ae8e2c39b44d0533cf0390656fcb3103c07b6577da59e5afb2f1ef6b5e261",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round11-20260923.json",
+        "round": 11,
+        "sha256": "f009d83ea423a35e5ed6ee9e953f14fe3eed8815509edb62462dd434d31b4eed"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "a64ae8e2c39b44d0533cf0390656fcb3103c07b6577da59e5afb2f1ef6b5e261",
+        "inventory_sha256": "a64ae8e2c39b44d0533cf0390656fcb3103c07b6577da59e5afb2f1ef6b5e261",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+      "current_sha256": "7d4fe6fb24afa0642011aedc9be950b7fdd49982fa2255d1a3edccd2485940c8",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round10-20260923.json",
+        "round": 10,
+        "sha256": "05ee190047f67f3d4c45a173c8980c6866083d7ae1a87967e69c797353a814ce"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "7d4fe6fb24afa0642011aedc9be950b7fdd49982fa2255d1a3edccd2485940c8",
+        "inventory_sha256": "7d4fe6fb24afa0642011aedc9be950b7fdd49982fa2255d1a3edccd2485940c8",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_RELATED_CHILD_REVIEW_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/__tests__/AgendaCalendarOrList.test.ts",
+      "current_sha256": "027b6e3743e02439af0a130abf1bee15293829b9e4b73687fbcfc4c447897425",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round11-20260923.json",
+        "round": 11,
+        "sha256": "f009d83ea423a35e5ed6ee9e953f14fe3eed8815509edb62462dd434d31b4eed"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "027b6e3743e02439afa0a130abf1bee15293829b9e4b73687fbcfc4c447897425",
+        "inventory_sha256": "027b6e3743e02439afa0a130abf1bee15293829b9e4b73687fbcfc4c447897425",
+        "current_hash_syntax_valid": false,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_GRID_ACCESSIBILITY_REVIEW_AND_FIXTURE_PROVENANCE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "HASH_DRIFT_HOLD_NO_REBIND",
+        "rebind_current_sha": false,
+        "current_disposition": "HOLD_CURRENT_HASH_DRIFT"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/__tests__/AppointmentActionController.test.ts",
+      "current_sha256": "40a9b145aec878c34070bb1cdf75f63154b63fcf32b4a5c83caa633918c0651e",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round11-20260923.json",
+        "round": 11,
+        "sha256": "f009d83ea423a35e5ed6ee9e953f14fe3eed8815509edb62462dd434d31b4eed"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "40a9b145aec878c34070bb1cdf75f63154b63fcf32b4a5c83caa633918c0651e",
+        "inventory_sha256": "40a9b145aec878c34070bb1cdf75f63154b63fcf32b4a5c83caa633918c0651e",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_NO_SHOW_DOMAIN_CONTRACT_AND_BACKEND_AUTHORIZATION_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/__tests__/AppointmentCreateFlow.test.ts",
+      "current_sha256": "31e0e42dd591e85f3fe8a8b08c8a2fc7648f6dc3f03b85ee0d141eccc506ae4e",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round11-20260923.json",
+        "round": 11,
+        "sha256": "f009d83ea423a35e5ed6ee9e953f14fe3eed8815509edb62462dd434d31b4eed"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "31e0e42dd591e85f3fe8a8b08c8a2fc7648f6dc3f03b85ee0d141eccc506ae4e",
+        "inventory_sha256": "31e0e42dd591e85f3fe8a8b08c8a2fc7648f6dc3f03b85ee0d141eccc506ae4e",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_FIXTURE_PROVENANCE_AND_COMPLETE_INVENTORY_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/__tests__/AppointmentsOverview.test.ts",
+      "current_sha256": "26dac3d5d2c0a3dd23e72069d31a7617bfeada8062b9a57851f022d5b8e46ce7",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round10-20260923.json",
+        "round": 10,
+        "sha256": "05ee190047f67f3d4c45a173c8980c6866083d7ae1a87967e69c797353a814ce"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "522ffaf44fed54b7104dce27a552cbad663fdc38ec8a3a179a70ae3cf4c39951",
+        "inventory_sha256": "522ffaf44fed54b7104dce27a552cbad663fdc38ec8a3a179a70ae3cf4c39951",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_FIXTURE_PROVENANCE_AND_COMPLETE_INVENTORY_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "HASH_DRIFT_HOLD_NO_REBIND",
+        "rebind_current_sha": false,
+        "current_disposition": "HOLD_CURRENT_HASH_DRIFT"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/appointmentActionController.ts",
+      "current_sha256": "4f61e1da3c7d23ba0e6869a6fb641e4be02a3208ee443c827967d9b5e23dee04",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round11-20260923.json",
+        "round": 11,
+        "sha256": "f009d83ea423a35e5ed6ee9e953f14fe3eed8815509edb62462dd434d31b4eed"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "4f61e1da3c7d23ba0e6869a6fb641e4be02a3208ee443c827967d9b5e23dee04",
+        "inventory_sha256": "4f61e1da3c7d23ba0e6869a6fb641e4be02a3208ee443c827967d9b5e23dee04",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_NO_SHOW_DOMAIN_CONTRACT_AND_BACKEND_AUTHORIZATION_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/useAppointmentsOverview.ts",
+      "current_sha256": "206344537a344942afa20ea40c1554cdd6fbdf8b7c150a8bb651d16d94ec98a8",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round10-20260923.json",
+        "round": 10,
+        "sha256": "05ee190047f67f3d4c45a173c8980c6866083d7ae1a87967e69c797353a814ce"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "206344537a344942afa20ea40c1554cdd6fbdf8b7c150a8bb651d16d94ec98a8",
+        "inventory_sha256": "206344537a344942afa20ea40c1554cdd6fbdf8b7c150a8bb651d16d94ec98a8",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_RELATED_CHILD_REVIEW_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/medical-records/ClinicalRecordContextAside.vue",
+      "current_sha256": "9d414df37f48385caf5fc2cf107af389faafcf7eb70a5b8f181f98bdb54acf97",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round8-20260923.json",
+        "round": 8,
+        "sha256": "ed142ba03dbf3aba6e554e0582ffa1e917125116200bcc81c91b71eb5e4a8f86"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "9d414df37f48385caf5fc2cf107af389faafcf7eb70a5b8f181f98bdb54acf97",
+        "inventory_sha256": "9d414df37f48385caf5fc2cf107af389faafcf7eb70a5b8f181f98bdb54acf97",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_CLINICAL_WORKFLOW_AND_FIXTURE_PROVENANCE_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/medical-records/ClinicalStepNavigator.vue",
+      "current_sha256": "1cd938461e3e153f4d127eb02b2ae2b4d13f669bc1f728fb1a7f313a217933f1",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round8-20260923.json",
+        "round": 8,
+        "sha256": "ed142ba03dbf3aba6e554e0582ffa1e917125116200bcc81c91b71eb5e4a8f86"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "1cd938461e3e153f4d127eb02b2ae2b4d13f669bc1f728fb1a7f313a217933f1",
+        "inventory_sha256": "1cd938461e3e153f4d127eb02b2ae2b4d13f669bc1f728fb1a7f313a217933f1",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_CLINICAL_WORKFLOW_AND_FIXTURE_PROVENANCE_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue",
+      "current_sha256": "a94dc2c8c0ad9c94bda1e40029f5925ca90cc82ce039d0ce441b88fdb53aa6a5",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round9-20260923.json",
+        "round": 9,
+        "sha256": "52b971e54e3cb5eaa82fdf4b555c022d951484198db88d18f051f8a6aa9fda26"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "a94dc2c8c0ad9c94bda1e40029f5925ca90cc82ce039d0ce441b88fdb53aa6a5",
+        "inventory_sha256": "a94dc2c8c0ad9c94bda1e40029f5925ca90cc82ce039d0ce441b88fdb53aa6a5",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/medical-records/__tests__/ClinicalRecordContextAside.test.ts",
+      "current_sha256": "23ce755ccb5ec6a85916ea783164583e1d7660c4f987e4fe0bc4b775379950f5",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round8-20260923.json",
+        "round": 8,
+        "sha256": "ed142ba03dbf3aba6e554e0582ffa1e917125116200bcc81c91b71eb5e4a8f86"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "d8ad499e850950f479b66942b1c526dcac0a72d88b1d1ac0fd0efae780489d6b",
+        "inventory_sha256": "d8ad499e850950f479b66942b1c526dcac0a72d88b1d1ac0fd0efae780489d6b",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_CLINICAL_WORKFLOW_AND_FIXTURE_PROVENANCE_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "HASH_DRIFT_HOLD_NO_REBIND",
+        "rebind_current_sha": false,
+        "current_disposition": "HOLD_CURRENT_HASH_DRIFT"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/medical-records/__tests__/ClinicalStepNavigator.test.ts",
+      "current_sha256": "b5e317b026eb44903f6271d3a96e29455854f02b8b08ed83f8a53bd67ca3fba8",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round8-20260923.json",
+        "round": 8,
+        "sha256": "ed142ba03dbf3aba6e554e0582ffa1e917125116200bcc81c91b71eb5e4a8f86"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "b5e317b026eb44903f6271d3a96e29455854f02b8b08ed83f8a53bd67ca3fba8",
+        "inventory_sha256": "b5e317b026eb44903f6271d3a96e29455854f02b8b08ed83f8a53bd67ca3fba8",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_CLINICAL_WORKFLOW_AND_FIXTURE_PROVENANCE_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/patients/PatientDetailPage.vue",
+      "current_sha256": "c83c1cb64eedff3fe677dec0473e104899df48bfcd0c7e2864fa83cdaa1804ce",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round12-20260923.json",
+        "round": 12,
+        "sha256": "d4d3582cbd52c067f93a58dce37765cddbadbef0f84d0e70394c010df655df43"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "c83c1cb64eedff3fe677dec0473e104899df48bfcd0c7e2864fa83cdaa1804ce",
+        "inventory_sha256": "c83c1cb64eedff3fe677dec0473e104899df48bfcd0c7e2864fa83cdaa1804ce",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PATIENT_DATA_MINIMIZATION_AND_COMPLETE_INVENTORY_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/patients/PatientTimeline360.vue",
+      "current_sha256": "15a0ddcdb9e77b708507b49100cab3f1a5bda906bed01a2199daa18c04ef275f",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round12-20260923.json",
+        "round": 12,
+        "sha256": "d4d3582cbd52c067f93a58dce37765cddbadbef0f84d0e70394c010df655df43"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "15a0ddcdb9e77b708507b49100cab3f1a5bda906bed01a2199daa18c04ef275f",
+        "inventory_sha256": "15a0ddcdb9e77b708507b49100cab3f1a5bda906bed01a2199daa18c04ef275f",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_BROWSER_ACCESSIBILITY_VISUAL_AND_COMPLETE_INVENTORY_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/patients/__tests__/PatientTimeline360.test.ts",
+      "current_sha256": "fec458fe5c62332f95e51b59445c161557baf3b828a45ae41d657fab8d047b62",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round12-20260923.json",
+        "round": 12,
+        "sha256": "d4d3582cbd52c067f93a58dce37765cddbadbef0f84d0e70394c010df655df43"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "fec458fe5c62332f95e51b59445c161557baf3b828a45ae41d657fab8d047b62",
+        "inventory_sha256": "fec458fe5c62332f95e51b59445c161557baf3b828a45ae41d657fab8d047b62",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportExportAction.vue",
+      "current_sha256": "515b497c1eb661ffd0907ab81b5c49453beaac712cf68bd85038d19f0769efa6",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+        "round": 4,
+        "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "515b497c1eb661ffd0907ab81b5c49453beaac712cf68bd85038d19f0769efa6",
+        "inventory_sha256": "515b497c1eb661ffd0907ab81b5c49453beaac712cf68bd85038d19f0769efa6",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportExportRecovery.vue",
+      "current_sha256": "94f41c7d43f1b9ef235bba73543565d0b521dca2dc50fa3861b26350d0f8fdf3",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+        "round": 4,
+        "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "94f41c7d43f1b9ef235bba73543565d0b521dca2dc50fa3861b26350d0f8fdf3",
+        "inventory_sha256": "94f41c7d43f1b9ef235bba73543565d0b521dca2dc50fa3861b26350d0f8fdf3",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportFilterPanel.vue",
+      "current_sha256": "b4a023ea5ceb703e8a7dd0459129e8adac50e7dbd88f9020de983de42ea83479",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+        "round": 4,
+        "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "b4a023ea5ceb703e8a7dd0459129e8adac50e7dbd88f9020de983de42ea83479",
+        "inventory_sha256": "b4a023ea5ceb703e8a7dd0459129e8adac50e7dbd88f9020de983de42ea83479",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportQueryStatus.vue",
+      "current_sha256": "66f04e82827feaea1bd98539694d2e1e61533df1c7bcea25610aa834c55b00de",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+        "round": 4,
+        "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "66f04e82827feaea1bd98539694d2e1e61533df1c7bcea25610aa834c55b00de",
+        "inventory_sha256": "66f04e82827feaea1bd98539694d2e1e61533df1c7bcea25610aa834c55b00de",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportResultTable.vue",
+      "current_sha256": "3107ac2b57b8e9db576e3111a165cd39832cc0931097a43d3b332ed43e58c501",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+        "round": 4,
+        "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "3107ac2b57b8e9db576e3111a165cd39832cc0931097a43d3b332ed43e58c501",
+        "inventory_sha256": "3107ac2b57b8e9db576e3111a165cd39832cc0931097a43d3b332ed43e58c501",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportSummaryDetails.vue",
+      "current_sha256": "897affd9154b4a2ddc9c5457d194ac44b545ea0fb9a744aa52e492bb46192312",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+        "round": 4,
+        "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "897affd9154b4a2ddc9c5457d194ac44b545ea0fb9a744aa52e492bb46192312",
+        "inventory_sha256": "897affd9154b4a2ddc9c5457d194ac44b545ea0fb9a744aa52e492bb46192312",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+      "current_sha256": "e099b78f6ce034dc6a04d8fb75effd8199e4378b30f4e98b554056531672c547",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round7-20260923.json",
+        "round": 7,
+        "sha256": "78cea2269da101e471a49c3d3ee4b8fbe7024e8c9bc2d3a951151121fcf7989f"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "e099b78f6ce034dc6a04d8fb75effd8199e4378b30f4e98b554056531672c547",
+        "inventory_sha256": "e099b78f6ce034dc6a04d8fb75effd8199e4378b30f4e98b554056531672c547",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_RETENTION_CONTRACT_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportWorkbenchToolbar.vue",
+      "current_sha256": "1ff7d422c00d09b27b56d60efeacd8c0e67fb7470823f408b67c255ee2b5524c",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+        "round": 4,
+        "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "1ff7d422c00d09b27b56d60efeacd8c0e67fb7470823f408b67c255ee2b5524c",
+        "inventory_sha256": "1ff7d422c00d09b27b56d60efeacd8c0e67fb7470823f408b67c255ee2b5524c",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportExportAction.test.ts",
+      "current_sha256": "9d1d4f177a4bf3b8b39d594f65c36b0e8c0a6bb3efb716de7901a0ea9cf1015c",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+        "round": 4,
+        "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "9d1d4f177a4bf3b8b39d594f65c36b0e8c0a6bb3efb716de7901a0ea9cf1015c",
+        "inventory_sha256": "9d1d4f177a4bf3b8b39d594f65c36b0e8c0a6bb3efb716de7901a0ea9cf1015c",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportExportRecovery.test.ts",
+      "current_sha256": "48afebf4fe82a31c53bc997be1b58b2f9992273226c1b953a23381745b171fe6",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+        "round": 4,
+        "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "48afebf4fe82a31c53bc997be1b58b2f9992273226c1b953a23381745b171fe6",
+        "inventory_sha256": "48afebf4fe82a31c53bc997be1b58b2f9992273226c1b953a23381745b171fe6",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportFilterPanel.test.ts",
+      "current_sha256": "8c6b1492d8416c2508379cdfe4fdefce4fe3c432a53c655fb3e21b71836f2db7",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+        "round": 4,
+        "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "8c6b1492d8416c2508379cdfe4fdefce4fe3c432a53c655fb3e21b71836f2db7",
+        "inventory_sha256": "8c6b1492d8416c2508379cdfe4fdefce4fe3c432a53c655fb3e21b71836f2db7",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportQueryStatus.test.ts",
+      "current_sha256": "8fa356b3a26b2e8d96aad76160461718383a2459943eab5cfc5cd6ae1d7dc216",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+        "round": 4,
+        "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "8fa356b3a26b2e8d96aad76160461718383a2459943eab5cfc5cd6ae1d7dc216",
+        "inventory_sha256": "8fa356b3a26b2e8d96aad76160461718383a2459943eab5cfc5cd6ae1d7dc216",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportResultTable.test.ts",
+      "current_sha256": "a55e25abd987e4a7768224373d2f7d89094e790b4058451423d7b958b0b35269",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+        "round": 4,
+        "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "a55e25abd987e4a7768224373d2f7d89094e790b4058451423d7b958b0b35269",
+        "inventory_sha256": "a55e25abd987e4a7768224373d2f7d89094e790b4058451423d7b958b0b35269",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportSummaryDetails.test.ts",
+      "current_sha256": "7cde1b439d547209928cc06fb8e08b71da6b79ec7bfc17e8c6cd01fb0199dcaa",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+        "round": 4,
+        "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "7cde1b439d547209928cc06fb8e08b71da6b79ec7bfc17e8c6cd01fb0199dcaa",
+        "inventory_sha256": "7cde1b439d547209928cc06fb8e08b71da6b79ec7bfc17e8c6cd01fb0199dcaa",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportWorkbenchToolbar.test.ts",
+      "current_sha256": "7a29be33f7b6280d69b31e62512b0971e0b352310156161957229beb8ed84b44",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round4-20260923.json",
+        "round": 4,
+        "sha256": "6faff731ec10f84e6fe8c1ef461901ffc9f688e2ed9577cc105ba242987e1ad7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "7a29be33f7b6280d69b31e62512b0971e0b352310156161957229beb8ed84b44",
+        "inventory_sha256": "7a29be33f7b6280d69b31e62512b0971e0b352310156161957229beb8ed84b44",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/sales/CounterSalesCard.vue",
+      "current_sha256": "433e77ef1f3f3a169497856e377629ba5747e8b0c9811834325d481980feb4a9",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round5-20260923.json",
+        "round": 5,
+        "sha256": "454a7eaa60136ae543b9ae7cbd38ccbca3ffad8aeab940aa92be177416185783"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "433e77ef1f3f3a169497856e377629ba5747e8b0c9811834325d481980feb4a9",
+        "inventory_sha256": "433e77ef1f3f3a169497856e377629ba5747e8b0c9811834325d481980feb4a9",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_COUNTER_SALES_PAGE_AND_WORKFLOW_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/sales/CounterSalesCardList.vue",
+      "current_sha256": "a2177871e7e5188c709442a40be73181cb76b2c2d5a0cf848a8096694af9d5d7",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round5-20260923.json",
+        "round": 5,
+        "sha256": "454a7eaa60136ae543b9ae7cbd38ccbca3ffad8aeab940aa92be177416185783"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "a2177871e7e5188c709442a40be73181cb76b2c2d5a0cf848a8096694af9d5d7",
+        "inventory_sha256": "a2177871e7e5188c709442a40be73181cb76b2c2d5a0cf848a8096694af9d5d7",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_COUNTER_SALES_PAGE_AND_WORKFLOW_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/sales/CounterSalesKpiSummary.vue",
+      "current_sha256": "33a18dd2a4bcceae986ff1f17a85bbe0e5023062cce20142241508e00415472a",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round5-20260923.json",
+        "round": 5,
+        "sha256": "454a7eaa60136ae543b9ae7cbd38ccbca3ffad8aeab940aa92be177416185783"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "33a18dd2a4bcceae986ff1f17a85bbe0e5023062cce20142241508e00415472a",
+        "inventory_sha256": "33a18dd2a4bcceae986ff1f17a85bbe0e5023062cce20142241508e00415472a",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_COUNTER_SALES_PAGE_AND_WORKFLOW_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/sales/CounterSalesPage.vue",
+      "current_sha256": "2c93324b403bc69e16838d853372ce88c71777a578edd0b8bd886149a593ff5c",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round6-20260923.json",
+        "round": 6,
+        "sha256": "53dc0352301e2fc7c8ddcd5a5f15d8ffb613e0d46522d75e8f42f693eb48485c"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "2c93324b403bc69e16838d853372ce88c71777a578edd0b8bd886149a593ff5c",
+        "inventory_sha256": "2c93324b403bc69e16838d853372ce88c71777a578edd0b8bd886149a593ff5c",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_ASYNC_RACE_DECISION_AND_SERVER_PAYMENT_VALIDATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/sales/CounterSalesWorkbench.vue",
+      "current_sha256": "dc7f85528e167b73d643ab79561dfc023b0463ca52e83819674c13871a0aa8ef",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round5-20260923.json",
+        "round": 5,
+        "sha256": "454a7eaa60136ae543b9ae7cbd38ccbca3ffad8aeab940aa92be177416185783"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "dc7f85528e167b73d643ab79561dfc023b0463ca52e83819674c13871a0aa8ef",
+        "inventory_sha256": "dc7f85528e167b73d643ab79561dfc023b0463ca52e83819674c13871a0aa8ef",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_COUNTER_SALES_PAGE_AND_WORKFLOW_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/sales/__tests__/CounterSalesCardList.test.ts",
+      "current_sha256": "aa16e1a611d1c6f68c1fbba87ddf169607163dd538805be84f2286f25017f5fc",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round5-20260923.json",
+        "round": 5,
+        "sha256": "454a7eaa60136ae543b9ae7cbd38ccbca3ffad8aeab940aa92be177416185783"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "aa16e1a611d1c6f68c1fbba87ddf169607163dd538805be84f2286f25017f5fc",
+        "inventory_sha256": "aa16e1a611d1c6f68c1fbba87ddf169607163dd538805be84f2286f25017f5fc",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_COUNTER_SALES_PAGE_AND_WORKFLOW_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/sales/__tests__/CounterSalesKpiSummary.test.ts",
+      "current_sha256": "4685927b2cafdb490373f50d2ce9867e7aecd7bd033b4a642fcbc5d4771b8d01",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round5-20260923.json",
+        "round": 5,
+        "sha256": "454a7eaa60136ae543b9ae7cbd38ccbca3ffad8aeab940aa92be177416185783"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "4685927b2cafdb490373f50d2ce9867e7aecd7bd033b4a642fcbc5d4771b8d01",
+        "inventory_sha256": "4685927b2cafdb490373f50d2ce9867e7aecd7bd033b4a642fcbc5d4771b8d01",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_COUNTER_SALES_PAGE_AND_WORKFLOW_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/spa/src/pages/sales/__tests__/CounterSalesWorkbench.test.ts",
+      "current_sha256": "1c7032bc35eeacc5f34e21bdfce321e1d2286f24390a3758ac8deef34cd32ddc",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round5-20260923.json",
+        "round": 5,
+        "sha256": "454a7eaa60136ae543b9ae7cbd38ccbca3ffad8aeab940aa92be177416185783"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "924f1b95ffe81ef871dc151282e36960972e10e2921368a4ec08c3c91cf65ef2",
+        "inventory_sha256": "924f1b95ffe81ef871dc151282e36960972e10e2921368a4ec08c3c91cf65ef2",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_PARENT_COUNTER_SALES_PAGE_AND_WORKFLOW_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "HASH_DRIFT_HOLD_NO_REBIND",
+        "rebind_current_sha": false,
+        "current_disposition": "HOLD_CURRENT_HASH_DRIFT"
+      }
+    },
+    {
+      "path": "apps/worker/src/runner.ts",
+      "current_sha256": "baab4774dacdbecdd8bc20823c4c83d1c1a642f65594c5189bc440ea90d6ffb8",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round2-20260923.json",
+        "round": 2,
+        "sha256": "f1a5a54b4b08ddda9a571f481d4876a9866473ebc17d7e5667d25bfb7eddab2c"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "baab4774dacdbecdd8bc20823c4c83d1c1a642f65594c5189bc440ea90d6ffb8",
+        "inventory_sha256": "baab4774dacdbecdd8bc20823c4c83d1c1a642f65594c5189bc440ea90d6ffb8",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition, independent critique and candidate-bound verification remain required",
+        "classification": "EXPLICIT_NOT_APPROVED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/worker/src/scheduled-report-sources.test.ts",
+      "current_sha256": "d8826ecb604503e4cf1945450adb953b613e13aa04d789fbc2ca737a98fd5398",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round2-20260923.json",
+        "round": 2,
+        "sha256": "f1a5a54b4b08ddda9a571f481d4876a9866473ebc17d7e5667d25bfb7eddab2c"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "d8826ecb604503e4cf1945450adb953b613e13aa04d789fbc2ca737a98fd5398",
+        "inventory_sha256": "d8826ecb604503e4cf1945450adb953b613e13aa04d789fbc2ca737a98fd5398",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition, independent critique and candidate-bound verification remain required",
+        "classification": "EXPLICIT_NOT_APPROVED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "apps/worker/src/scheduled-report-sources.ts",
+      "current_sha256": "8c24b2135c453c00cd40730006f8709aabc0cf349ac3381b723aff46528f0729",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round2-20260923.json",
+        "round": 2,
+        "sha256": "f1a5a54b4b08ddda9a571f481d4876a9866473ebc17d7e5667d25bfb7eddab2c"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "8c24b2135c453c00cd40730006f8709aabc0cf349ac3381b723aff46528f0729",
+        "inventory_sha256": "8c24b2135c453c00cd40730006f8709aabc0cf349ac3381b723aff46528f0729",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition, independent critique and candidate-bound verification remain required",
+        "classification": "EXPLICIT_NOT_APPROVED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-06-backlog-erp-state-of-art-triplo-aaa.md",
+      "current_sha256": "ad1eb05d3b95693af89bfc17e4ce5a02d8c8adc63a30d07d0a3382e5fd93d75f",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round39-20260923.json",
+        "round": 39,
+        "sha256": "c53f074100d278a0b65634284b391a95ba84e382fa30eca60d04cd3ead4b6f3f"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "ad1eb05d3b95693af89bfc17e4ce5a02d8c8adc63a30d07d0a3382e5fd93d75f",
+        "inventory_sha256": "ad1eb05d3b95693af89bfc17e4ce5a02d8c8adc63a30d07d0a3382e5fd93d75f",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md",
+      "current_sha256": "639ff84616bd8e0e48d51345b3dccf55959b9eaf57e529c2f249ddff6595a46e",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round39-20260923.json",
+        "round": 39,
+        "sha256": "c53f074100d278a0b65634284b391a95ba84e382fa30eca60d04cd3ead4b6f3f"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "639ff84616bd8e0e48d51345b3dccf55959b9eaf57e529c2f249ddff6595a46e",
+        "inventory_sha256": "639ff84616bd8e0e48d51345b3dccf55959b9eaf57e529c2f249ddff6595a46e",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md",
+      "current_sha256": "ba04f6496b4d31acbc34782ee2dee5b586b94b85e90ea7519feebcf46c34647d",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round39-20260923.json",
+        "round": 39,
+        "sha256": "c53f074100d278a0b65634284b391a95ba84e382fa30eca60d04cd3ead4b6f3f"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "ba04f6496b4d31acbc34782ee2dee5b586b94b85e90ea7519feebcf46c34647d",
+        "inventory_sha256": "ba04f6496b4d31acbc34782ee2dee5b586b94b85e90ea7519feebcf46c34647d",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md",
+      "current_sha256": "719dc637713c8f1a15b1384e176e4551d34f0323e76aec333693c42ecbf49886",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round39-20260923.json",
+        "round": 39,
+        "sha256": "c53f074100d278a0b65634284b391a95ba84e382fa30eca60d04cd3ead4b6f3f"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "719dc637713c8f1a15b1384e176e4551d34f0323e76aec333693c42ecbf49886",
+        "inventory_sha256": "719dc637713c8f1a15b1384e176e4551d34f0323e76aec333693c42ecbf49886",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-13-backlog-prontidao-producao.md",
+      "current_sha256": "4fdc4bab18b405c91d2eee972bc1f968a0bdb2dc05c3f4cbbff80fa9e16f2a42",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round38-20260923.json",
+        "round": 38,
+        "sha256": "a789557e56ea7fc10ad5ef1596f9f05290d0024a8c966e64dd194a0c0cdacc46"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "4fdc4bab18b405c91d2eee972bc1f968a0bdb2dc05c3f4cbbff80fa9e16f2a42",
+        "inventory_sha256": "4fdc4bab18b405c91d2eee972bc1f968a0bdb2dc05c3f4cbbff80fa9e16f2a42",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-13-plano-executivo-prontidao-producao.md",
+      "current_sha256": "98b8db99bd5b9e370d8afb0a19f9c2e7310e3e130621a33ee560087ec8564b6d",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round38-20260923.json",
+        "round": 38,
+        "sha256": "a789557e56ea7fc10ad5ef1596f9f05290d0024a8c966e64dd194a0c0cdacc46"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "98b8db99bd5b9e370d8afb0a19f9c2e7310e3e130621a33ee560087ec8564b6d",
+        "inventory_sha256": "98b8db99bd5b9e370d8afb0a19f9c2e7310e3e130621a33ee560087ec8564b6d",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-13-relatorio-estado-atual-erp-cvg-his-v4.md",
+      "current_sha256": "3085c715c050565ff322fe3490a7d37e98115260a8afb396a049999df99f9f0a",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round38-20260923.json",
+        "round": 38,
+        "sha256": "a789557e56ea7fc10ad5ef1596f9f05290d0024a8c966e64dd194a0c0cdacc46"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "3085c715c050565ff322fe3490a7d37e98115260a8afb396a049999df99f9f0a",
+        "inventory_sha256": "3085c715c050565ff322fe3490a7d37e98115260a8afb396a049999df99f9f0a",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-13-roadmap-prontidao-producao.md",
+      "current_sha256": "215f7b44e0ce9c0c668c9a58ee4225a4f43e55f51c1f65e979d102279a8a8833",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round38-20260923.json",
+        "round": 38,
+        "sha256": "a789557e56ea7fc10ad5ef1596f9f05290d0024a8c966e64dd194a0c0cdacc46"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "215f7b44e0ce9c0c668c9a58ee4225a4f43e55f51c1f65e979d102279a8a8833",
+        "inventory_sha256": "215f7b44e0ce9c0c668c9a58ee4225a4f43e55f51c1f65e979d102279a8a8833",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+      "current_sha256": "b4d546f0eba8b46a67cafe2b78eef21c4a8c992f9f497d37a09e2b1bbdc51bee",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round37-20260923.json",
+        "round": 37,
+        "sha256": "a784df8c37f50a52a2627cce294a199cfffde5d756e44e1e0c0276c55a20271f"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "b4d546f0eba8b46a67cafe2b78eef21c4a8c992f9f497d37a09e2b1bbdc51bee",
+        "inventory_sha256": "b4d546f0eba8b46a67cafe2b78eef21c4a8c992f9f497d37a09e2b1bbdc51bee",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md",
+      "current_sha256": "c0a1ed4e577755e0ac7c9e84f0c5e6331a1119909b0cbb37ef8b1787b05fae2c",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round37-20260923.json",
+        "round": 37,
+        "sha256": "a784df8c37f50a52a2627cce294a199cfffde5d756e44e1e0c0276c55a20271f"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "c0a1ed4e577755e0ac7c9e84f0c5e6331a1119909b0cbb37ef8b1787b05fae2c",
+        "inventory_sha256": "c0a1ed4e577755e0ac7c9e84f0c5e6331a1119909b0cbb37ef8b1787b05fae2c",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-14-relatorio-completo-estado-construcao.md",
+      "current_sha256": "c7c2c3d026a463182a47760fe509164cb680b9131dc0d4f3c0383fb6215858a0",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round37-20260923.json",
+        "round": 37,
+        "sha256": "a784df8c37f50a52a2627cce294a199cfffde5d756e44e1e0c0276c55a20271f"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "c7c2c3d026a463182a47760fe509164cb680b9131dc0d4f3c0383fb6215858a0",
+        "inventory_sha256": "c7c2c3d026a463182a47760fe509164cb680b9131dc0d4f3c0383fb6215858a0",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-14-roadmap-state-of-art-triplo-aaa.md",
+      "current_sha256": "8ff82deadf24094ce04fd06fcdee593938a6b4c0243919e79c11df5050481a30",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round37-20260923.json",
+        "round": 37,
+        "sha256": "a784df8c37f50a52a2627cce294a199cfffde5d756e44e1e0c0276c55a20271f"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "8ff82deadf24094ce04fd06fcdee593938a6b4c0243919e79c11df5050481a30",
+        "inventory_sha256": "8ff82deadf24094ce04fd06fcdee593938a6b4c0243919e79c11df5050481a30",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
+      "current_sha256": "19fcb609e2310d5a5f07b396af6ab2c4cd4c349d75074630208c8c96418220df",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round36-20260923.json",
+        "round": 36,
+        "sha256": "5d6991e03ded3e14fff2e6a77d70c39e759bb4ed7decfba06993861d17ef035f"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "19fcb609e2310d5a5f07b396af6ab2c4cd4c349d75074630208c8c96418220df",
+        "inventory_sha256": "19fcb609e2310d5a5f07b396af6ab2c4cd4c349d75074630208c8c96418220df",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md",
+      "current_sha256": "25e21b5b5bd999a3b4b4e6bebd21ef7850bf3001ad8196eac475fd59ec037930",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round36-20260923.json",
+        "round": 36,
+        "sha256": "5d6991e03ded3e14fff2e6a77d70c39e759bb4ed7decfba06993861d17ef035f"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "25e21b5b5bd999a3b4b4e6bebd21ef7850bf3001ad8196eac475fd59ec037930",
+        "inventory_sha256": "25e21b5b5bd999a3b4b4e6bebd21ef7850bf3001ad8196eac475fd59ec037930",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md",
+      "current_sha256": "c874e76ebdbf2a11957b715efccfc1c46e66388bc1cf035a93065e5606824aee",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round36-20260923.json",
+        "round": 36,
+        "sha256": "5d6991e03ded3e14fff2e6a77d70c39e759bb4ed7decfba06993861d17ef035f"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "c874e76ebdbf2a11957b715efccfc1c46e66388bc1cf035a93065e5606824aee",
+        "inventory_sha256": "c874e76ebdbf2a11957b715efccfc1c46e66388bc1cf035a93065e5606824aee",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-20-auditoria-scorecard-be2dc76a.md",
+      "current_sha256": "b707eae2f4716ee7db63ba72a3ef505b06bfe751fd402737b3b859c3200cc1d5",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round35-20260923.json",
+        "round": 35,
+        "sha256": "615171a4d7a640ee2c12c468ec8ab89f71f16809b714e3ea61cd4ff431e3ed8a"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "b707eae2f4716ee7db63ba72a3ef505b06bfe751fd402737b3b859c3200cc1d5",
+        "inventory_sha256": "b707eae2f4716ee7db63ba72a3ef505b06bfe751fd402737b3b859c3200cc1d5",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-20-auditoria-scorecard-db07cd02.md",
+      "current_sha256": "5fa5d1166a7f9fc6d81dfcb841acbdce2511a2b2d7f227f55d731572f5d3a6a1",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round35-20260923.json",
+        "round": 35,
+        "sha256": "615171a4d7a640ee2c12c468ec8ab89f71f16809b714e3ea61cd4ff431e3ed8a"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "5fa5d1166a7f9fc6d81dfcb841acbdce2511a2b2d7f227f55d731572f5d3a6a1",
+        "inventory_sha256": "5fa5d1166a7f9fc6d81dfcb841acbdce2511a2b2d7f227f55d731572f5d3a6a1",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-20-backlog-nova-rodada-melhorias.md",
+      "current_sha256": "4820367fef5c754c76c6c173afe97092aef9b0d80e5cc529b5680bd35ce63e47",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round35-20260923.json",
+        "round": 35,
+        "sha256": "615171a4d7a640ee2c12c468ec8ab89f71f16809b714e3ea61cd4ff431e3ed8a"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "4820367fef5c754c76c6c173afe97092aef9b0d80e5cc529b5680bd35ce63e47",
+        "inventory_sha256": "4820367fef5c754c76c6c173afe97092aef9b0d80e5cc529b5680bd35ce63e47",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md",
+      "current_sha256": "d33147abef658d9135c8145ce1a6be4813438a0c8ba8b3a58801a627a4488944",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round35-20260923.json",
+        "round": 35,
+        "sha256": "615171a4d7a640ee2c12c468ec8ab89f71f16809b714e3ea61cd4ff431e3ed8a"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "d33147abef658d9135c8145ce1a6be4813438a0c8ba8b3a58801a627a4488944",
+        "inventory_sha256": "d33147abef658d9135c8145ce1a6be4813438a0c8ba8b3a58801a627a4488944",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-20-reauditoria-candidato-a9ff1b1a.md",
+      "current_sha256": "bb50e062aa086fb72c9b13bdd164afc5d6d1d760b4593e6359d946259b4f5108",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round35-20260923.json",
+        "round": 35,
+        "sha256": "615171a4d7a640ee2c12c468ec8ab89f71f16809b714e3ea61cd4ff431e3ed8a"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "bb50e062aa086fb72c9b13bdd164afc5d6d1d760b4593e6359d946259b4f5108",
+        "inventory_sha256": "bb50e062aa086fb72c9b13bdd164afc5d6d1d760b4593e6359d946259b4f5108",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-20-roadmap-nova-rodada-melhorias.md",
+      "current_sha256": "da9f6918709a5c6ed9a24021c06d1ee6b9bc63f6ce2588c82ede244b7c33beac",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round35-20260923.json",
+        "round": 35,
+        "sha256": "615171a4d7a640ee2c12c468ec8ab89f71f16809b714e3ea61cd4ff431e3ed8a"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "da9f6918709a5c6ed9a24021c06d1ee6b9bc63f6ce2588c82ede244b7c33beac",
+        "inventory_sha256": "da9f6918709a5c6ed9a24021c06d1ee6b9bc63f6ce2588c82ede244b7c33beac",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-21-auditoria-profunda-repositorio.md",
+      "current_sha256": "62a643b37990920ac6b6d7dff854c6889f31c8e209e7ae09e3236f778485aff3",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round33-20260923.json",
+        "round": 33,
+        "sha256": "3642ac052a0bc73a6bdec4014e814169cdaa161a52f2b12b93249bc1ad0c39b7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "62a643b37990920ac6b6d7dff854c6889f31c8e209e7ae09e3236f778485aff3",
+        "inventory_sha256": "62a643b37990920ac6b6d7dff854c6889f31c8e209e7ae09e3236f778485aff3",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-21-backlog-remediacao-integral.md",
+      "current_sha256": "bde12b58cac6a4260ca213ae53f27fcf7c5612f6593823d1f142c94d973ec16c",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round34-20260923.json",
+        "round": 34,
+        "sha256": "da5aa9fea5235993335da26bf8f5ddaeed0cbebeea73efb5d5cfae8e3cbe2623"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "bde12b58cac6a4260ca213ae53f27fcf7c5612f6593823d1f142c94d973ec16c",
+        "inventory_sha256": "bde12b58cac6a4260ca213ae53f27fcf7c5612f6593823d1f142c94d973ec16c",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-21-plano-executivo-remediacao-integral.md",
+      "current_sha256": "5d422634e19e805900f884be8fb198688442640ab9914701515edaa864ac77a3",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round34-20260923.json",
+        "round": 34,
+        "sha256": "da5aa9fea5235993335da26bf8f5ddaeed0cbebeea73efb5d5cfae8e3cbe2623"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "5d422634e19e805900f884be8fb198688442640ab9914701515edaa864ac77a3",
+        "inventory_sha256": "5d422634e19e805900f884be8fb198688442640ab9914701515edaa864ac77a3",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-21-prompt-codex-remediacao-integral.md",
+      "current_sha256": "a1a70433b211ba65493b03af47770a7d9e405f0a1beddea0c3e7e7da1125fd2c",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round34-20260923.json",
+        "round": 34,
+        "sha256": "da5aa9fea5235993335da26bf8f5ddaeed0cbebeea73efb5d5cfae8e3cbe2623"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "a1a70433b211ba65493b03af47770a7d9e405f0a1beddea0c3e7e7da1125fd2c",
+        "inventory_sha256": "a1a70433b211ba65493b03af47770a7d9e405f0a1beddea0c3e7e7da1125fd2c",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-21-rem-001-backup-manifest.md",
+      "current_sha256": "20154f5499f0b9abfb1e8346d30931c46fe08a841f4ba99fcd37b3e3b47488a0",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round32-20260923.json",
+        "round": 32,
+        "sha256": "cc14ba435f50fe8ed15c64ab0c81f1a6bbe6ff8768b9ba87cfb9508553bf5674"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "20154f5499f0b9abfb1e8346d30931c46fe08a841f4ba99fcd37b3e3b47488a0",
+        "inventory_sha256": "20154f5499f0b9abfb1e8346d30931c46fe08a841f4ba99fcd37b3e3b47488a0",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/2026-09-21-roadmap-remediacao-integral.md",
+      "current_sha256": "b871fe3009b05d7dd78719729382e7e359e07a81a160fc929c3aa1da51b2df0e",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round33-20260923.json",
+        "round": 33,
+        "sha256": "3642ac052a0bc73a6bdec4014e814169cdaa161a52f2b12b93249bc1ad0c39b7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "b871fe3009b05d7dd78719729382e7e359e07a81a160fc929c3aa1da51b2df0e",
+        "inventory_sha256": "b871fe3009b05d7dd78719729382e7e359e07a81a160fc929c3aa1da51b2df0e",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/430-fonte-de-verdade-documental.md",
+      "current_sha256": "9544d6cf66a916151f0da335b3beab97afa78697815212424b8d6063af6ebeec",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round28-20260923.json",
+        "round": 28,
+        "sha256": "1288c93718f9cc8c6ed64520dc0a8d8ae28238f03696b52888feaf8d8dd2d51a"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "9544d6cf66a916151f0da335b3beab97afa78697815212424b8d6063af6ebeec",
+        "inventory_sha256": "9544d6cf66a916151f0da335b3beab97afa78697815212424b8d6063af6ebeec",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/README.md",
+      "current_sha256": "998c7b92f2b8361d543716c7b59b02efd841233e0997938a4f7926ad27056410",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round28-20260923.json",
+        "round": 28,
+        "sha256": "1288c93718f9cc8c6ed64520dc0a8d8ae28238f03696b52888feaf8d8dd2d51a"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "9b6aa85e9a7c09074e895815a682eee3ba78ef670615e1853348100cc68ca3c6",
+        "inventory_sha256": "9b6aa85e9a7c09074e895815a682eee3ba78ef670615e1853348100cc68ca3c6",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "HASH_DRIFT_HOLD_NO_REBIND",
+        "rebind_current_sha": false,
+        "current_disposition": "HOLD_CURRENT_HASH_DRIFT"
+      }
+    },
+    {
+      "path": "docs/document-governance.json",
+      "current_sha256": "01fad7cd641d9ec98da16d7bdc0b26371e399e2f78dc8e45081ff86d7e213afe",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round28-20260923.json",
+        "round": 28,
+        "sha256": "1288c93718f9cc8c6ed64520dc0a8d8ae28238f03696b52888feaf8d8dd2d51a"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "01fad7cd641d9ec98da16d7bdc0b26371e399e2f78dc8e45081ff86d7e213afe",
+        "inventory_sha256": "01fad7cd641d9ec98da16d7bdc0b26371e399e2f78dc8e45081ff86d7e213afe",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/engineering/OWNERSHIP_AND_COMPLEXITY.md",
+      "current_sha256": "95b66a6b8e0e437632de94aac2e1551a0731c5ef5cf6429ba404f759c5138879",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round21-20260923.json",
+        "round": 21,
+        "sha256": "b12139ab19aa0499231105f4d3cf1dd9bcdb3861f2d56cc5778eac06c059b485"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "95b66a6b8e0e437632de94aac2e1551a0731c5ef5cf6429ba404f759c5138879",
+        "inventory_sha256": "95b66a6b8e0e437632de94aac2e1551a0731c5ef5cf6429ba404f759c5138879",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/engineering/artifact-retention-policy.json",
+      "current_sha256": "eb65e2225a027f0f57dd6144513eb44875478da4959509337b26c7662613f8ad",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round20-20260923.json",
+        "round": 20,
+        "sha256": "3d19f18cc7739ab0d74a751f61149e6461f9400a5492d6d4d68c345d01e4306d"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "eb65e2225a027f0f57dd6144513eb44875478da4959509337b26c7662613f8ad",
+        "inventory_sha256": "eb65e2225a027f0f57dd6144513eb44875478da4959509337b26c7662613f8ad",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "current_sha256": "0501885c7c5db0d50c8a1227c30ee820a58751f42062510fb253e31213c28583",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round21-20260923.json",
+        "round": 21,
+        "sha256": "b12139ab19aa0499231105f4d3cf1dd9bcdb3861f2d56cc5778eac06c059b485"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "0501885c7c5db0d50c8a1227c30ee820a58751f42062510fb253e31213c28583",
+        "inventory_sha256": "0501885c7c5db0d50c8a1227c30ee820a58751f42062510fb253e31213c28583",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/engineering/critical-coverage-scope.json",
+      "current_sha256": "25f856028b2e08e598d178b6128d03daeae09d4bcafcaf370bae8c0b1557556e",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round19-20260923.json",
+        "round": 19,
+        "sha256": "13d346cc555123199587cb603a8a6152ee62ffb5b4c79622e1f01181c5fda62f"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "25f856028b2e08e598d178b6128d03daeae09d4bcafcaf370bae8c0b1557556e",
+        "inventory_sha256": "25f856028b2e08e598d178b6128d03daeae09d4bcafcaf370bae8c0b1557556e",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/engineering/test-skip-policy.json",
+      "current_sha256": "7bfe08709e00c36ccc64948ace24d2b84394fcdb6e0c18109ab3678e822394e9",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round17-20260923.json",
+        "round": 17,
+        "sha256": "ad88865b946501846a4ddd0168ad380dfb6129cda9fd25fc988004b9ba5d24aa"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "7bfe08709e00c36ccc64948ace24d2b84394fcdb6e0c18109ab3678e822394e9",
+        "inventory_sha256": "7bfe08709e00c36ccc64948ace24d2b84394fcdb6e0c18109ab3678e822394e9",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_CRITICAL_SCOPE_MANIFEST_AND_RUNNER_ENFORCEMENT_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/operations/ARTIFACT_RETENTION_POLICY.md",
+      "current_sha256": "75af2b0f86c9f615fcbbd2afd4793098794e6dfe5b60b2afae71644a955deee1",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round20-20260923.json",
+        "round": 20,
+        "sha256": "3d19f18cc7739ab0d74a751f61149e6461f9400a5492d6d4d68c345d01e4306d"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "75af2b0f86c9f615fcbbd2afd4793098794e6dfe5b60b2afae71644a955deee1",
+        "inventory_sha256": "75af2b0f86c9f615fcbbd2afd4793098794e6dfe5b60b2afae71644a955deee1",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/operations/REM_044_GIT_OBJECT_RETENTION_RUNBOOK.md",
+      "current_sha256": "d6dbedda05759f79d90148ee0c98599a7ae2c7787cb9b949a095f64fc2adfc61",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round32-20260923.json",
+        "round": 32,
+        "sha256": "cc14ba435f50fe8ed15c64ab0c81f1a6bbe6ff8768b9ba87cfb9508553bf5674"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "d6dbedda05759f79d90148ee0c98599a7ae2c7787cb9b949a095f64fc2adfc61",
+        "inventory_sha256": "d6dbedda05759f79d90148ee0c98599a7ae2c7787cb9b949a095f64fc2adfc61",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "docs/operations/REM_TARGET_CERTIFICATION_RUNBOOK.md",
+      "current_sha256": "62eb4f52f1505e909e85b9475708c78da4beb6d12b1da838035ad4de3465a648",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round22-20260923.json",
+        "round": 22,
+        "sha256": "f4a8b4a66fa9972c89fd6d763a691717131d46181bddc39170f3ebba7a12aff1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "62eb4f52f1505e909e85b9475708c78da4beb6d12b1da838035ad4de3465a648",
+        "inventory_sha256": "62eb4f52f1505e909e85b9475708c78da4beb6d12b1da838035ad4de3465a648",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "infra/scripts/validate-backup-restore.mjs",
+      "current_sha256": "b7efe46f7e5d22f36f2fc8cbc71ebc3ce1dcd4a0367e2d54a7557221205d98f2",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round25-20260923.json",
+        "round": 25,
+        "sha256": "5aace5fc0a4ed9a4314a9c90495cfbe2dae77e6a1e42593fde639e4218fec963"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "b7efe46f7e5d22f36f2fc8cbc71ebc3ce1dcd4a0367e2d54a7557221205d98f2",
+        "inventory_sha256": "b7efe46f7e5d22f36f2fc8cbc71ebc3ce1dcd4a0367e2d54a7557221205d98f2",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "infra/scripts/validate-backup-restore.test.mjs",
+      "current_sha256": "277af2e73154864443a582f054c7be9d51c8018183d923d63c7249d750da6a23",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round25-20260923.json",
+        "round": 25,
+        "sha256": "5aace5fc0a4ed9a4314a9c90495cfbe2dae77e6a1e42593fde639e4218fec963"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "277af2e73154864443a582f054c7be9d51c8018183d923d63c7249d750da6a23",
+        "inventory_sha256": "277af2e73154864443a582f054c7be9d51c8018183d923d63c7249d750da6a23",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "package.json",
+      "current_sha256": "bf8780af15a54cc586c2ca0b4dcf362c9c40a56aaa3e3b8629fb37d399742c41",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round14-20260923.json",
+        "round": 14,
+        "sha256": "1d099ed951edfb35855a4c986feb56d5a817038d4f790f16e31d066a3c6d5ce9"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "bf8780af15a54cc586c2ca0b4dcf362c9c40a56aaa3e3b8629fb37d399742c41",
+        "inventory_sha256": "bf8780af15a54cc586c2ca0b4dcf362c9c40a56aaa3e3b8629fb37d399742c41",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "packages/contracts/src/__tests__/integration.test.ts",
+      "current_sha256": "5ff4516bc7c40d258426a29933e40b655d202008b0a2708ee556ddd74fe24574",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round29-20260923.json",
+        "round": 29,
+        "sha256": "d9c8aed82bfb62e21fe9fc50ba027d6387f921f67aa04054c5ca7bc81fcefbf1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "5ff4516bc7c40d258426a29933e40b655d202008b0a2708ee556ddd74fe24574",
+        "inventory_sha256": "5ff4516bc7c40d258426a29933e40b655d202008b0a2708ee556ddd74fe24574",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "packages/contracts/src/integration.ts",
+      "current_sha256": "fc5969b8eb50e6b3349c8832f36be13004fd19bee2c6160052b9fa2a5ee8245f",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round29-20260923.json",
+        "round": 29,
+        "sha256": "d9c8aed82bfb62e21fe9fc50ba027d6387f921f67aa04054c5ca7bc81fcefbf1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "fc5969b8eb50e6b3349c8832f36be13004fd19bee2c6160052b9fa2a5ee8245f",
+        "inventory_sha256": "fc5969b8eb50e6b3349c8832f36be13004fd19bee2c6160052b9fa2a5ee8245f",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "packages/modules/reports/src/index.ts",
+      "current_sha256": "5723a483dbd63519496c946ad35c657fc4418c9272fbb94552becdc53eb4b947",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round3-20260923.json",
+        "round": 3,
+        "sha256": "d3042c603780f282640f67b8c838f56ee8eb79d0127e2009f70b5df3313bf2ae"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "5723a483dbd63519496c946ad35c657fc4418c9272fbb94552becdc53eb4b947",
+        "inventory_sha256": "5723a483dbd63519496c946ad35c657fc4418c9272fbb94552becdc53eb4b947",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_EXPLICIT_REPORT_DATA_RETENTION_CONTRACT_AND_DATABASE_BOUNDARY_VERIFICATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "packages/modules/reports/src/report-database-repository.test.ts",
+      "current_sha256": "f6f31e1ce7a58c0b83c1b771df6db2f6c1392a5a81d0760f14f01a36b1a5d87a",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round1-20260923.json",
+        "round": 1,
+        "sha256": "7fcfd8a9c8826fda70bfc73c59536f09145e49f976d8282dfaaece22fa26bfd1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "f6f31e1ce7a58c0b83c1b771df6db2f6c1392a5a81d0760f14f01a36b1a5d87a",
+        "inventory_sha256": "f6f31e1ce7a58c0b83c1b771df6db2f6c1392a5a81d0760f14f01a36b1a5d87a",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required",
+        "classification": "EXPLICIT_NOT_APPROVED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "packages/modules/reports/src/report-database-repository.ts",
+      "current_sha256": "b27b381b9dd78ed552a253a2ed7a93ab9f80c08c7b3e862f6f75582e14193901",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round3-20260923.json",
+        "round": 3,
+        "sha256": "d3042c603780f282640f67b8c838f56ee8eb79d0127e2009f70b5df3313bf2ae"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "b27b381b9dd78ed552a253a2ed7a93ab9f80c08c7b3e862f6f75582e14193901",
+        "inventory_sha256": "b27b381b9dd78ed552a253a2ed7a93ab9f80c08c7b3e862f6f75582e14193901",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_EXPLICIT_REPORT_DATA_RETENTION_CONTRACT_AND_DATABASE_BOUNDARY_VERIFICATION",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "packages/modules/reports/src/report-renderers.test.ts",
+      "current_sha256": "bfd93ee927078f3c42c9217b3e44df494d0c48def1739640718ff921bf660901",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round1-20260923.json",
+        "round": 1,
+        "sha256": "7fcfd8a9c8826fda70bfc73c59536f09145e49f976d8282dfaaece22fa26bfd1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "bfd93ee927078f3c42c9217b3e44df494d0c48def1739640718ff921bf660901",
+        "inventory_sha256": "bfd93ee927078f3c42c9217b3e44df494d0c48def1739640718ff921bf660901",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required",
+        "classification": "EXPLICIT_NOT_APPROVED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "packages/modules/reports/src/report-renderers.ts",
+      "current_sha256": "c915ae900a84f5229afe2fb01d4f9ef15817f30a82b3ce6764f6d092efc2e1d7",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round1-20260923.json",
+        "round": 1,
+        "sha256": "7fcfd8a9c8826fda70bfc73c59536f09145e49f976d8282dfaaece22fa26bfd1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "c915ae900a84f5229afe2fb01d4f9ef15817f30a82b3ce6764f6d092efc2e1d7",
+        "inventory_sha256": "c915ae900a84f5229afe2fb01d4f9ef15817f30a82b3ce6764f6d092efc2e1d7",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required",
+        "classification": "EXPLICIT_NOT_APPROVED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "packages/modules/reports/src/report-schedule-time.ts",
+      "current_sha256": "9689a8491519c42e08d4b38bf93ab2378d2fc4435dbbaa6189b7c8f60aef9e07",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round1-20260923.json",
+        "round": 1,
+        "sha256": "7fcfd8a9c8826fda70bfc73c59536f09145e49f976d8282dfaaece22fa26bfd1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "9689a8491519c42e08d4b38bf93ab2378d2fc4435dbbaa6189b7c8f60aef9e07",
+        "inventory_sha256": "9689a8491519c42e08d4b38bf93ab2378d2fc4435dbbaa6189b7c8f60aef9e07",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required",
+        "classification": "EXPLICIT_NOT_APPROVED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "scripts/artifact-retention-dry-run.mjs",
+      "current_sha256": "06916c62a1a0a8e1718b67da868339aa99bc1a5265149d16a31590c85a58f0fa",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round20-20260923.json",
+        "round": 20,
+        "sha256": "3d19f18cc7739ab0d74a751f61149e6461f9400a5492d6d4d68c345d01e4306d"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "06916c62a1a0a8e1718b67da868339aa99bc1a5265149d16a31590c85a58f0fa",
+        "inventory_sha256": "06916c62a1a0a8e1718b67da868339aa99bc1a5265149d16a31590c85a58f0fa",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "scripts/artifact-retention-dry-run.test.mjs",
+      "current_sha256": "f6bdabfd1e4639cc2e84df5d9c849556c22277e52744a7d8feb57ab4878e0a63",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round20-20260923.json",
+        "round": 20,
+        "sha256": "3d19f18cc7739ab0d74a751f61149e6461f9400a5492d6d4d68c345d01e4306d"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "f6bdabfd1e4639cc2e84df5d9c849556c22277e52744a7d8feb57ab4878e0a63",
+        "inventory_sha256": "f6bdabfd1e4639cc2e84df5d9c849556c22277e52744a7d8feb57ab4878e0a63",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "scripts/check-complexity-hotspots.mjs",
+      "current_sha256": "ce86f6fd709cabfc568c2476a10e1c11191204b040b27dfa486960022546d231",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round21-20260923.json",
+        "round": 21,
+        "sha256": "b12139ab19aa0499231105f4d3cf1dd9bcdb3861f2d56cc5778eac06c059b485"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "ce86f6fd709cabfc568c2476a10e1c11191204b040b27dfa486960022546d231",
+        "inventory_sha256": "ce86f6fd709cabfc568c2476a10e1c11191204b040b27dfa486960022546d231",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "scripts/generate-architecture-concentration-evidence.mjs",
+      "current_sha256": "3c380b16e15710c0c5e6c5f028cf52aa101f01b556b0302a9a05b423614b2a8e",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round21-20260923.json",
+        "round": 21,
+        "sha256": "b12139ab19aa0499231105f4d3cf1dd9bcdb3861f2d56cc5778eac06c059b485"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "3c380b16e15710c0c5e6c5f028cf52aa101f01b556b0302a9a05b423614b2a8e",
+        "inventory_sha256": "3c380b16e15710c0c5e6c5f028cf52aa101f01b556b0302a9a05b423614b2a8e",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "scripts/generate-architecture-concentration-evidence.test.mjs",
+      "current_sha256": "ce5d597a06b34d7151d5443f50f4a9891e259df3e6551cdc58df5216b0a39295",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round21-20260923.json",
+        "round": 21,
+        "sha256": "b12139ab19aa0499231105f4d3cf1dd9bcdb3861f2d56cc5778eac06c059b485"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "ce5d597a06b34d7151d5443f50f4a9891e259df3e6551cdc58df5216b0a39295",
+        "inventory_sha256": "ce5d597a06b34d7151d5443f50f4a9891e259df3e6551cdc58df5216b0a39295",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "scripts/run-redis-rate-limiter-shard.mjs",
+      "current_sha256": "ae05075b5575f0d436092e8d260cd0dbce6f3a9863655d76d9b6b2632554f518",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round18-20260923.json",
+        "round": 18,
+        "sha256": "c41e7f934364625d6464cc29656b3188f30c0c2eebcd597b155863f2cc402fc8"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "ae05075b5575f0d436092e8d260cd0dbce6f3a9863655d76d9b6b2632554f518",
+        "inventory_sha256": "ae05075b5575f0d436092e8d260cd0dbce6f3a9863655d76d9b6b2632554f518",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "scripts/run-rem016-migration-harness.mjs",
+      "current_sha256": "2ebc6fb188661fb55e115f868cdd3853b1cdfd0d068873110f08a7b34294f077",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round15-20260923.json",
+        "round": 15,
+        "sha256": "71dab45565b0e981da4ab98234df9882b52d27712e3012ebe1f0746002001285"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "2ebc6fb188661fb55e115f868cdd3853b1cdfd0d068873110f08a7b34294f077",
+        "inventory_sha256": "2ebc6fb188661fb55e115f868cdd3853b1cdfd0d068873110f08a7b34294f077",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_IMAGE_TRUST_TIMEOUT_SIGNAL_CLEANUP_AND_CANDIDATE_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "scripts/run-root-test-suite.mjs",
+      "current_sha256": "f6404a921014bc5746513d1e708528e63a6f9d64c8012d14f9c3f9a99e195465",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round14-20260923.json",
+        "round": 14,
+        "sha256": "1d099ed951edfb35855a4c986feb56d5a817038d4f790f16e31d066a3c6d5ce9"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "f6404a921014bc5746513d1e708528e63a6f9d64c8012d14f9c3f9a99e195465",
+        "inventory_sha256": "f6404a921014bc5746513d1e708528e63a6f9d64c8012d14f9c3f9a99e195465",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "scripts/run-semantic-lint.mjs",
+      "current_sha256": "520064ed8d4e3eac9f79e27ad94f2b6e5e3e764dc3cb0c0d3883ddcbc656c2a8",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round13-20260923.json",
+        "round": 13,
+        "sha256": "73b7bc7ab83b8f0f18590599dfe97aa31c0e6f02dfd6ecd3e7384415e117fec5"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "520064ed8d4e3eac9f79e27ad94f2b6e5e3e764dc3cb0c0d3883ddcbc656c2a8",
+        "inventory_sha256": "520064ed8d4e3eac9f79e27ad94f2b6e5e3e764dc3cb0c0d3883ddcbc656c2a8",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "scripts/validate-openapi.js",
+      "current_sha256": "3a9d76640d7bfbd2e2c8639c846b4c18d42d2142880f313d4da2be88955613d2",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round23-20260923.json",
+        "round": 23,
+        "sha256": "eff8e7cc34dbdb1731e9d95026eedce4a05a3a05a0b9926ad5208d746909f4c7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "3a9d76640d7bfbd2e2c8639c846b4c18d42d2142880f313d4da2be88955613d2",
+        "inventory_sha256": "3a9d76640d7bfbd2e2c8639c846b4c18d42d2142880f313d4da2be88955613d2",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "scripts/validate-openapi.mjs",
+      "current_sha256": "ca2c87d0b87d9f2c79f499a6515c3193431eed15599344f8629736eef3577fed",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round23-20260923.json",
+        "round": 23,
+        "sha256": "eff8e7cc34dbdb1731e9d95026eedce4a05a3a05a0b9926ad5208d746909f4c7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "ca2c87d0b87d9f2c79f499a6515c3193431eed15599344f8629736eef3577fed",
+        "inventory_sha256": "ca2c87d0b87d9f2c79f499a6515c3193431eed15599344f8629736eef3577fed",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "scripts/validate-remediation-target-pack.mjs",
+      "current_sha256": "9f85c1dbdd5e9d2df9a79a3c3af00583a63d38192fad5300e79fd43d41c65f35",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round22-20260923.json",
+        "round": 22,
+        "sha256": "f4a8b4a66fa9972c89fd6d763a691717131d46181bddc39170f3ebba7a12aff1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "9f85c1dbdd5e9d2df9a79a3c3af00583a63d38192fad5300e79fd43d41c65f35",
+        "inventory_sha256": "9f85c1dbdd5e9d2df9a79a3c3af00583a63d38192fad5300e79fd43d41c65f35",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "scripts/validate-remediation-target-pack.test.mjs",
+      "current_sha256": "a2ecc8f20a33d07b54c0a3a484f452a0ea129d3032a1a685f24820a12ae7e41e",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round22-20260923.json",
+        "round": 22,
+        "sha256": "f4a8b4a66fa9972c89fd6d763a691717131d46181bddc39170f3ebba7a12aff1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "a2ecc8f20a33d07b54c0a3a484f452a0ea129d3032a1a685f24820a12ae7e41e",
+        "inventory_sha256": "a2ecc8f20a33d07b54c0a3a484f452a0ea129d3032a1a685f24820a12ae7e41e",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "scripts/validate-test-skip-policy.mjs",
+      "current_sha256": "d637021a2d61282fbc0ed60ea2a118ed77d05174d5929d0a838133e674221660",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round16-20260923.json",
+        "round": 16,
+        "sha256": "acd55cc2181f1b1b3e781d4c7fdce5fc4a85a29f8d8542742bf817de2b3ded37"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "d637021a2d61282fbc0ed60ea2a118ed77d05174d5929d0a838133e674221660",
+        "inventory_sha256": "d637021a2d61282fbc0ed60ea2a118ed77d05174d5929d0a838133e674221660",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_POLICY_CONFIG_AND_BYPASS_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "tests/integration/database/fk.test.ts",
+      "current_sha256": "eaf83add18a3ca680f7836c5133d4a903082ab72672a4c3b3466be0c80e75bc0",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round41-20260923.json",
+        "round": 41,
+        "sha256": "fcd2143328fde82f1895a790519218b25d7b45a000acdecc4179bbd78836f71f"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "eaf83add18a3ca680f7836c5133d4a903082ab72672a4c3b3466be0c80e75bc0",
+        "inventory_sha256": "eaf83add18a3ca680f7836c5133d4a903082ab72672a4c3b3466be0c80e75bc0",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "tests/integration/openapi-runtime.test.ts",
+      "current_sha256": "f5824b0cf8a8ae3e70647b2f253e593d6069411220b75058ade6f980fdcd06a4",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round23-20260923.json",
+        "round": 23,
+        "sha256": "eff8e7cc34dbdb1731e9d95026eedce4a05a3a05a0b9926ad5208d746909f4c7"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "f5824b0cf8a8ae3e70647b2f253e593d6069411220b75058ade6f980fdcd06a4",
+        "inventory_sha256": "f5824b0cf8a8ae3e70647b2f253e593d6069411220b75058ade6f980fdcd06a4",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "tests/unit/api/raw-request-body.test.ts",
+      "current_sha256": "10526b6c38b95bdca87ff55a3bab4c222b26e28cf667f3bdccddf4980350b621",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round26-20260923.json",
+        "round": 26,
+        "sha256": "166636809afc01109b7f9c87a248a2e0921cf06583fd24d8e6e7856cb68fb0f3"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "10526b6c38b95bdca87ff55a3bab4c222b26e28cf667f3bdccddf4980350b621",
+        "inventory_sha256": "10526b6c38b95bdca87ff55a3bab4c222b26e28cf667f3bdccddf4980350b621",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "tests/unit/api/response-buffer.test.ts",
+      "current_sha256": "7dcad755f7e0314d46b7970b2e9c99d7566a6e309b28ab264a2e03e54c6cc814",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round26-20260923.json",
+        "round": 26,
+        "sha256": "166636809afc01109b7f9c87a248a2e0921cf06583fd24d8e6e7856cb68fb0f3"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "7dcad755f7e0314d46b7970b2e9c99d7566a6e309b28ab264a2e03e54c6cc814",
+        "inventory_sha256": "7dcad755f7e0314d46b7970b2e9c99d7566a6e309b28ab264a2e03e54c6cc814",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "tests/unit/api/startup-secrets-runtime.test.ts",
+      "current_sha256": "4f36e8db116e010a78918eb64e5511414af48f2d291b647a66f9cfa6d1452c45",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round27-20260923.json",
+        "round": 27,
+        "sha256": "5d620a84b757c6c979bac12bac00a185c1f1979942aa529d1b4e86c026c7b20b"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "4f36e8db116e010a78918eb64e5511414af48f2d291b647a66f9cfa6d1452c45",
+        "inventory_sha256": "4f36e8db116e010a78918eb64e5511414af48f2d291b647a66f9cfa6d1452c45",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "tests/unit/http-command-helpers.test.ts",
+      "current_sha256": "9a7a2e9a1d03583e3c0dd5dadcb1351dd13e3413af3dd17a120e263398e5016d",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round27-20260923.json",
+        "round": 27,
+        "sha256": "5d620a84b757c6c979bac12bac00a185c1f1979942aa529d1b4e86c026c7b20b"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "9a7a2e9a1d03583e3c0dd5dadcb1351dd13e3413af3dd17a120e263398e5016d",
+        "inventory_sha256": "9a7a2e9a1d03583e3c0dd5dadcb1351dd13e3413af3dd17a120e263398e5016d",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "tests/unit/infra/api-server-boundaries.test.ts",
+      "current_sha256": "9d806371a7ee7614aea0375a1b92b076e56db070fab5fbe3a54c72ade8deb0b9",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round31-20260923.json",
+        "round": 31,
+        "sha256": "b388270d61ab37662319bde0009d6d6fc84855da4f84a02b41087084d20ad016"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "419a59486f096dee3426a3f80fa5a7e8a5744489365ecf56abef4fa17141c2c2",
+        "inventory_sha256": "419a59486f096dee3426a3f80fa5a7e8a5744489365ecf56abef4fa17141c2c2",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "HASH_DRIFT_HOLD_NO_REBIND",
+        "rebind_current_sha": false,
+        "current_disposition": "HOLD_CURRENT_HASH_DRIFT"
+      }
+    },
+    {
+      "path": "tests/unit/infra/complexity-hotspots.test.ts",
+      "current_sha256": "886b0c26163e330a29f4322cde5c9d0530608f44bddc3ce9038cd0dc7d00c488",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round21-20260923.json",
+        "round": 21,
+        "sha256": "b12139ab19aa0499231105f4d3cf1dd9bcdb3861f2d56cc5778eac06c059b485"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "886b0c26163e330a29f4322cde5c9d0530608f44bddc3ce9038cd0dc7d00c488",
+        "inventory_sha256": "886b0c26163e330a29f4322cde5c9d0530608f44bddc3ce9038cd0dc7d00c488",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "tests/unit/infra/lint-contract.test.ts",
+      "current_sha256": "1e1acefceb521d6494993f32b7108bcb58da2761dbbfb4df8d7d85f3c033ed7f",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round13-20260923.json",
+        "round": 13,
+        "sha256": "73b7bc7ab83b8f0f18590599dfe97aa31c0e6f02dfd6ecd3e7384415e117fec5"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "1e1acefceb521d6494993f32b7108bcb58da2761dbbfb4df8d7d85f3c033ed7f",
+        "inventory_sha256": "1e1acefceb521d6494993f32b7108bcb58da2761dbbfb4df8d7d85f3c033ed7f",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "tests/unit/infra/lockfile-gitignore.test.ts",
+      "current_sha256": "bb3a562e3b33655de501e0c4f3650b65b3e6fe534eaa9ae350390a2b775f9b7e",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round24-20260923.json",
+        "round": 24,
+        "sha256": "533e46e2b90efc81d8a56b9da57558be5bd705456ec772eb7d65ad5bf0241dc1"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "bb3a562e3b33655de501e0c4f3650b65b3e6fe534eaa9ae350390a2b775f9b7e",
+        "inventory_sha256": "bb3a562e3b33655de501e0c4f3650b65b3e6fe534eaa9ae350390a2b775f9b7e",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "NOT_STATED",
+        "classification": "NOT_STATED",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "tests/unit/infra/migration-harness-contract.test.ts",
+      "current_sha256": "1460047218d94a26944d20dcea2cda26cb19f0d33800d70c47c87d9f7f8dafed",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round15-20260923.json",
+        "round": 15,
+        "sha256": "71dab45565b0e981da4ab98234df9882b52d27712e3012ebe1f0746002001285"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "1460047218d94a26944d20dcea2cda26cb19f0d33800d70c47c87d9f7f8dafed",
+        "inventory_sha256": "1460047218d94a26944d20dcea2cda26cb19f0d33800d70c47c87d9f7f8dafed",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_IMAGE_TRUST_TIMEOUT_SIGNAL_CLEANUP_AND_CANDIDATE_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "tests/unit/infra/root-test-runner-contract.test.ts",
+      "current_sha256": "96f11a730c35b4ac9127d66f5746aab1126002878964280f518fdad4cd71e85f",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round14-20260923.json",
+        "round": 14,
+        "sha256": "1d099ed951edfb35855a4c986feb56d5a817038d4f790f16e31d066a3c6d5ce9"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "96f11a730c35b4ac9127d66f5746aab1126002878964280f518fdad4cd71e85f",
+        "inventory_sha256": "96f11a730c35b4ac9127d66f5746aab1126002878964280f518fdad4cd71e85f",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    },
+    {
+      "path": "tests/unit/infra/test-skip-policy.test.ts",
+      "current_sha256": "71ad1ef003e1ecf951c6f02ba43861b7cd709fb72d7ef907f2d327416c1f485a",
+      "last_report": {
+        "ref": ".agent/evidence/m02-source-review-round16-20260923.json",
+        "round": 16,
+        "sha256": "acd55cc2181f1b1b3e781d4c7fdce5fc4a85a29f8d8542742bf817de2b3ded37"
+      },
+      "declared_review_hashes": {
+        "current_sha256": "71ad1ef003e1ecf951c6f02ba43861b7cd709fb72d7ef907f2d327416c1f485a",
+        "inventory_sha256": "71ad1ef003e1ecf951c6f02ba43861b7cd709fb72d7ef907f2d327416c1f485a",
+        "current_hash_syntax_valid": true,
+        "current_equals_inventory_claim": true,
+        "sha_matches_inventory_flag_in_report": true
+      },
+      "historical_decision": {
+        "field": "candidate_overlay_decision",
+        "value": "HOLD_PENDING_POLICY_CONFIG_AND_BYPASS_REVIEW",
+        "classification": "EXPLICIT_HOLD_OR_PENDING",
+        "explicit_include_inferred": false
+      },
+      "content_compatibility": {
+        "result": "EXACT_SHA_MATCH_TO_LATEST_PATH_REVIEW",
+        "rebind_current_sha": true,
+        "current_disposition": "CURRENT_HASH_REBOUND"
+      }
+    }
+  ],
+  "self_exclusion": {
+    "path": ".agent/evidence/m02-legacy-134-rebind-20260923.json",
+    "included_in_selected_134": false,
+    "own_sha256": "NOT_COMPUTED_SELF_REFERENCE",
+    "reason": "This artifact is created after the reconciliation source snapshot; its path is excluded from the 134 historical entries."
+  }
+}

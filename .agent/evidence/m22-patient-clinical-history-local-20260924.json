@@ -1,0 +1,81 @@
+{
+  "evidence_id": "M22-PATIENT-CLINICAL-HISTORY-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T10:45:48Z",
+  "scope": "M-22 patient detail clinical-history feature extraction and local regression evidence.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to this dirty worktree at the recorded HEAD; it is not candidate or release evidence."
+  },
+  "decision_record": {
+    "path": ".agent/evidence/fp-decision-patient-clinical-history-20260924.json",
+    "sha256": "62612a978f1b6dddc1d3db2718bfcfc19f5135fc12bde34d006b05924af39580",
+    "selected_boundary": "PatientClinicalHistoryCard owns clinical-history markup; usePatientClinicalHistory owns the draft, pending state, retry idempotency, and read-back confirmation; PatientDetailPage retains route, accordion, alerts, and cross-card projection ownership."
+  },
+  "behavior_preserved": [
+    "Stable accordion trigger/panel IDs, expanded/controls/region semantics, and page-owned keyboard order.",
+    "Closed or missing focal encounters remain read-only; page remains responsible for canWrite eligibility.",
+    "Create/update DTOs, expected version, payload-bound idempotency key, request-generation guard, exact read-back identity/content/version checks, and draft retention on failure.",
+    "Only a reread-confirmed entry updates patient/focal projections and displays the existing success message."
+  ],
+  "changed_paths": [
+    {
+      "path": "apps/spa/src/pages/patients/PatientDetailPage.vue",
+      "sha256": "a73ded21810b8ef63748ffec685ddd939eb7a8f3d77420215d9fd9ce9dec1f27",
+      "physical_lines": 4007
+    },
+    {
+      "path": "apps/spa/src/pages/patients/PatientClinicalHistoryCard.vue",
+      "sha256": "d60002f5095585595763950f9c30b4e2d0eb4840ef938bfd5ab8645acbf6c180",
+      "physical_lines": 97
+    },
+    {
+      "path": "apps/spa/src/pages/patients/usePatientClinicalHistory.ts",
+      "sha256": "2cb0106a921285c9cebc80441242235f2df2e70910eddef325314565a4bc4728",
+      "physical_lines": 128
+    },
+    {
+      "path": "apps/spa/src/pages/patients/__tests__/PatientClinicalHistoryCard.test.ts",
+      "sha256": "ce0e01b9db64f84ddfe646f24cab78ad5f90c59a47e56118a0b5ba4325fa78ad",
+      "physical_lines": 64
+    },
+    {
+      "path": "apps/spa/src/pages/patients/__tests__/usePatientClinicalHistory.test.ts",
+      "sha256": "2c06e723a22861018aee9ff4b783203a89265055ea9c007cfe4e15870a7e3cf3",
+      "physical_lines": 158
+    }
+  ],
+  "checks": [
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/patients/__tests__/PatientClinicalHistoryCard.test.ts src/pages/patients/__tests__/usePatientClinicalHistory.test.ts src/pages/patients/__tests__/PatientDetailPage.test.ts",
+      "result": "PASS, 3 files and 17/17 tests. Covers controlled view events and accessibility semantics, create/update, confirmation mismatch and draft retention, idempotent retries, payload changes, stale route completion, patient/encounter mismatch, and page integration.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2; Vitest/JSDOM; database URL variables unset"
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit",
+      "result": "PASS with no diagnostics.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST pnpm --filter @cvg-his-v2/spa exec vitest run --reporter=dot",
+      "result": "PASS, 238 files and 1,948/1,948 tests. JSDOM emitted existing unmatched-router, document-navigation, and scrollTo warnings; no test failed.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2; package Vitest config uses JSDOM and src/test/setup.ts; database URL variables unset"
+    },
+    {
+      "command": "pnpm exec prettier --check apps/spa/src/pages/patients/PatientDetailPage.vue apps/spa/src/pages/patients/PatientClinicalHistoryCard.vue apps/spa/src/pages/patients/usePatientClinicalHistory.ts apps/spa/src/pages/patients/__tests__/PatientClinicalHistoryCard.test.ts apps/spa/src/pages/patients/__tests__/usePatientClinicalHistory.test.ts .agent/evidence/fp-decision-patient-clinical-history-20260924.json",
+      "result": "PASS; all matched implementation and decision files use Prettier style.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    }
+  ],
+  "limits": [
+    "Vitest component and page tests use mocked API services; they do not establish persistence, authorization, or browser behavior.",
+    "No browser screenshot, mobile/dark-theme visual review, real screen-reader/assistive-technology review, Product acceptance, or UAT was performed.",
+    "Other large SPA pages and broader M-22 architecture work remain open; this extraction is one bounded patient-detail feature slice.",
+    "The worktree remains dirty and no candidate SHA, CI, target, release, or production acceptance is asserted."
+  ]
+}

@@ -1,0 +1,200 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-029-WORKER-REPORT-SOURCES-20260922",
+  "timestamp": "2026-09-22T07:10:00.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "implementação candidate-bound e verificação local do adapter de fontes de reports agendados do worker",
+  "scope_ref": "REM-029",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-REM029-SOURCES-001",
+      "description": "O adapter de fontes agendadas foi extraído para boundary próprio; runner.ts reteve ticks/factories e a fachada pública, reduzindo de 2.139 para 231 linhas físicas.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-WORKER-REPORT-SOURCES-20260922",
+        ".agent/evidence/rem-029-worker-report-sources-implementation-20260922.txt",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/scheduled-report-sources.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A separação é a primeira fatia do cartão; renderização e persistência do módulo reports ainda não foram extraídas."
+    },
+    {
+      "id": "V-REM029-SOURCES-002",
+      "description": "Os exports públicos observados no runner foram preservados, incluindo resolveScheduledReportRows, o tipo AdministrativeExecutiveReportSources, factories e ticks.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-WORKER-REPORT-SOURCES-20260922",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/runner.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A auditoria é local e estática, complementada pela suíte do worker; não substitui consumidores externos/CI."
+    },
+    {
+      "id": "V-REM029-SOURCES-003",
+      "description": "Caps, filtros, validação de data, account guards, fontes ausentes/malformadas e mapeamentos existentes permaneceram cobertos pelo runner e pelo teste focal do novo boundary.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-WORKER-REPORT-SOURCES-20260922",
+        ".agent/evidence/rem-029-worker-report-sources-implementation-20260922.txt",
+        "apps/worker/src/scheduled-report-sources.test.ts",
+        "apps/worker/src/runner.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "O teste processual PostgreSQL ficou condicionado pela permissão do ambiente."
+    },
+    {
+      "id": "V-REM029-SOURCES-004",
+      "description": "Claims, fencing, retries, delivery identity, métricas, contexto tenant e falha por schedule permaneceram no job/service; a regressão scheduled-report-job e a composição do worker passaram.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-WORKER-REPORT-SOURCES-20260922",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "apps/worker/src/jobs/scheduled-report-job.test.ts",
+        "apps/worker/src/run-once.ts",
+        "apps/worker/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A preservação foi verificada por diff, código e testes unitários; a prova processual de concorrência/SIGKILL permanece aberta."
+    },
+    {
+      "id": "V-REM029-SOURCES-005",
+      "description": "Worker test, module-reports test, worker typecheck, lint, diff check e auditoria de imports passaram sob Node 22.23.2.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-WORKER-REPORT-SOURCES-20260922",
+        ".agent/evidence/rem-029-worker-report-sources-implementation-20260922.txt",
+        "apps/worker/package.json",
+        "packages/modules/reports/package.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A checagem raiz de complexidade continua condicionada por quatro medições SPA preexistentes no worktree."
+    },
+    {
+      "id": "V-REM029-SOURCES-006",
+      "description": "O hotspot do runner foi reconciliado para 231 linhas e permanece abaixo do teto 2.139; a checagem global de complexidade ainda encontra quatro divergências físicas em páginas SPA fora desta ação.",
+      "required": true,
+      "status": "CONDITION",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-WORKER-REPORT-SOURCES-20260922",
+        ".agent/evidence/rem-029-worker-report-sources-implementation-20260922.txt",
+        "docs/engineering/complexity-hotspots.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Não é correto promover `pnpm complexity:check` a PASS integral enquanto as quatro entradas SPA divergentes permanecerem sem reconciliação."
+    },
+    {
+      "id": "V-REM029-SOURCES-007",
+      "description": "A integração processual worker-run-once-reports, cobrindo isolamento tenant, concorrência, retry, SIGKILL e lease fencing, não pôde iniciar porque o setup do banco efêmero não tinha permissão para criar a base.",
+      "required": true,
+      "status": "CONDITION",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-WORKER-REPORT-SOURCES-20260922",
+        ".agent/evidence/rem-029-worker-report-sources-implementation-20260922.txt",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Nenhum teste processual, migration, target ou banco compartilhado foi executado nesta tentativa."
+    },
+    {
+      "id": "V-REM029-SOURCES-008",
+      "description": "A ausência de crítica independente E7 e de revisão formal dos owners REPORTS/RUNTIME permanece explicitamente registrada.",
+      "required": true,
+      "status": "CONDITION",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-WORKER-REPORT-SOURCES-20260922",
+        ".agent/evidence/rem-029-worker-report-sources-implementation-20260922.txt"
+      ],
+      "confidence": "HIGH",
+      "limitations": "O usuário restringiu a execução a um agente primário; não há crítica fresca independente disponível."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-029-worker-report-sources-implementation-20260922.txt",
+    ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-WORKER-REPORT-SOURCES-20260922",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/scheduled-report-sources.ts",
+    "apps/worker/src/scheduled-report-sources.test.ts",
+    "apps/worker/src/jobs/scheduled-report-job.ts",
+    "apps/worker/src/jobs/scheduled-report-job.test.ts",
+    "apps/worker/src/run-once.ts",
+    "apps/worker/src/index.ts",
+    "apps/worker/package.json",
+    "packages/modules/reports/src/index.ts",
+    "tests/integration/process/worker-run-once-reports.test.ts",
+    "docs/engineering/complexity-hotspots.json"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Integração PostgreSQL/run-once não iniciou por permissão de criação do banco efêmero; tenant isolation, concorrência, SIGKILL, retry e fencing permanecem não promovidos a PASS.",
+    "A checagem global de complexidade continua falhando por quatro medições físicas SPA preexistentes fora desta ação.",
+    "Crítica adversarial E7 e revisão identificada dos owners REPORTS/RUNTIME permanecem abertas.",
+    "Renderização e persistência do module-reports continuam nas fases seguintes de REM-029.",
+    "CI/OCI, target, provider real, UAT, browser visual/a11y, release e go/no-go humano não fazem parte deste gate."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-029-SOURCES-INTEGRATION",
+      "description": "Executar o teste processual worker-run-once-reports em PostgreSQL efêmero/local autorizado, sem provider real, e registrar o resultado para concorrência, isolamento, retry, SIGKILL e fencing.",
+      "non_blocking": true,
+      "impact": "Bloqueia o aceite integral do cartão REM-029, mas não a continuidade de implementação local reversível.",
+      "owner": "RUNTIME/QA",
+      "due_or_trigger": "Antes de promover REM-029 além da verificação local ou fechar o cartão.",
+      "verification_method": "Vitest process integration com `REQUIRE_TEST_DB=1 TEST_DB_EPHEMERAL=1` e banco descartável autorizado.",
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-029-SOURCES-COMPLEXITY",
+      "description": "Reconciliar as quatro entradas SPA divergentes do manifesto de complexidade em suas respectivas ações, sem mascarar o erro do checker.",
+      "non_blocking": true,
+      "impact": "Mantém o gate global de complexidade aberto; o hotspot do runner desta ação já está reconciliado.",
+      "owner": "WEB/RUNTIME",
+      "due_or_trigger": "Na próxima alteração/verificação de cada hotspot SPA ou antes do gate integral do programa.",
+      "verification_method": "`pnpm complexity:check` com todas as medições físicas coerentes.",
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-029-SOURCES-REVIEW",
+      "description": "Obter crítica independente E7 e revisão formal identificada dos owners REPORTS/RUNTIME sobre o boundary e seus invariantes.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a implementação local; bloqueia aceite organizacional e fechamento do cartão.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de comprometer o boundary como contrato de roadmap ou fechar REM-029.",
+      "verification_method": "Revisão identificada em contexto fresco e gate superseding.",
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "implementação e verificação local reversível do adapter de fontes agendadas do worker",
+    "decision": "A instrução autoriza mutação local e testes locais; não autoriza target, provider real, UAT, aceite de owners, release ou go/no-go.",
+    "evidence_ref": ".agent/evidence/rem-029-worker-report-sources-implementation-20260922.txt",
+    "expires_or_revalidates": "Revalidar se o adapter tocar claims/retries/tenant context, se a fachada pública mudar, se a integração usar banco compartilhado ou se a implementação avançar para renderização/persistência."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-029:VERIFY-WORKER-REPORT-SOURCES",
+  "revalidation_triggers": [
+    "Alterar claims, lease/fencing, retry, delivery idempotency, métricas ou contexto tenant.",
+    "Remover ou alterar os re-exports públicos de runner.ts.",
+    "Alterar caps, filtros, account guards ou validações fail-closed sem novos testes focalizados.",
+    "Executar integração contra banco compartilhado, provider real, target, credenciais, UAT ou release.",
+    "Promover a checagem global de complexidade a PASS sem reconciliar as quatro entradas SPA divergentes.",
+    "Promover este gate a aceite integral sem crítica E7 e owners identificados."
+  ],
+  "supersedes": ".agent/gates/implementation-ready-remediacao-integral-rem-029-20260922.json"
+}

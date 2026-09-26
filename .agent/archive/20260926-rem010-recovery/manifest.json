@@ -1,0 +1,204 @@
+{
+  "schema_version": 1,
+  "recovery_id": "REM010-RECOVERY-20260926-R1",
+  "observed_at_utc": "2026-09-26T04:56:15Z",
+  "classification": "APPEND_ONLY_TASK_RECOVERY_NOT_GLOBAL_CONTROLLER_MIGRATION",
+  "reason": "REM-010 control pointers still described the 2026-09-24 snapshot and no candidate, while an isolated candidate has since passed static preparation review. Reconcile the single active task without changing task status or promoting product/release claims.",
+  "source_snapshot": {
+    "main_head": "ad2f0373f68635f2579253b013a4382219906921",
+    "inventory_r21": ".agent/evidence/m02-current-worktree-inventory-20260926-r21.json",
+    "inventory_r21_sha256": "afcf2a0d081f7ea957f888fd23749f10a5e4592748aaa7c49309bc9362176d41",
+    "r21_path_count": 685,
+    "r21_status_counts": {
+      "tracked_modified": 185,
+      "untracked": 500,
+      "staged": 0,
+      "deleted": 0
+    },
+    "current_path_status_set_matches_r21": false,
+    "r21_status_digest": "6fb3ca6f81f63c2c004b522ba5e677ae74c451cfdd62fee3860cfc296c01c5c5",
+    "checker_result_before": {
+      "result": "FAIL",
+      "failures": 823,
+      "warnings": 1,
+      "captured_output": ".agent/evidence/check-state-main-20260926-before-rem010.log",
+      "sha256": "feb8f4a377a330238adc1604108dabf8265481dec27f09f8c6666c1766bef176",
+      "bytes": 161648
+    },
+    "checker_sha256": "2de9506b3f59455ef2c05ca66c9a47a0ae4926b9eb1521ad3064b42260eacf6d",
+    "contracts_sha256": "5ad5e96c3192fe4f09b63e41b26b4e4048200a365f043173d0cc146395b92186",
+    "checker_result_after_shadow_recovery": {
+      "result": "FAIL",
+      "failures": 823,
+      "warnings": 1,
+      "captured_output": ".agent/evidence/check-state-main-20260926-after-rem010-shadow.log",
+      "sha256": "feb8f4a377a330238adc1604108dabf8265481dec27f09f8c6666c1766bef176",
+      "bytes": 161648,
+      "new_fail_lines": 0,
+      "resolved_fail_lines": 0,
+      "classification": "global legacy failures unchanged"
+    },
+    "current_pretransaction_path_count": 686,
+    "current_pretransaction_status_counts": {
+      "tracked_modified": 185,
+      "untracked": 501,
+      "staged": 0,
+      "deleted": 0
+    },
+    "current_pretransaction_status_bytes": 39823,
+    "current_pretransaction_status_sha256": "0ce413e2e29725cfb0d62fdc98d93bcbcb3ce108b45d93b3af38bae4d71f9465",
+    "current_pretransaction_new_paths_since_r21": [
+      "docs/engineering/PROD-027-SYNTHETIC-FIRST-APPROVAL-PACKET.md"
+    ],
+    "projected_r22": {
+      "path": ".agent/evidence/m02-current-worktree-inventory-20260926-r22.json",
+      "path_count": 696,
+      "tracked_modified": 185,
+      "untracked": 511,
+      "status_bytes": 40474,
+      "status_sha256": "c078bd761f7120b1d7558376d4285b41160201bc385393cc9f98808c431a217c",
+      "inventory_preview_sha256": "7fa0de59893fea766265ef32ea00f8904008550b4d6759f3cd4a33ba296f1576",
+      "inventory_preview_bytes": 895842,
+      "overlay_disposition_counts": {
+        "EXCLUDE": 329,
+        "HOLD": 265,
+        "INCLUDE": 102
+      },
+      "independent_review": "PENDING"
+    },
+    "actual_live_after_apply": {
+      "recorded_at_utc": "2026-09-26T05:29:02Z",
+      "path_count": 696,
+      "tracked_modified": 185,
+      "untracked": 511,
+      "staged": 0,
+      "deleted": 0,
+      "git_status_porcelain_bytes": 40474,
+      "git_status_porcelain_sha256": "c078bd761f7120b1d7558376d4285b41160201bc385393cc9f98808c431a217c",
+      "matches_reviewed_r22_projection": true,
+      "all_permitted_inventory_hashes_match": true
+    },
+    "live_controller_check_after_apply": {
+      "result": "FAIL",
+      "failures": 823,
+      "warnings": 1,
+      "exit_status": 1,
+      "bytes": 161632,
+      "sha256": "a589e01e7acdc13b98557d3cd4cd6d7d71329a8f29d401cbc9e21d23422b0587",
+      "comparison_to_live_pretransaction": {
+        "new_detail_lines": 0,
+        "resolved_detail_lines": 0,
+        "same_result_counts": true
+      },
+      "capture_location": "local temporary output; no additional workspace artifact or Git path was created"
+    }
+  },
+  "candidate": {
+    "branch": "rem010-candidate-20260926-r21",
+    "base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "source_sha": "6fd1dd43c7749f4491e85bddca57d47b55edf46b",
+    "source_tree_sha": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d",
+    "documentation_only_tip": "651f160ca5607bdb062f75fd32762659f3177540",
+    "source_overlay_paths": 105,
+    "source_overlay_approval_addendum_sha256": "247782262f9afbde8fb019cdbfaa999977da1c5e3241b9c41c6aff17ee0474e3",
+    "post_source_documentation_paths": 8,
+    "worktree_clean": true,
+    "static_evidence": ".agent/evidence/rem010-static-candidate-6fd1dd43-20260926.json",
+    "static_evidence_sha256": "541a9b1468128dd92cd6135363169c25be7b157711e58e52f792012caa986a16",
+    "validation": {
+      "build": "PASS",
+      "typecheck": "PASS",
+      "lint": "PASS",
+      "static_validators": "17/18 PASS",
+      "only_failure": "validate:p0-registry stale binding; no P0 states transferred",
+      "candidate_identity": "BLOCKED / NOT PROVEN",
+      "ci_sha": null,
+      "release_sha": null
+    },
+    "review_scope": "Independent reviewers approved static preparation and the documentation update only; no functional, UAT, or release acceptance."
+  },
+  "prod_027_direction": {
+    "operator_direction": "synthetic first; Vetus only after formal dataset-owner approval",
+    "authority_status": "This records sequencing direction only, not Product/QA/domain-owner approval or data-owner authorization.",
+    "current_contract": "docs/engineering/behavioral-parity-contract-prod-027.json",
+    "fixtureExecutionAllowed": false,
+    "realDataAllowed": false,
+    "product_acceptance": "BLOCKED_PENDING_VERSIONED_PRODUCT_QA_DOMAIN_DECISION",
+    "action": "Prepare the authority/scenario packet; do not execute behavioral fixtures or change product behavior until required roles approve the versioned specification."
+  },
+  "preserved_claims": "No prior PASS, P0 state, authority, product behavior, Vetus parity, CI, release or Triple-A status is promoted. REM-010 remains IN_PROGRESS with verification PARTIAL. The 823 global controller findings remain open for a separately reviewed migration policy.",
+  "archived": [
+    {
+      "source": ".agent/state.json",
+      "archive": ".agent/archive/20260926-rem010-recovery/state.before.json",
+      "sha256": null,
+      "size_bytes": null,
+      "hash_withheld": true,
+      "reason": "Preserve protected runtime state without hashing or sizing it in the workspace inventory."
+    },
+    {
+      "source": ".agent/backlog.json",
+      "archive": ".agent/archive/20260926-rem010-recovery/backlog.before.json",
+      "sha256": "ada652d3a0f7775dc668f74f89cdd33bc095260e980864e3cc769b98163eb890",
+      "size_bytes": 186897,
+      "hash_withheld": false
+    },
+    {
+      "source": ".agent/execution-log.jsonl",
+      "archive": ".agent/archive/20260926-rem010-recovery/execution-log.before.jsonl",
+      "sha256": "e8e49e71084f6752e392f01a987d7ca55bae0a5575ffe73d13729db79d5491f1",
+      "size_bytes": 391492,
+      "hash_withheld": false
+    },
+    {
+      "source": ".agent/verification.jsonl",
+      "archive": ".agent/archive/20260926-rem010-recovery/verification.before.jsonl",
+      "sha256": "24b1127f31062c9fefd8b477919143d32adb31ab84d14c38a52561c850eb0115",
+      "size_bytes": 415260,
+      "hash_withheld": false
+    },
+    {
+      "source": ".agent/plans/melhorias-20260923.md",
+      "archive": ".agent/archive/20260926-rem010-recovery/active-plan.before.md",
+      "sha256": "956abdc0cfeaeb7f3b5d0655becb38ce2eb8e4f857ccc4c1512be12938baa3a2",
+      "size_bytes": 157686,
+      "hash_withheld": false
+    }
+  ],
+  "modified_active_artifacts": [
+    ".agent/backlog.json",
+    ".agent/plans/melhorias-20260923.md",
+    ".agent/execution-log.jsonl",
+    ".agent/verification.jsonl",
+    ".agent/state.json",
+    ".agent/evidence/check-state-main-20260926-before-rem010.log",
+    ".agent/evidence/check-state-main-20260926-after-rem010-shadow.log",
+    ".agent/evidence/rem010-static-candidate-6fd1dd43-20260926.json",
+    ".agent/evidence/m02-current-worktree-inventory-20260926-r22.json"
+  ],
+  "limitations": [
+    "Single-task REM-010 pointer recovery, not legacy-ledger repair.",
+    "Protected state and its archived preimage are copied for rollback but their bytes, sizes and hashes are withheld.",
+    "Projected r22 has independent conditional approval; exact post-application Git status, hashes and checker result must match before closing this recovery.",
+    "Any mismatch requires stopping, regenerating r22 and obtaining another independent review."
+  ],
+  "review": {
+    "task_recovery": "CONDITIONAL_APPROVAL",
+    "transaction_critic": "Zeno",
+    "transaction_critic_condition": "List the candidate static receipt in the shared-worktree inventory and have the exact r22 independently reviewed before applying.",
+    "candidate_evidence_listed": true,
+    "r22_independent_review": "CONDITIONAL_APPROVAL",
+    "r22_critic": "Lagrange",
+    "r22_critic_condition": "Apply only after active preimage checks and exact live status-digest reconciliation.",
+    "preimage_hashes_checked_for_unprotected_artifacts": true,
+    "projected_path_set_reconciled_against_current_git_status": true,
+    "expected_live_reconciliation_after_apply": {
+      "path_count": 696,
+      "status_bytes": 40474,
+      "status_sha256": "c078bd761f7120b1d7558376d4285b41160201bc385393cc9f98808c431a217c"
+    },
+    "live_post_apply_reconciliation": "PASS",
+    "post_apply_checker": "823 FAIL / 1 WARN; zero new or resolved detail lines against the direct live pretransaction run",
+    "conditions_satisfied_at_utc": "2026-09-26T05:29:02Z"
+  }
+}

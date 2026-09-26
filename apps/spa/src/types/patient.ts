@@ -1,3 +1,5 @@
+import type { PatientListResponse } from '@cvg-his-v2/shared-contracts';
+
 export type PatientSex = 'male' | 'female' | 'unknown';
 export type PatientSize = 'small' | 'medium' | 'large';
 export type PatientStatus = 'active' | 'inactive' | 'deceased';
@@ -72,13 +74,11 @@ export interface UpdatePatientRequest {
   status?: PatientStatus;
 }
 
-export interface PatientsListResponse {
-  items: PatientSummary[];
-  total?: number;
-  page?: number;
-  pageSize?: number;
-  totalPages?: number;
-}
+type MutablePatientListItems<T> = T extends { readonly items: readonly unknown[] }
+  ? Omit<T, 'items'> & { items: PatientSummary[] }
+  : never;
+
+export type PatientsListResponse = MutablePatientListItems<PatientListResponse>;
 
 export interface PatientListFilters {
   search?: string;

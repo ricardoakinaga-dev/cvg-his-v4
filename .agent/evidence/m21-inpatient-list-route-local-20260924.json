@@ -1,0 +1,112 @@
+{
+  "evidence_id": "M21-INPATIENT-LIST-ROUTE-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T09:00:11Z",
+  "scope": "M-21/M-23 extraction of the authenticated GET /inpatient collection route with committed-slice refresh.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to this dirty worktree at the recorded HEAD; it is not candidate or release evidence."
+  },
+  "extraction": {
+    "source_path": "apps/api/src/server.ts",
+    "server_lines_before": 4096,
+    "server_lines_after": 4072,
+    "server_line_delta": -24,
+    "dispatch_placement": "A specific list handler is called at the prior inline GET /inpatient branch, between attachment and notification handling; the full inpatient dispatcher remains at its original later position.",
+    "path_behavior_preserved": [
+      "pathname === '/inpatient'",
+      "GET method requirement",
+      "encounterId and patientId remain optional query filters",
+      "includeDischarged is true only for the exact query string value 'true'"
+    ],
+    "call_order_preserved": [
+      "requirePrincipal(request, 'inpatient.read')",
+      "read the three query filters without adding validation",
+      "await inpatient.refreshAccount(principal.user.accountId)",
+      "append medium-risk list audit using encounterId ?? patientId ?? 'all'",
+      "inpatient.list(accountId, filters)",
+      "HTTP 200 with { items }"
+    ],
+    "dependency_boundary": "The refresh/list service methods, principal authorization, and audit service are injected into a route-specific handler."
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/routes/inpatient-routes.ts",
+      "sha256": "32ecae61b2ef452d5e20ecc9794b781f0250251177530ae98992cc2ae08558bd",
+      "physical_lines": 1238
+    },
+    {
+      "path": "apps/api/src/routes/inpatient-routes.test.ts",
+      "sha256": "f9fa8e04a8faa377e13faa0d633275e1a37f85f8b464a4b25b8e6e492e1f71f8",
+      "physical_lines": 1707
+    },
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "d41bc96b931f8830c3c45ab53b255b6b0253a9037a1ab0fc4599ca9f30860675",
+      "physical_lines": 4072
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "94ee3125c552743e1d9ac2a94c6644e586ca1d3b717eaa7b26c8b07658a8f41c",
+      "server_budget": {
+        "current_lines": 4072,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test pnpm exec tsx --test --test-reporter=dot --test-name-pattern='handleInpatientListRoute refreshes the account before listing filtered stays' apps/api/src/routes/inpatient-routes.test.ts",
+      "result": "PASS, one focused in-process route unit test; verifies auth, refresh-before-list, principal account, filter values, audit entity ID, and response items. I1 reran the same case.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsc -p apps/api/tsconfig.json --noEmit",
+      "result": "PASS after correction. The first run failed because a type-only URL import shadowed the existing global URL constructor at three other route sites; the import was renamed to NodeURL and the check was rerun successfully.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; server.ts=4,072, cap=8,323, previous maximum=8,335.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/routes/inpatient-routes.ts apps/api/src/routes/inpatient-routes.test.ts apps/api/src/server.ts docs/engineering/complexity-hotspots.json && git diff --check -- apps/api/src/routes/inpatient-routes.ts apps/api/src/routes/inpatient-routes.test.ts apps/api/src/server.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    }
+  ],
+  "independent_review": {
+    "result": "PASS",
+    "critic_id": "critic_m21_inpatient_list_i1",
+    "independence": "Fresh I1 context fork; read-only source comparison and focused route test rerun.",
+    "reviewed_sha256": [
+      {
+        "path": "apps/api/src/routes/inpatient-routes.ts",
+        "sha256": "32ecae61b2ef452d5e20ecc9794b781f0250251177530ae98992cc2ae08558bd"
+      },
+      {
+        "path": "apps/api/src/routes/inpatient-routes.test.ts",
+        "sha256": "f9fa8e04a8faa377e13faa0d633275e1a37f85f8b464a4b25b8e6e492e1f71f8"
+      },
+      {
+        "path": "apps/api/src/server.ts",
+        "sha256": "d41bc96b931f8830c3c45ab53b255b6b0253a9037a1ab0fc4599ca9f30860675"
+      },
+      {
+        "path": "docs/engineering/complexity-hotspots.json",
+        "sha256": "94ee3125c552743e1d9ac2a94c6644e586ca1d3b717eaa7b26c8b07658a8f41c"
+      }
+    ],
+    "findings": "No behavior delta found. Exact path/method, position, authorization/filter/refresh/audit/list/response sequence, and line count were confirmed."
+  },
+  "limitations": [
+    "The new route test uses an in-memory service stub and does not prove freshness from committed PostgreSQL data.",
+    "There is no server-composition HTTP integration test for GET /inpatient in this slice; the route handler is directly tested and server wiring is typechecked and source-reviewed.",
+    "PostgreSQL/RLS behavior, persisted audit records, and full PROD-041 acceptance remain unproven.",
+    "The worktree remains dirty and no candidate SHA, CI, target, UAT, or release acceptance is asserted.",
+    "No database, listener, service, container, or port was started."
+  ]
+}

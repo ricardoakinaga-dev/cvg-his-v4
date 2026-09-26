@@ -4,7 +4,10 @@ import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
 import test from 'node:test';
 
-import { validateP0Registry } from './validate-p0-registry.mjs';
+import {
+  validateP0Registry,
+  validateP0RegistryForCurrentCandidate,
+} from './validate-p0-registry.mjs';
 
 const candidateSha = 'a'.repeat(40);
 const identity = {
@@ -81,6 +84,26 @@ function validateFixture(registry) {
 
 test('accepts a closed P0 only with fresh candidate-bound evidence', () => {
   assert.deepEqual(validateFixture(makeRegistry()), []);
+});
+
+test('repository-level validation rejects a registry bound to a stale candidate identity', () => {
+  const rootDir = mkdtempSync(resolve(tmpdir(), 'cvg-p0-registry-current-'));
+  mkdirSync(resolve(rootDir, 'docs/triple-a'), { recursive: true });
+  writeFileSync(resolve(rootDir, 'identity.json'), '{}\n');
+  try {
+    const errors = validateP0RegistryForCurrentCandidate({
+      rootDir,
+      registry: makeRegistry(),
+      identity,
+      now: new Date('2026-01-01T00:01:00.000Z'),
+      candidateIdentityErrors: ['candidate identity requires a clean worktree'],
+    });
+    assert.ok(errors.includes(
+      'current candidate identity: candidate identity requires a clean worktree'
+    ));
+  } finally {
+    rmSync(rootDir, { recursive: true, force: true });
+  }
 });
 
 test('a CLOSED item requires every existing dependency to be CLOSED', () => {

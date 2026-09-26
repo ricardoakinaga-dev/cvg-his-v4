@@ -1,0 +1,74 @@
+REM-029 — PREPARAÇÃO CANDIDATE-BOUND
+Observado em: 2026-09-22T06:39:00Z
+HEAD observado: ad2f0373f68635f2579253b013a4382219906921
+Ambiente: Linux local; Node v22.23.2; pnpm 10.33.0; agente primário único em modo Direct
+
+OBJETIVO E LIMITE
+- REM-029 exige decompor o módulo de relatórios e o runner do worker em boundaries testáveis, preservando concorrência, retries e contratos públicos.
+- Esta ação é somente preparação. Nenhum arquivo de produção foi alterado nesta ação; alterações preexistentes do worktree, inclusive a decomposição visual de reports do REM-028, foram preservadas.
+- A execução local autorizada não inclui push, deploy, target compartilhado, credenciais/provider real, UAT, aprovação de owner ou release.
+- `orchestrate` foi avaliado e mantido em modo Direct: os seams compartilham contratos, leases e estado do mesmo fluxo; subagente não foi criado por restrição explícita do programa.
+
+SUPERFÍCIE INSPECIONADA
+1. `apps/worker/src/runner.ts` — 2139 linhas; concentra factories, ticks de notificações/eventos/webhooks, despacho de reports e 1740+ linhas de resolução/mapeamento de fontes agendadas (`resolveScheduledReportRows` e validadores). A fachada pública usada por `runner.test.ts`, `index.ts` e `run-once.ts` deve permanecer compatível.
+2. `apps/worker/src/jobs/scheduled-report-job.ts` — 246 linhas; já possui boundary testável para claim, execução, exportação, delivery, auditoria, finalização e métricas. Não será reabsorvido pelo novo adapter.
+3. `apps/worker/src/run-once.ts` — 189 linhas; composição one-shot: bootstrap, identidade de serviço, contexto tenant, scheduled tick, retry opcional e falha final quando o lote retorna failures.
+4. `apps/worker/src/index.ts` — o loop mantém concorrência por conta (`runWorkerAccounts`, `config.accountConcurrency`), isola falha por tenant e chama o scheduled tick dentro de `runWithTenantContext`.
+5. `packages/modules/reports/src/index.ts` — 2631 linhas; mistura tipos/contratos públicos, catálogo/definições, `ReportsService`, claims/leases, delivery/retry, renderização JSON/CSV/XLSX/PDF e `DatabaseReportRepository`/mapeadores SQL. O risco/ordem já está registrado no hotspot rank 2 de `docs/engineering/complexity-hotspots.json`.
+6. `apps/worker/src/worker-report-identity.ts`, `report-delivery-provider.ts`, `scheduled-report-filters.ts` e `cancellation-history-report.ts` — boundaries já isolados e cobertos; devem continuar independentes.
+7. `apps/spa/src/pages/reports/ReportWorkbenchPage.vue` e seams do REM-028 — mudança preexistente de apresentação; não faz parte da primeira fatia REM-029 e não será usada como prova visual/backend.
+
+DEPENDÊNCIAS E OWNERSHIP
+- O adapter de fontes do worker depende de `ReportScheduleSummary`, `AccountId` e dos contratos de fonte dos módulos financeiro, inventário, owners, pacientes, serviços, comissões, fiscal e counter-sales.
+- Cada fonte recebe `schedule.accountId`; validação de tenant, datas, status, busca, forma da linha e limites de exportação deve permanecer no boundary do adapter antes de `ReportsService.executeScheduled`.
+- `ReportsService` depende de `shared-database`, `shared-errors`, `shared-types`, `shared-utils` e `tenant-context`; o repositório SQL usa `withTenantQuery` e não pode atravessar o contexto tenant.
+- Owner operacional do worker: RUNTIME. Owner do módulo/catálogo/persistência: REPORTS. A classificação local não representa aceite desses owners.
+
+INVARIANTES QUE NÃO PODEM MUDAR
+- Claims de schedule são account-scoped, usam `claimToken`, `claimUntil` e `claimWorkerId`; o SQL candidate-bound usa `FOR UPDATE SKIP LOCKED`.
+- O token do claim deve atravessar `executeScheduled`, `exportScheduled`, `deliverExport`, `recordScheduleDeliveries` e `recordScheduleExecution`. `ReportScheduleLeaseLostError` impede finalização após fencing perdido.
+- Execução agendada mantém ID determinístico por account/schedule/nextRunAt; delivery mantém identidade estável e `idempotencyKey` igual ao `delivery.id`.
+- Falha de um schedule não interrompe o lote; retry de delivery usa claim próprio, preserva `deliveryId` e impede duas tentativas concorrentes do mesmo operation key.
+- O loop preserva concorrência por conta, isolamento tenant e erro por lane; `run-once` continua falhando ao final quando o resultado do lote contém failures.
+- Fontes rejeitam conta estrangeira, linha malformada, filtro inválido, período invertido, source ausente/não persistido e volume acima dos caps; não haverá fallback permissivo para obter verde.
+
+SEQUENCIAMENTO DE IMPLEMENTAÇÃO SELECIONADO
+- Próxima fatia única: `REM-029:IMPLEMENT-WORKER-REPORT-SOURCES`.
+  - Criar boundary dedicado para resolver/marcar fontes agendadas do worker, preferencialmente por adaptadores de domínio pequenos, e manter `runner.ts` como fachada/re-export de compatibilidade.
+  - Manter `runScheduledReportJob`, ticks, contexto tenant, claims, retries, métricas e composição one-shot fora do adapter.
+  - Adicionar teste focal do novo boundary; preservar ou mover os testes existentes sem reduzir assertions.
+- Fases seguintes do mesmo cartão, ainda não abertas para implementação nesta preparação:
+  - `REM-029:IMPLEMENT-REPORTS-RENDERING`: extrair renderizadores puros e manter `ReportExportSummary`/format contracts.
+  - `REM-029:IMPLEMENT-REPORTS-PERSISTENCE`: separar adapter SQL/mapeadores de `ReportsService`, mantendo `ReportRepository`, leases e `withTenantQuery`.
+  - `REM-029:VERIFY`: regressão local, integração run-once/concurrency/retry, complexidade e revisão de boundary.
+
+KNOWN-BADS E REGRESSÕES OBRIGATÓRIAS
+- Perder o re-export/import de `resolveScheduledReportRows` em `runner.ts` quebra callers e o contrato de testes do worker.
+- Aceitar linha de outro account, source em memória, row malformed ou volume acima do cap viola o fail-closed dos testes de `runner.test.ts`.
+- Aplicar query ao source antes de validar data/status/search, ou alterar semântica de datas inclusivas, muda contratos de relatórios.
+- Dropar `claimToken` em qualquer chamada do job permite finalização sem fencing; os 11 testes de `scheduled-report-job.test.ts` cobrem os pontos de claim/lease.
+- Trocar o ID estável de delivery ou o `Idempotency-Key` duplica efeitos após SIGKILL/provider acceptance; a integração `worker-run-once-reports.test.ts` cobre retry, SIGKILL e duas claims concorrentes.
+- Mover services/router/stores da page visual para este boundary confundiria REM-028 com REM-029; não é permitido nesta fatia.
+
+BASELINE FOCAL EXECUTADA
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/module-reports test` — PASS; 3 arquivos, 36 testes.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/worker test` — PASS; build TypeScript e todas as suítes declaradas do pacote, incluindo 65 subtestes do runner e 11 do scheduled-report-job.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/worker typecheck` — PASS; dependências do worker e `tsc --noEmit` concluídos.
+- `git diff --check` — PASS.
+- Integração PostgreSQL/run-once não foi promovida como aceite desta preparação; deve ser executada no VERIFY somente em banco descartável/local autorizado, com os known-bads acima. Nenhum target ou provider real foi usado.
+
+VERIFICAÇÃO PROPORCIONAL DA PRÓXIMA FATIA
+- Focal unitário: testes do adapter de fontes + `runner.test.ts` e `scheduled-report-job.test.ts`.
+- Contrato: build/typecheck do pacote reports e worker, lint semântico dos workspaces afetados, `git diff --check`.
+- Boundary audit: adapter sem router/store/serviço global de SPA; `runner.ts` conserva exports e ticks; import graph sem ciclo novo.
+- Regressão posterior: `CI=1 pnpm exec vitest run tests/integration/process/worker-run-once-reports.test.ts --config vitest.config.ts --no-file-parallelism` em PostgreSQL descartável, se a infraestrutura local estiver disponível.
+
+GAPS E AUTORIDADE
+- Código da primeira fatia ainda não foi implementado; este packet abre implementação, não a certifica.
+- Revisão adversarial independente/E7 não está disponível; qualquer veredito permanece condicionado, sem autoaprovação simulada.
+- Owners REPORTS/RUNTIME ainda não revisaram formalmente a decomposição.
+- Visual/a11y não é critério desta fatia backend/worker; qualquer futura mudança de SPA herda o bloqueio visual do REM-028 (`/health` local previamente `health_http=000`) e exigirá browser real.
+- CI/OCI, target, recovery, UAT e release permanecem fora do claim.
+
+PRÓXIMA AÇÃO CANÔNICA
+- `REM-029:IMPLEMENT-WORKER-REPORT-SOURCES`, com gate `IMPLEMENTATION_READY` deste packet e decisão `PASS_WITH_CONDITIONS`.

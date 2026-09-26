@@ -1,0 +1,46 @@
+TAP version 13
+# Subtest: accepts PostgreSQL URIs for literal or named loopback destinations
+ok 1 - accepts PostgreSQL URIs for literal or named loopback destinations
+  ---
+  duration_ms: 1.486565
+  type: 'test'
+  ...
+# Subtest: refuses remote hosts without echoing URL credentials or destination
+ok 2 - refuses remote hosts without echoing URL credentials or destination
+  ---
+  duration_ms: 3.955336
+  type: 'test'
+  ...
+# Subtest: refuses connection parameters that can replace the loopback destination
+ok 3 - refuses connection parameters that can replace the loopback destination
+  ---
+  duration_ms: 0.357315
+  type: 'test'
+  ...
+# Subtest: requires PostgreSQL 16
+ok 4 - requires PostgreSQL 16
+  ---
+  duration_ms: 0.24763
+  type: 'test'
+  ...
+# Subtest: reports missing Drizzle tables and columns while ignoring unrelated database objects
+ok 5 - reports missing Drizzle tables and columns while ignoring unrelated database objects
+  ---
+  duration_ms: 0.637946
+  type: 'test'
+  ...
+# Subtest: derives a non-empty table and migration manifest from the release sources
+ok 6 - derives a non-empty table and migration manifest from the release sources
+  ---
+  duration_ms: 10.880657
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1153.303154

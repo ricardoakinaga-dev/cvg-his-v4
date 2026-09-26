@@ -1,0 +1,37 @@
+{
+  "gate_id": "GATE-IMPLEMENTATION-READY-REMEDIACAO-INTEGRAL-REM-048-20260922",
+  "task": "REM-048",
+  "timestamp": "2026-09-22T10:41:50.000000Z",
+  "gate_type": "IMPLEMENTATION_READY",
+  "decision": "PASS_WITH_CONDITIONS",
+  "criteria": [
+    {
+      "id": "V-REM048-001",
+      "criterion": "A dívida de any foi inventariada e matches naturais foram separados de tipos executáveis",
+      "status": "PASS"
+    },
+    {
+      "id": "V-REM048-002",
+      "criterion": "A primeira fatia prioriza fronteira financeira/externa e tem regressão focal existente",
+      "status": "PASS"
+    },
+    {
+      "id": "V-REM048-003",
+      "criterion": "A estratégia usa unknown/guards e z.unknown, sem casts cosméticos",
+      "status": "PASS"
+    },
+    {
+      "id": "V-REM048-004",
+      "criterion": "A verificação candidate-bound, os artefatos e as limitações foram definidos antes da implementação",
+      "status": "PASS"
+    }
+  ],
+  "evidence": ".agent/evidence/rem-048-preparation-20260922.txt",
+  "limitations": [
+    "A preparação não prova redução efetiva nem substitui typecheck/teste após a mudança.",
+    "Não há autorização para provider real, target, CI/OCI, UAT, release ou go/no-go.",
+    "A crítica independente fresca permanece ausente; o veredito é candidate-bound e PASS_WITH_CONDITIONS."
+  ],
+  "next_action": "REM-048:IMPLEMENT",
+  "status": "READY"
+}

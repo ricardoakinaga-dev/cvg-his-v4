@@ -1,0 +1,57 @@
+REM-028 — sexto seam local: CounterSalesWorkbench
+Data: 2026-09-22
+Escopo: extração presentation-bound do workbench de detalhes da comanda da CounterSalesPage
+Superfície: `apps/spa/src/pages/sales/CounterSalesPage.vue`
+Decisão: PASS_WITH_CONDITIONS; validação browser/visual segue aberta
+
+## Mudança
+
+`CounterSalesWorkbench.vue` recebeu o workbench de detalhes da comanda, incluindo
+contexto assistencial, catálogo, itens, histórico, resumo financeiro, pagamentos,
+pipeline comercial e ações de transição. O componente recebe dados readonly,
+formatadores e formulários por props tipadas; emite somente atualizações de campos
+e intenções de workflow.
+
+`CounterSalesPage.vue` continua dono de `selectedSale`, seleção, carregamento de
+detalhes, mapas de tutor/paciente, catálogo e server state, formulários, roteamento,
+serviços e todas as mutações financeiras. O componente novo não importa services,
+router ou stores e não executa efeitos externos.
+
+Linhas observadas após a extração: page `2779`, workbench `1232`, teste focal `126`.
+
+## Verificações executadas
+
+Runtime: Node v22.23.2, pnpm 10.33.0, worktree compartilhado dirty preservado.
+
+- teste focal do workbench + cards/lista + KPI + page: `4` arquivos, `17` testes, exit 0;
+- `pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit`: exit 0;
+- `pnpm --filter @cvg-his-v2/spa run lint`: exit 0, 0 erros e 32 avisos `any`
+  preexistentes fora dos módulos novos;
+- `pnpm --filter @cvg-his-v2/spa run build`: exit 0, Vite transformou 835 módulos e
+  gerou build/PWA;
+- `git diff --check`: exit 0.
+
+Hashes dos artefatos da extração no momento desta evidência:
+
+- `CounterSalesPage.vue`: `2c93324b403bc69e16838d853372ce88c71777a578edd0b8bd886149a593ff5c`;
+- `CounterSalesWorkbench.vue`: `dc7f85528e167b73d643ab79561dfc023b0463ca52e83819674c13871a0aa8ef`;
+- `CounterSalesWorkbench.test.ts`: `924f1b95ffe81ef871dc151282e36960972e10e2921368a4ec08c3c91cf65ef2`.
+
+## Validação visual e limite
+
+Não houve nova tentativa de Playwright para este seam: o runtime visual local
+continua condicionado pela tentativa anterior bloqueada quando `/health` da API
+respondeu `unhealthy` após 30s. Nenhum snapshot foi atualizado.
+
+Esta verificação prova contrato presentation-bound, emissão de intenções, estados
+operacionais representados, teste focal, types, lint, build e integração da page,
+mas não prova pixel diff, responsividade renderizada, foco real, dark/mobile,
+screen reader ou performance. O gate fica condicionado ao runtime E2E saudável e
+à reexecução visual/interativa antes de qualquer claim UX, a11y ou atualização de
+baseline.
+
+## Próxima ação
+
+Continuar pela matriz de catálogo/pagamentos e pelas superfícies restantes de
+REM-028, mantendo a seleção, server state, URL, serviços e mutações no boundary
+da `CounterSalesPage`.

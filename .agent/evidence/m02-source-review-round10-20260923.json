@@ -1,0 +1,102 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND10-20260923",
+  "recorded_at": "2026-09-23T07:44:39Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PARTIAL; appointments parent and overview loader/controller boundary reviewed; extracted calendar/create/action components and remaining inventory, fixture provenance, browser QA, and independent critique remain open",
+  "paths_reviewed": [
+    {
+      "path": "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "7d4fe6fb24afa0642011aedc9be950b7fdd49982fa2255d1a3edccd2485940c8",
+      "current_sha256": "7d4fe6fb24afa0642011aedc9be950b7fdd49982fa2255d1a3edccd2485940c8",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_CHILD_COMPONENT_PRIVACY_AND_RUNTIME_HOLDS",
+      "review_notes": "The 114-insertion/817-deletion diff primarily extracts calendar/list/create presentation. The parent retains session permission, URL context, filters, selected appointment, and workflow ownership; the overview state/data lifecycle is delegated to the separately reviewed useAppointmentsOverview composable.",
+      "candidate_overlay_decision": "HOLD_PENDING_RELATED_CHILD_REVIEW_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE"
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/useAppointmentsOverview.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "206344537a344942afa20ea40c1554cdd6fbdf8b7c150a8bb651d16d94ec98a8",
+      "current_sha256": "206344537a344942afa20ea40c1554cdd6fbdf8b7c150a8bb651d16d94ec98a8",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_RUNTIME_AND_BACKEND_AUTHORIZATION_HOLDS",
+      "review_notes": "Reviewed request generation, disposal/permission checks, fail-closed forbidden handling, fast primary response publication, asynchronous optional service/name enrichment, cache writes, and invalidation behavior. The appointment read request is not aborted when superseded or invalidated, though stale results are ignored.",
+      "candidate_overlay_decision": "HOLD_PENDING_RELATED_CHILD_REVIEW_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE"
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/__tests__/AppointmentsOverview.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "522ffaf44fed54b7104dce27a552cbad663fdc38ec8a3a179a70ae3cf4c39951",
+      "current_sha256": "522ffaf44fed54b7104dce27a552cbad663fdc38ec8a3a179a70ae3cf4c39951",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_FIXTURE_PROVENANCE_HOLD",
+      "review_notes": "Four unit cases use deferred promises and injected service fakes to cover initial overview publication, stale response suppression, forbidden/disposal behavior, and selected-appointment reconciliation. No network or database call is performed.",
+      "candidate_overlay_decision": "HOLD_PENDING_FIXTURE_PROVENANCE_AND_COMPLETE_INVENTORY_CRITIQUE"
+    }
+  ],
+  "reference_test": {
+    "path": "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts",
+    "working_tree_status": "clean tracked, not a dirty inventory path",
+    "working_tree_sha256": "80774459b0cce923c6bc0e6abafcf0bb472f8a22a441ad8f52fffdcfd358c265",
+    "origin_main_diff": "byte-identical to origin/main",
+    "used_as": "Parent-page behavior reference only; not counted in the original 386 dirty-path denominator."
+  },
+  "source_diff": {
+    "baseline": "origin/main:apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+    "numstat": "114\t817\tapps/spa/src/pages/appointments/AppointmentsListPage.vue",
+    "assessment": "The primary diff replaces large inline appointment list/calendar/create templates with extracted presentation components and wires props and semantic events. Permission codes, route/query state, filters, selection and service/mutation ownership stay in the parent."
+  },
+  "test_execution": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config vitest.config.ts src/pages/appointments/__tests__/AppointmentsListPage.test.ts src/pages/appointments/__tests__/AppointmentsOverview.test.ts",
+    "working_directory": "apps/spa",
+    "started_at_utc": "2026-09-23T07:43:10Z",
+    "finished_at_utc": "2026-09-23T07:43:13Z",
+    "test_files_passed": 2,
+    "tests_passed": 43,
+    "tests_failed": 0,
+    "environment": "Standalone SPA Vitest/JSDOM config. The parent suite mocks API and scheduling/appointment/owner/patient/service modules; the composable suite injects service fakes. No database global setup, provider, or live network call was observed."
+  },
+  "architecture_observations": [
+    "The page continues to own route/query context, permission codes, structural filters, local filters, selected appointment and mutation orchestration. The composable owns overview request/cache/loading state behind injected service and permission functions.",
+    "The page synchronously invalidates overview data, action state, selection and error when scheduling read permission is lost. The composable also rejects work when disposed or unauthorized, guards every response/cache update with a monotonically increasing request id, and routes forbidden responses through the parent permission reset.",
+    "The primary overview renders without waiting for service options or owner/patient name enrichment. Optional names load asynchronously and are cached; failures produce generic display fallbacks. Newer requests invalidate earlier overview and enrichment results.",
+    "Agenda query serialization persists structural filters but explicitly removes `search` and `clientSearch`; free-text values stay in the injected in-memory workspace context rather than URL/history. Tests assert private search terms are removed from the router query.",
+    "The focused tests cover stale request ordering, permission loss, disposal, read-only forbidden handling, selection reconciliation and late optional data. The extracted AgendaCalendarOrList, AppointmentCreateFlow and appointmentActionController are connected by parent events but are separate paths not reviewed in this round.",
+    "The loader has no AbortController; invalidation prevents stale UI/cache writes but does not cancel a superseded in-flight read request. No server authorization, tenant isolation, browser rendering, keyboard/screen-reader behavior, viewport or visual evidence was produced here."
+  ],
+  "findings_and_limits": [
+    {
+      "id": "M02-APPOINTMENTS-TEST-FIXTURE-PROVENANCE",
+      "classification": "HOLD_SENSITIVITY_PROVENANCE",
+      "observation": "The new overview test uses person/patient name-shaped values, and the clean baseline page test contains a documentId/contact-shaped client fixture. They appear synthetic, but provenance was not established.",
+      "required_followup": "Confirm synthetic provenance or replace with clearly reserved test values before external publication; no real-person claim is made."
+    },
+    {
+      "id": "M02-APPOINTMENTS-AUTHORIZATION-BOUNDARY",
+      "classification": "HOLD_RUNTIME_EVIDENCE",
+      "observation": "The page and composable enforce the scheduling read permission in client state and suppress stale work, but the mocked SPA tests do not prove server-side authorization or tenant isolation.",
+      "required_followup": "Retain the API authorization/tenant integration boundary for a separately approved test target; no database-backed suite was run."
+    }
+  ],
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "hold_reason": "Three paths are hash-stable and reviewed, but related calendar/create/action component paths remain pending; fixture provenance, server authorization, browser accessibility/visual validation, complete original inventory review, and independent critique are still open."
+  },
+  "limitations": [
+    "The two test suites use SPA/JSDOM and mocked service boundaries; they do not prove persistence, API authorization, tenant isolation, cancellation, real browser rendering, accessibility or visual behavior.",
+    "The parent page test is clean and baseline-identical and is reference evidence, not a path counted in the original 386-path denominator.",
+    "The observed name and contact-shaped test fixtures appear synthetic but have no provenance confirmation; no complete PII review was performed.",
+    "Only the page, overview composable and composable test are counted in this round. Extracted calendar/list, create-flow, action-controller files and their tests remain separate review work.",
+    "This is a primary-operator review, not independent candidate, privacy, accessibility or backend acceptance."
+  ]
+}

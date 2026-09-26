@@ -121,13 +121,14 @@ pnpm test:db:stop
 | `foundational-integration-gaps.md`           | Gaps de API signatures e integrações ausentes             | Para entender correções necessárias no código |
 | `final-system-validation-report.md`          | Relatório consolidado com decisão de readiness            | Para decisão de avanço de fase                |
 
-## Limitações Atuais
+## Limitações e contexto histórico
 
 1. **Dual RBAC**: Seed usa `vet/enfermagem/recepcao`; AccessControlService usa `veterinarian/nurse/reception`. Testes funcionam com AccessControlService codes.
 2. **4 módulos sem persistência DB**: BillingService, InventoryService, SchedulingService, UsersService usam Maps em memória. Dados perdidos em restart.
 3. **Migration não idempotente**: `CREATE TYPE` sem `IF NOT EXISTS`. O risco foi reduzido com banco efêmero por execução, lock administrativo e cleanup operacional, mas a limitação histórica da migration ainda existe.
-4. **Sem CI pipeline**: Validação depende de execução manual.
-5. **Sem cobertura configurada**: Não há métrica de coverage para módulos ou API.
+4. **CI**: a afirmação histórica “sem CI pipeline” não representa mais a árvore atual. `.github/workflows/ci.yml` executa gates automatizados; a prova de CI do **SHA candidato exato** continua sendo um gate separado e não pode ser inferida de execução local.
+5. **Cobertura**: `pnpm test:coverage` está configurado com threshold global de 82% para statements, branches, functions e lines. O escopo unitário possui exclusões explícitas em `vitest.config.ts`; cobertura de superfícies PostgreSQL/operacionais críticas continua sendo verificada por gates específicos.
+6. **Comando canônico**: `pnpm test` usa `scripts/run-root-test-suite.mjs` e executa primeiro `test:root`, depois `test:workspaces`, com banco de teste isolado.
 
 ## Resultado Consolidado
 

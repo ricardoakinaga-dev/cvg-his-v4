@@ -1,0 +1,130 @@
+{
+  "evidence_id": "M21-PRODUCT-SERVICE-CATALOG-ROUTES-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T07:21:25Z",
+  "scope": "Bounded M-21 extraction of the product and service catalog HTTP handlers from the API server composition module, with M-23 hotspot remeasurement.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence applies to this dirty working tree based on the recorded HEAD, not a candidate or release."
+  },
+  "environment": {
+    "node": "v22.23.2",
+    "pnpm": "10.33.0",
+    "database_url_variables_unset_for_route_tests": true,
+    "catalog_store_mode_explicitly_in_memory": true,
+    "database_or_service_started": false,
+    "listener_or_port_opened": false
+  },
+  "boundary_decision": {
+    "status": "PROPOSED_AND_IMPLEMENTED_LOCALLY",
+    "current": "Product/service route parsing, authorization calls, account checks, service operations, audit calls, and HTTP responses were embedded in server.ts alongside runtime composition and other routes.",
+    "proposed": "Keep route behavior in a dedicated HTTP module while server.ts owns composition and injects product/service service interfaces, principal authorization, and audit callbacks.",
+    "authorization_and_tenant_invariant": "List/create operations use the authenticated principal account; item GET/PATCH compare the loaded product or service account before responding or updating; existing permission codes and audit data remain unchanged.",
+    "compatibility_target": "Preserve route dispatch order, request parsing and validation, status/body behavior, permission checks, account ownership checks, audit calls, and service method arguments.",
+    "persistence_boundary": "The route module receives ProductsService and ServicesService interfaces and does not import repositories or database clients."
+  },
+  "extraction": {
+    "source_path": "apps/api/src/server.ts",
+    "source_block_lines_moved": 232,
+    "destination_path": "apps/api/src/routes/product-service-catalog-routes.ts",
+    "destination_physical_lines": 275,
+    "destination_sha256": "e8a97f5cdc22823a73ee6942d953010dadb87b431d07be4ccc9db1881420e31f",
+    "dispatch_seam": "Immediately after handleUsersStaffQuotesRoutes and before the /breeds dispatch; the same product/service instances, requirePrincipal function, and appendAudit callback are passed.",
+    "server_lines_before": 5423,
+    "server_lines_after": 5204,
+    "server_line_delta": -219,
+    "server_line_reduction_since_7943": 2739,
+    "server_line_reduction_since_8332": 3128
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "11ce153d11fb646170caf4100a443b7d9b898f1fd4b9a1ddf39cce687d122400",
+      "physical_lines_after": 5204
+    },
+    {
+      "path": "apps/api/src/routes/product-service-catalog-routes.ts",
+      "sha256": "e8a97f5cdc22823a73ee6942d953010dadb87b431d07be4ccc9db1881420e31f",
+      "physical_lines_after": 275
+    },
+    {
+      "path": "apps/api/src/server.test.ts",
+      "sha256": "162782c734e7ca1dc969cb5a9d5beae3139c7be1d30e2d387dc626a87fbefd75",
+      "note": "The focused combined catalog HTTP test explicitly selects in-memory catalog stores; this file hash is unchanged since the preceding customer/preventive store evidence."
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "5bb0009d9b719098afbc1e434667556f2767b6f569d17afb03a98eb643bea302",
+      "server_ts_budget": {
+        "current_lines": 5204,
+        "max_lines": 8323,
+        "previous_max_lines": 8335,
+        "current_margin_lines": 3119
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test pnpm exec tsx --test --test-name-pattern='catalog stores honor the in-memory persistence mode|catalog endpoints respect frontend search filters over HTTP semantics' apps/api/src/server.test.ts",
+      "result": "PASS; 2/2 tests. In-process HTTP checks cover catalog in-memory mode and create/list/search/active-filter behavior, including product/service create and list paths.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsc -p apps/api/tsconfig.json --noEmit",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; server.ts measures 5,204 lines and the existing 8,323-line cap and 8,335 previous maximum are unchanged.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec vitest run --config /tmp/cvg-his-m35-no-db-vitest.config.mjs tests/unit/infra/complexity-hotspots.test.ts --reporter=dot",
+      "result": "PASS; 1 file, 4 tests.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/repositories/responsibility-term-store.ts apps/api/src/repositories/animal-catalog-stores.ts apps/api/src/repositories/customer-group-store.ts apps/api/src/repositories/preventive-event-store.ts apps/api/src/routes/product-service-catalog-routes.ts",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check -- apps/api/src/server.ts apps/api/src/server.test.ts apps/api/src/routes/product-service-catalog-routes.ts apps/api/src/repositories/responsibility-term-store.ts apps/api/src/repositories/animal-catalog-stores.ts apps/api/src/repositories/customer-group-store.ts apps/api/src/repositories/preventive-event-store.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/server.test.ts",
+      "result": "FAIL due to existing formatting differences at lines 2263, 5754, and 5764; the changed in-memory setup line matches Prettier output and the file was not reformatted wholesale.",
+      "exit_code": 1
+    }
+  ],
+  "independent_review": {
+    "result": "APPROVE",
+    "critic_id": "critic_m21_product_routes_i1",
+    "independence": "I1",
+    "mechanism": "Fresh non-inherited-context source review with the focused test and API typecheck rerun.",
+    "context_fork": "none",
+    "mutation_sentinel": {
+      "clean": true,
+      "artifacts": [
+        "apps/api/src/server.ts",
+        "apps/api/src/routes/product-service-catalog-routes.ts",
+        "apps/api/src/server.test.ts",
+        "docs/engineering/complexity-hotspots.json"
+      ]
+    },
+    "findings": "Compared all product/service route branches to HEAD. Route order, request validation, permissions, account checks, audit arguments, status codes, and response bodies are preserved; the route dispatch remains immediately before /breeds and passes the same dependencies; the route module has no persistence dependency. No regression found."
+  },
+  "coverage_gaps": [
+    "Focused HTTP tests exercise create/list/filter behavior but do not cover product/service item GET/PATCH, permission denials, cross-account ownership denials, or audit assertions.",
+    "No PostgreSQL/RLS store verification was run."
+  ],
+  "limitations": [
+    "This is a local M-21/M-23 slice against a dirty worktree; no candidate SHA or release state is established.",
+    "Remaining server route/composition decomposition and PROD-041 acceptance remain open.",
+    "M-21 database/RLS verification, negative/per-item route coverage, and broader critical journey evidence remain open."
+  ]
+}

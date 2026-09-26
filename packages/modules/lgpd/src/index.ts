@@ -1,6 +1,9 @@
 export {
+  LgpdDsrStateError,
   LgpdService,
   getLgpdRetentionEvidence,
+  type LgpdErasureEvidence,
+  type LgpdErasureExecutor,
   type LgpdDataProvider,
   type LgpdDataProviderContext,
   type LgpdProviderEvidence,

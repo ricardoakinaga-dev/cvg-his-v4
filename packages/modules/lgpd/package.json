@@ -12,7 +12,8 @@
   },
   "scripts": {
     "build": "tsc -b tsconfig.json --force",
-    "typecheck": "tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "node ../../../scripts/run-semantic-lint.mjs"
   },
   "dependencies": {
     "@cvg-his-v2/shared-database": "workspace:*",

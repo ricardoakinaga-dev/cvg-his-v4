@@ -1,0 +1,59 @@
+{
+  "evidence_id": "M28-REPORT-EXPORT-TENANT-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T11:17:54Z",
+  "scope": "In-process negative tenant test for reading an existing report export artifact through GET /reports/exports/:exportId.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to this dirty worktree at the recorded HEAD; it is not candidate or release evidence."
+  },
+  "scenario": {
+    "owner_account": "acc-report-owner",
+    "requesting_account": "acc-report-foreign",
+    "setup": "The in-memory ReportsService creates a financial-payables execution and CSV export under the owner account.",
+    "request": "A principal whose user and session both belong to the foreign account requests the existing export ID.",
+    "assertions": [
+      "The route rejects with NotFoundError, code NOT_FOUND, HTTP status 404, and the generic message Report export not found.",
+      "The error details do not include the foreign account ID.",
+      "No audit write occurs for the rejected foreign-account request."
+    ]
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/routes/reports-export-tenant.test.ts",
+      "sha256": "a5d82a4ff26bfe242e640ae89271d309dfbbaa4a3674ff8fd0d302a91a018225"
+    }
+  ],
+  "checks": [
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx --test apps/api/src/routes/reports-export-tenant.test.ts",
+      "result": "PASS, 1/1 test; foreign-account export artifact read is rejected with the opaque not-found contract and no audit write.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/api exec tsc -p tsconfig.json --noEmit",
+      "result": "PASS with no diagnostics.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/routes/reports-export-tenant.test.ts",
+      "result": "PASS; file uses Prettier style.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    }
+  ],
+  "independent_review": {
+    "result": "PASS",
+    "critic_id": "critic_m21_attachment_content_i2",
+    "reviewed_sha256": "a5d82a4ff26bfe242e640ae89271d309dfbbaa4a3674ff8fd0d302a91a018225",
+    "findings": "The real in-memory service creates the owner's export and the foreign principal carries the foreign account in both user and session. The final test asserts NotFoundError, NOT_FOUND, 404, the generic message, no foreign account ID in details, and no audit write. Reviewer reran the focused test and verified the file hash remained unchanged."
+  },
+  "limitations": [
+    "This is an in-process test using in-memory report persistence; it does not prove PostgreSQL roles/RLS or persisted export behavior.",
+    "Foreign-account report schedule, worker/job, broader API, and file matrices remain incomplete or database/role-gated.",
+    "The worktree remains dirty; no candidate SHA, CI, target, UAT, or release acceptance is asserted."
+  ]
+}

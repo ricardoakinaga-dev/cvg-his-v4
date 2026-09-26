@@ -1,0 +1,94 @@
+Evidence: REM-056 recovery revalidation after the v1 gate was reopened
+Observed start: 2026-09-23T05:19:17.691824Z
+Observed end: 2026-09-23T05:19:18.692343Z
+Environment: Linux local workspace; Node.js 22.23.2; pnpm 10.33.0; shared working tree preserved.
+Scope: local W3/REM-024 documentation-consistency checker only; no shared database or external target touched.
+Command environment: PATH="/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH"
+
+$ node --version
+exit_status=0
+v22.23.2
+
+$ pnpm --version
+exit_status=0
+10.33.0
+
+$ pnpm ops:backup:check
+exit_status=0
+
+> cvg-his-v2@0.1.0 ops:backup:check /home/ricardo/cvg-his-v4
+> node --test infra/scripts/validate-backup-restore.test.mjs && node infra/scripts/validate-backup-restore.mjs
+
+TAP version 13
+# Subtest: backup/restore gate uses the W3 roadmap and REM-024 recovery contract
+ok 1 - backup/restore gate uses the W3 roadmap and REM-024 recovery contract
+  ---
+  duration_ms: 38.212446
+  type: 'test'
+  ...
+# Subtest: backup/restore gate rejects a W3 roadmap without the restore/RPO/RTO step
+ok 2 - backup/restore gate rejects a W3 roadmap without the restore/RPO/RTO step
+  ---
+  duration_ms: 38.286124
+  type: 'test'
+  ...
+# Subtest: backup/restore gate rejects missing REM-024 representative backup/restore/rollback requirement
+ok 3 - backup/restore gate rejects missing REM-024 representative backup/restore/rollback requirement
+  ---
+  duration_ms: 32.895564
+  type: 'test'
+  ...
+# Subtest: backup/restore gate rejects missing REM-024 hash/count/RLS verification requirement
+ok 4 - backup/restore gate rejects missing REM-024 hash/count/RLS verification requirement
+  ---
+  duration_ms: 38.279281
+  type: 'test'
+  ...
+# Subtest: backup/restore gate rejects missing REM-024 approved RPO/RTO limits requirement
+ok 5 - backup/restore gate rejects missing REM-024 approved RPO/RTO limits requirement
+  ---
+  duration_ms: 36.487755
+  type: 'test'
+  ...
+# Subtest: backup/restore gate rejects a missing documentation manifest
+ok 6 - backup/restore gate rejects a missing documentation manifest
+  ---
+  duration_ms: 38.129271
+  type: 'test'
+  ...
+1..6
+# tests 6
+# suites 0
+# pass 6
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 284.939217
+[backup-restore-check] PASS backup-v2.sh existe e falha em erro de shell
+[backup-restore-check] PASS backup cria bundle com database, storage e meta
+[backup-restore-check] PASS backup usa pg_dump custom comprimido e captura globals
+[backup-restore-check] PASS backup gera manifest, restore hints e SHA256SUMS
+[backup-restore-check] PASS backup restringe BACKUP_INCLUDE_STORAGE a booleano explicito
+[backup-restore-check] PASS backup falha se o inventario de anexos nao puder ser capturado
+[backup-restore-check] PASS backup aplica politica de retencao configuravel
+[backup-restore-check] PASS restore-drill existe e nao toca a stack viva
+[backup-restore-check] PASS restore-drill valida checksums e TOC do dump antes de restaurar
+[backup-restore-check] PASS restore-drill restaura globals, database e storage com evidencia
+[backup-restore-check] PASS restore-drill aceita bundle database-only com manifest protegido
+[backup-restore-check] PASS package.json expõe backup, restore drill e check estatico
+[backup-restore-check] PASS package.json expõe restore drill representativo explicitamente
+[backup-restore-check] PASS documentacao viva de cutover menciona registro de evidencias
+[backup-restore-check] PASS roadmap W3 e backlog REM-024 mantem o contrato de recovery
+[backup-restore-check] repository/documentation consistency passed; no real restore, rollback, target certification, or RPO/RTO measurement was executed; those operations remain M-14 work
+
+$ git diff --check
+exit_status=0
+
+
+File SHA-256:
+b7efe46f7e5d22f36f2fc8cbc71ebc3ce1dcd4a0367e2d54a7557221205d98f2  infra/scripts/validate-backup-restore.mjs
+277af2e73154864443a582f054c7be9d51c8018183d923d63c7249d750da6a23  infra/scripts/validate-backup-restore.test.mjs
+
+Result: PASS only for the local checker and its regression/static consistency suite.
+Limitations: no real backup restore, rollback, target certification, tenant/RLS recovery observation, or RPO/RTO measurement; those remain REM-024 / M-14 work.

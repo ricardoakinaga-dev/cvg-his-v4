@@ -5,7 +5,7 @@ import test from 'node:test';
 import { EncountersService } from '@cvg-his-v2/module-encounters';
 import { OwnersService } from '@cvg-his-v2/module-owners';
 import { PatientsService } from '@cvg-his-v2/module-patients';
-import { ForbiddenError, NotFoundError } from '@cvg-his-v2/shared-errors';
+import { ForbiddenError, NotFoundError, ValidationError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 
 import { handlePatientsRoutes } from './patients-routes.js';
@@ -250,6 +250,7 @@ test('handlePatientsRoutes GET /patients searches by tutor document and phone', 
   assert.equal(handled, true);
   assert.equal(documentResponse.statusCode, 200);
   const documentPayload = documentResponse.bodyJson<{ items: Array<{ id: string }> }>();
+  assert.deepEqual(Object.keys(documentPayload).sort(), ['items']);
   assert.equal(
     documentPayload.items.some((item) => item.id === 'patient_luna'),
     true
@@ -301,10 +302,12 @@ test('handlePatientsRoutes GET /patients applies pageSize and legacy limit alias
     page: number;
     pageSize: number;
     total: number;
+    totalPages: number;
   }>();
   assert.equal(pagePayload.page, 2);
   assert.equal(pagePayload.pageSize, 1);
   assert.equal(pagePayload.total, 2);
+  assert.equal(pagePayload.totalPages, 2);
 
   const legacyResponse = new MockResponse();
   await handlePatientsRoutes(
@@ -319,7 +322,54 @@ test('handlePatientsRoutes GET /patients applies pageSize and legacy limit alias
     }
   );
 
-  assert.equal(legacyResponse.bodyJson<{ items: unknown[] }>().items.length, 1);
+  const legacyPayload = legacyResponse.bodyJson<{
+    items: unknown[];
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+  }>();
+  assert.equal(legacyPayload.items.length, 1);
+  assert.equal(legacyPayload.page, 1);
+  assert.equal(legacyPayload.pageSize, 1);
+  assert.equal(legacyPayload.total, 2);
+  assert.equal(legacyPayload.totalPages, 2);
+});
+
+test('handlePatientsRoutes GET /patients rejects unsupported status filters', async () => {
+  await assert.rejects(
+    () => handlePatientsRoutes(
+      '/patients',
+      new MockRequest({ method: 'GET', url: '/patients?status=archived' }) as never,
+      new MockResponse() as never,
+      'corr-patients-status-invalid',
+      {
+        patients: createPatientsService(),
+        audit: { write: () => {} } as never,
+        requirePrincipal: () => createPrincipal()
+      }
+    ),
+    ValidationError
+  );
+});
+
+test('handlePatientsRoutes GET /patients rejects zero pagination values', async () => {
+  for (const url of ['/patients?page=0', '/patients?pageSize=0', '/patients?limit=0']) {
+    await assert.rejects(
+      () => handlePatientsRoutes(
+        '/patients',
+        new MockRequest({ method: 'GET', url }) as never,
+        new MockResponse() as never,
+        `corr-patients-pagination-invalid-${url}`,
+        {
+          patients: createPatientsService(),
+          audit: { write: () => {} } as never,
+          requirePrincipal: () => createPrincipal()
+        }
+      ),
+      ValidationError
+    );
+  }
 });
 
 test('handlePatientsRoutes GET /owner-patient-links filters links by owner', async () => {

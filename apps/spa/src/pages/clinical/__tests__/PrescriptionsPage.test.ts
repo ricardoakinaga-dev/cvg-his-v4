@@ -6,6 +6,13 @@ const mockEncounterList = vi.fn();
 const mockPrescriptionList = vi.fn();
 const mockExecutionList = vi.fn();
 const mockPrescriptionCreate = vi.fn();
+const mockPatientGet = vi.fn();
+
+vi.mock('@/services/patient', () => ({
+  patientService: {
+    getById: (...args: unknown[]) => mockPatientGet(...args)
+  }
+}));
 
 vi.mock('@/services/encounter', () => ({
   encounterService: {
@@ -66,6 +73,7 @@ describe('PrescriptionsPage', () => {
     ]);
     mockPrescriptionList.mockResolvedValue([]);
     mockExecutionList.mockResolvedValue([]);
+    mockPatientGet.mockResolvedValue({ id: 'pat-1', allergy: undefined });
     mockPrescriptionCreate.mockResolvedValue({
       id: 'entry-1',
       accountId: 'acc-1',
@@ -304,4 +312,63 @@ describe('PrescriptionsPage', () => {
     expect(mockPrescriptionCreate).not.toHaveBeenCalled();
   });
 
+
+  describe('allergy alert', () => {
+    it('shows a compact allergy reminder only when an allergy is recorded', async () => {
+      mockPatientGet.mockResolvedValue({ id: 'pat-1', allergy: 'Dipirona (edema de face)' });
+      const wrapper = await mountPage();
+      await flushPromises();
+      expect(wrapper.get('.allergy-strip').text()).toContain('Dipirona (edema de face)');
+      expect(wrapper.find('.allergy-match').exists()).toBe(false);
+
+      mockPatientGet.mockResolvedValue({ id: 'pat-1', allergy: 'Nenhuma alergia conhecida' });
+      const negative = await mountPage();
+      await flushPromises();
+      expect(negative.find('.allergy-strip').exists()).toBe(false);
+    });
+
+    it('requires a justification when the medication matches and sends it on confirm', async () => {
+      mockPatientGet.mockResolvedValue({ id: 'pat-1', allergy: 'Alérgico a dipirona' });
+      const wrapper = await mountPage();
+      await flushPromises();
+
+      await wrapper.find('form input').setValue('Dipirona sódica');
+      expect(wrapper.get('.allergy-match').text()).toContain('dipirona');
+      expect(wrapper.get('button[type="submit"]').text()).toBe('Confirmar e salvar');
+
+      await wrapper.find('form').trigger('submit');
+      await flushPromises();
+      expect(mockPrescriptionCreate).not.toHaveBeenCalled();
+      expect(wrapper.get('.allergy-match').text()).toContain('mínimo de 10 caracteres');
+
+      await wrapper.get('.allergy-match textarea').setValue('Reação prévia leve; monitorar a cada 2h.');
+      await wrapper.find('form').trigger('submit');
+      await flushPromises();
+      expect(mockPrescriptionCreate).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Dipirona sódica' }),
+        { allergyAcknowledgement: 'Reação prévia leve; monitorar a cada 2h.' }
+      );
+    });
+
+    it('shows the server-side allergy conflict inline instead of a page error', async () => {
+      const { ApiError } = await import('@/services/api');
+      mockPatientGet.mockRejectedValue(new Error('offline'));
+      mockPrescriptionCreate.mockRejectedValueOnce(
+        new ApiError('conflict', 409, 'Conflict', {
+          code: 'ALLERGY_ACKNOWLEDGEMENT_REQUIRED',
+          details: { allergy: 'Dipirona', matchedTerms: ['dipirona'] }
+        })
+      );
+      const wrapper = await mountPage();
+      await flushPromises();
+
+      await wrapper.find('form input').setValue('Dipirona');
+      await wrapper.find('form').trigger('submit');
+      await flushPromises();
+
+      expect(wrapper.get('.allergy-match').text()).toContain('dipirona');
+      expect(wrapper.get('.allergy-strip').text()).toContain('Dipirona');
+      expect(wrapper.findComponent(DsAlert).exists()).toBe(false);
+    });
+  });
 });

@@ -1,0 +1,67 @@
+{
+  "evidence_id": "M22-MEDICAL-RECORD-ATTACHMENTS-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T11:04:16Z",
+  "state": "PASS_WITH_CONDITIONS",
+  "scope": "Extract the medical-record attachment panel and route-scoped read/open state from MedicalRecordsDetailPage into a domain component and composable.",
+  "environment": {
+    "node": "v22.23.2",
+    "pnpm": "10.33.0",
+    "vitest": "4.1.11",
+    "test_environment": "JSDOM",
+    "database_url_variables": "DATABASE_URL, TEST_DATABASE_URL, DATABASE_URL_TEST unset",
+    "services_or_ports": "none started"
+  },
+  "implementation": {
+    "page_lines_before": 3206,
+    "page_lines_after": 3002,
+    "lines_removed_from_page": 204,
+    "decision_record": ".agent/evidence/fp-decision-medical-record-attachments-20260924.json",
+    "source_hashes": {
+      "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue": "95c5b315279e5f33e232fd9d8767d03022cbcebea77b4cb9786502957c2f69bf",
+      "apps/spa/src/pages/medical-records/ClinicalAttachmentsPanel.vue": "2cdd793fda3ff6ad495e65d0d34a45222f29fbe272a3fa6463be75bd8bd29438",
+      "apps/spa/src/pages/medical-records/useClinicalRecordAttachments.ts": "791fb1bbfebf3fea0512e7dc45bf75ca79616b71793839e7b9ce37d7700bbba2",
+      "apps/spa/src/pages/medical-records/__tests__/MedicalRecordsDetailPage.test.ts": "0975e981b3691f7d5b4593b103c5a652a8d416fe9768d09fe6653346eb547b99",
+      "apps/spa/src/pages/medical-records/__tests__/ClinicalAttachmentsPanel.test.ts": "ed6cb8e56e100e8a51ac0cf8a0518abd41806e1e267842f160dea51b9c63dac8",
+      "apps/spa/src/pages/medical-records/__tests__/useClinicalRecordAttachments.test.ts": "3aeda66fd6e35d142327037befd36e9057609e460b3b4b86284c2fff8ad7f620",
+      ".agent/evidence/fp-decision-medical-record-attachments-20260924.json": "3f3d3b1e89a7c4b4a19e053c5df3d7b6108cec8a24b8a68544f52862fe3f579e"
+    }
+  },
+  "verification": [
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test pnpm exec vitest run src/pages/medical-records/__tests__/ClinicalAttachmentsPanel.test.ts src/pages/medical-records/__tests__/useClinicalRecordAttachments.test.ts src/pages/medical-records/__tests__/MedicalRecordsDetailPage.test.ts --reporter=dot",
+      "result": "PASS: 3 files, 60 tests"
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test pnpm exec vitest run --reporter=dot",
+      "result": "PASS: 240 files, 1959 tests; existing JSDOM router, navigation, and scroll warnings were non-failing"
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec vue-tsc --noEmit",
+      "result": "PASS"
+    },
+    {
+      "command": "pnpm exec prettier --check apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue apps/spa/src/pages/medical-records/ClinicalAttachmentsPanel.vue apps/spa/src/pages/medical-records/useClinicalRecordAttachments.ts apps/spa/src/pages/medical-records/__tests__/ClinicalAttachmentsPanel.test.ts apps/spa/src/pages/medical-records/__tests__/useClinicalRecordAttachments.test.ts .agent/evidence/fp-decision-medical-record-attachments-20260924.json",
+      "result": "PASS"
+    }
+  ],
+  "verified_behavior": [
+    "Record and encounter attachment sources retain exact linkage filtering, ID deduplication, and newest-first sorting.",
+    "Loading, confirmed empty, partial source failure, and full failure remain distinct.",
+    "Quarantined files do not expose open actions; only an exact, same-origin relative path with a token and future expiry is opened.",
+    "Route reset invalidates stale list and open completions.",
+    "Panel retains labelled list, busy/status semantics, file-specific action names, and alert semantics."
+  ],
+  "limitations": [
+    "No real-browser visual, mobile/dark-theme screenshot, or assistive-technology run was performed.",
+    "No database, API service, worker, listener, or port was started.",
+    "The SPA suite uses mocks and does not establish server-side attachment authorization or tenant isolation.",
+    "This is one medical-record feature slice; other large SPA modules and M-22 product acceptance remain open."
+  ],
+  "artifacts": [
+    "apps/spa/src/pages/medical-records/ClinicalAttachmentsPanel.vue",
+    "apps/spa/src/pages/medical-records/useClinicalRecordAttachments.ts",
+    "apps/spa/src/pages/medical-records/__tests__/ClinicalAttachmentsPanel.test.ts",
+    "apps/spa/src/pages/medical-records/__tests__/useClinicalRecordAttachments.test.ts",
+    ".agent/evidence/fp-decision-medical-record-attachments-20260924.json"
+  ]
+}

@@ -1,0 +1,99 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-RUNNER-20260921",
+  "timestamp": "2026-09-21T18:48:00.000000+00:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "REM-007 canonical root/workspace test runner and fail-closed known-bad contract; local evidence only",
+  "scope_ref": "REM-007",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The official Node/pnpm baseline and active remediation plan remain current before changing the root test boundary.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-003-runtime-baseline-20260921.txt",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This is a local runtime and control-plane prerequisite; it does not establish CI, target, UAT or release authority."
+    },
+    {
+      "id": "IR-002",
+      "description": "The root package, workspace manifests, Vitest configuration and CI boundary were inspected, and the implementation keeps root and workspace commands explicit.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-007-runner-20260921.txt",
+        "package.json",
+        "pnpm-workspace.yaml",
+        "vitest.config.ts",
+        "scripts/run-root-test-suite.mjs"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The current root suite still exposes the independent REM-026 complexity failure."
+    },
+    {
+      "id": "IR-003",
+      "description": "A focal contract and real subprocess known-bad prove ordered execution, first-nonzero propagation and prevention of a false-green workspace stage.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-007-runner-20260921.txt",
+        "tests/unit/infra/root-test-runner-contract.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The proof is local and synthetic for the negative path; direct workspace execution passed separately, while the composite root command remains blocked by REM-026."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-003-runtime-baseline-20260921.txt",
+    ".agent/evidence/rem-007-runner-20260921.txt",
+    ".agent/plans/remediacao-integral-20260921.md",
+    "package.json",
+    "pnpm-workspace.yaml",
+    "vitest.config.ts",
+    "scripts/run-root-test-suite.mjs",
+    "tests/unit/infra/root-test-runner-contract.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-REM-007-COMPOSITE-RESIDUAL",
+      "description": "The canonical `pnpm test` must be rerun after the independent REM-026 complexity residual is resolved or formally reconciled; the current exit 1 remains visible and is not a runner success.",
+      "non_blocking": true,
+      "impact": "This implementation gate authorizes only the reversible runner change and does not certify the full local quality gate.",
+      "owner": "lead",
+      "due_or_trigger": "Before REM-009 integrated local gate and before any REM-007 DONE transition",
+      "due_at": "2026-09-21T20:30:00.000000+00:00",
+      "verification_method": "Run `pnpm test` on Node 22.23.2/pnpm 10.33.0 and reconcile every nonzero result to an active backlog item.",
+      "evidence_refs": [
+        ".agent/evidence/rem-007-runner-20260921.txt",
+        ".agent/backlog.json",
+        ".agent/verification.jsonl#VER-REM-007-CANONICAL-ROOT-20260921"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "REM-007 canonical root/workspace test runner and fail-closed known-bad contract; local evidence only",
+    "decision": "The user instruction permits reversible local test-runner and test-contract changes; no external or destructive action is included.",
+    "evidence_ref": ".agent/plans/remediacao-integral-20260921.md",
+    "expires_or_revalidates": "Revalidate before crossing CI, target, UAT, release, credentials or history boundaries."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-007:VERIFY-CANONICAL-RUNNER",
+  "revalidation_triggers": [
+    "The independent REM-026 complexity result changes.",
+    "The root/workspace scripts, Vitest include set, package namespaces or CI execution boundary changes.",
+    "The scope expands beyond local runner behavior into CI, target, UAT or release."
+  ],
+  "supersedes": null
+}

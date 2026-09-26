@@ -1,11 +1,9 @@
-import { createHash } from 'node:crypto';
-import { readdirSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { readFileSync } from 'node:fs';
 import type { PoolClient } from 'pg';
 
 import { closeDbConnection, pool } from './connection.js';
 import { assertMigrationChecksums, type AppliedMigration } from './migration-integrity.js';
+import { getMigrationFiles, type MigrationFile } from './migration-files.js';
 import { APPLIED_MIGRATIONS_QUERY, MIGRATIONS_TABLE } from './migration-query.js';
 import { selectMigrationsThrough } from './migration-target.js';
 
@@ -13,8 +11,6 @@ export { assertMigrationChecksums } from './migration-integrity.js';
 export type { AppliedMigration } from './migration-integrity.js';
 export { APPLIED_MIGRATIONS_QUERY } from './migration-query.js';
 
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const migrationsFolder = resolve(__dirname, '../migrations');
 const OPTIONAL_RLS_TABLES = [
   'counter_sales',
   'counter_sale_items',
@@ -24,32 +20,6 @@ const OPTIONAL_RLS_TABLES = [
   'access_teams',
   'access_sectors'
 ];
-
-interface MigrationFile {
-  name: string;
-  path: string;
-  checksum: string;
-}
-
-function getMigrationFiles(): MigrationFile[] {
-  return readdirSync(migrationsFolder)
-    .filter(
-      (file) =>
-        file.endsWith('.sql') &&
-        !file.endsWith('.revert.sql') &&
-        !file.endsWith('.seed.sql')
-    )
-    .sort()
-    .map((file) => {
-      const path = resolve(migrationsFolder, file);
-      const sql = readFileSync(path, 'utf8');
-      return {
-        name: file.replace(/\.sql$/, ''),
-        path,
-        checksum: createHash('sha256').update(sql).digest('hex')
-      };
-    });
-}
 
 async function ensureMigrationsTable(client: PoolClient): Promise<void> {
   await client.query(`

@@ -22,7 +22,7 @@
   "scripts": {
     "build": "tsc -b tsconfig.json --force",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "tsc -p tsconfig.json --noEmit",
+    "lint": "node ../../../scripts/run-semantic-lint.mjs",
     "test": "tsx --test src/tenant-authorization-lock.test.ts src/tenant-transaction-context.test.ts",
     "db:generate": "node ../../../scripts/reject-legacy-db-command.mjs @cvg-his-v2/shared-database:generate",
     "db:migrate": "node ../../../scripts/reject-legacy-db-command.mjs @cvg-his-v2/shared-database:migrate",

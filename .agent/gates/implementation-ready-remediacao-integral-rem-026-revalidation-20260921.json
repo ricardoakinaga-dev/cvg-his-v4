@@ -1,0 +1,20 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-REM-026-REVALIDATION-20260921",
+  "timestamp": "2026-09-21T20:39:15.000000+00:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "REM-026 bounded server composition extraction and local canonical verification; reversible worktree-only scope",
+  "scope_ref": "REM-026",
+  "version": 1,
+  "criteria":[
+    {"id":"IR-001","description":"O hotspot congelado, o plano e os artefatos da extração permanecem disponíveis para revalidação.","required":true,"status":"PASS","evidence_refs":[".agent/plans/remediacao-integral-20260921.md","docs/engineering/complexity-hotspots.json",".agent/evidence/rem-026-server-composition-20260921.txt"],"confidence":"HIGH","limitations":"A revalidação é local e preserva a limitação de agente único."},
+    {"id":"IR-002","description":"A extração mínima de boundaries continua em 8318/8335 linhas sem alterar a régua congelada.","required":true,"status":"PASS","evidence_refs":[".agent/evidence/rem-026-server-composition-20260921.txt","apps/api/src/server.ts","apps/api/src/helpers/api-server-boundaries.ts","docs/engineering/complexity-hotspots.json"],"confidence":"HIGH","limitations":"Não certifica arquitetura ampla, CI, target ou release."},
+    {"id":"IR-003","description":"Os testes focais, server.test.ts, hotspot e runner canônico permanecem verdes localmente.","required":true,"status":"PASS","evidence_refs":[".agent/verification.jsonl#VER-REM-026-FOCUSED-20260921",".agent/verification.jsonl#VER-REM-026-CANONICAL-20260921",".agent/evidence/rem-026-server-composition-20260921.txt"],"confidence":"HIGH","limitations":"Nenhuma fronteira externa foi executada."}
+  ],
+  "evidence":[".agent/evidence/rem-026-server-composition-20260921.txt",".agent/verification.jsonl#VER-REM-026-FOCUSED-20260921",".agent/verification.jsonl#VER-REM-026-CANONICAL-20260921","apps/api/src/server.ts","apps/api/src/helpers/api-server-boundaries.ts"],
+  "confidence":"HIGH","gaps":[],
+  "conditions":[
+    {"id":"COND-REM-026-EXTERNAL-BOUNDARY","description":"CI, target, providers, UAT, recovery drills, release authority e human go/no-go permanecem obrigações separadas.","non_blocking":true,"impact":"O gate fecha somente o slice local de composição e não implica release readiness.","owner":"lead","due_or_trigger":"Antes do gate integrado REM-009 e de qualquer fronteira externa","due_at":"2026-09-22T12:00:00.000000+00:00","verification_method":"Reconciliar o próximo gate com o authority ledger e as evidências externas autorizadas.","evidence_refs":[".agent/state.json",".agent/plans/remediacao-integral-20260921.md"],"status":"OPEN","residual_risk":"MEDIUM","authority_state":"NOT_REQUIRED"}
+  ],
+  "authority":{"required":false,"state":"NOT_REQUIRED","actor":"local remediation executor","scope":"REM-026 bounded server composition extraction and local canonical verification; reversible worktree-only scope","decision":"A instrução autoriza somente revalidação local reversível; nenhuma fronteira externa foi cruzada.","evidence_ref":".agent/plans/remediacao-integral-20260921.md","expires_or_revalidates":"Revalidar antes de CI, target, UAT, credentials, deployment ou release."},
+  "residual_risk":"MEDIUM","decision":"PASS_WITH_CONDITIONS","next_action":"REM-026:REOPEN","revalidation_triggers":["Mudança no hotspot, helpers ou contratos extraídos.","Regressão nos testes focais, complexity ou runner.","Expansão para CI, target, UAT, recovery ou release."],"supersedes":"GATE-IR-REMEDIACAO-INTEGRAL-REM-026-20260921"
+}

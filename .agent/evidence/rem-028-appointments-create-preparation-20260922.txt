@@ -1,0 +1,53 @@
+REM-028 — preparação do seam de create flow da agenda
+Data: 2026-09-22T06:00:00.000000Z
+Escopo: seleção de cliente, preset de slot, modal/quick-create, criação, refresh e reconciliação pós-create
+Status: PASS_WITH_CONDITIONS para IMPLEMENTATION_READY
+
+## Autoridade e limite
+
+A instrução autoriza inspeção e implementação local reversível no worktree compartilhado.
+Não autoriza CI remoto, target, UAT, release, credenciais ou aceite de owner. O worktree
+dirty foi preservado.
+
+## Topologia observada
+
+- `AppointmentsListPage.vue` mantém `showClientSelector`, `showQuickCreate`, `selectedClient`, `pendingSlotPreset`, `quickCreatePreset` e handlers de abrir/fechar/selecionar/criar.
+- O header e `AgendaCalendarOrList` emitem apenas intents de criação; a page zera a seleção de appointment, escolhe o preset e abre o fluxo.
+- `AppointmentClientSelectorModal.vue` já possui owner list/search/pagination, cadastro inline e emite `selected: OwnerSummary` ou `close`.
+- `AppointmentQuickCreateForm.vue` já possui formulário, lookup de owner/patient/service/professional, disponibilidade/recommendation, `appointmentService.create` e emite `created: AppointmentSummary` ou `cancel`.
+- Após `created`, a page fecha o fluxo, chama `loadOverview()` e reconcilia `selectedAppointment` pelo id criado. Esse refresh/server-state deve permanecer page-bound.
+- Testes focais da page cobrem abertura pelo header, transição selector → quick-create e preset de slot; o modal de cliente possui suíte própria para seleção/cadastro e teclado.
+
+## Decisão de seam
+
+O próximo corte será `apps/spa/src/pages/appointments/AppointmentCreateFlow.vue`, um
+wrapper workflow candidate-bound, sem service/API/router/store próprio. Ele receberá:
+
+- `open`, `slotPreset` e `professionals` como props readonly;
+- internamente, visibilidade do selector/quick-create, owner selecionado e preset derivado;
+- forwarding tipado de `close` e `created`.
+
+O wrapper comporá `AppointmentClientSelectorModal`, `DsModal` e
+`AppointmentQuickCreateForm`, preservando o mutation owner em `AppointmentQuickCreateForm`.
+A page continuará dona de permission/action gating, intents de abrir, `selectedAppointment`,
+`loadOverview`, reconciliação pós-create, URL/query e server state; não será criado modal
+universal nem serviço duplicado.
+
+## Known-bads e verificação
+
+- Preservar o fluxo registered/new client e o foco/teclado já testados pelo selector.
+- Preservar preset de dia/hora/profissional e o default de 30 minutos.
+- Não fechar o fluxo antes de o `created` chegar à page; não perder refresh/reconciliação.
+- Não mover `appointmentService.create`, lookups, availability ou recommendation para a
+  page/wrapper; o quick form continua responsável por esses contratos.
+- Verificação esperada: teste focal novo do wrapper + `AppointmentsListPage.test.ts` e
+  `AppointmentClientSelectorModal.test.ts`, `vue-tsc`, lint, build, diff e boundary audit.
+  Browser/visual, E7, owners e suíte SPA integral continuam condições abertas.
+
+## Evidência reproduzível
+
+- `nl -ba apps/spa/src/pages/appointments/AppointmentsListPage.vue | sed -n '332,354p;947,980p'`
+- `sed -n '1,65p;204,430p' apps/spa/src/components/appointments/AppointmentClientSelectorModal.vue`
+- `sed -n '341,385p;503,540p;790,825p' apps/spa/src/components/appointments/AppointmentQuickCreateForm.vue`
+- `rg -n -C 10 "opens the client selector|empty slot|preset" apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts`
+- `sed -n '1,150p' apps/spa/src/components/appointments/__tests__/AppointmentClientSelectorModal.test.ts`

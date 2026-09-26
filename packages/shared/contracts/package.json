@@ -18,7 +18,7 @@
   "scripts": {
     "build": "tsc -b tsconfig.json --force",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "tsc -p tsconfig.json --noEmit",
-    "test": "node -e \"console.log('no tests for shared-contracts')\""
+    "lint": "node ../../../scripts/run-semantic-lint.mjs",
+    "test": "tsc -p tsconfig.json && node --test --test-reporter=dot dist/upload-limits.test.js dist/clinical-allergy.test.js"
   }
 }

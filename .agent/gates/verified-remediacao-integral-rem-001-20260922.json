@@ -1,0 +1,54 @@
+{
+  "gate_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-001-20260922",
+  "task": "REM-001",
+  "timestamp": "2026-09-22T10:57:56.000000Z",
+  "gate_type": "VERIFIED",
+  "decision": "PASS_WITH_CONDITIONS",
+  "criteria": [
+    {
+      "id": "V-REM001-001",
+      "criterion": "Backup manifest and all listed artifacts remain byte-verifiable",
+      "status": "PASS",
+      "observed": "SHA256SUMS 25/25 OK"
+    },
+    {
+      "id": "V-REM001-002",
+      "criterion": "All-refs bundle is complete and candidate-bound",
+      "status": "PASS",
+      "observed": "git bundle verify OK; 13 refs; HEAD ad2f0373f68635f2579253b013a4382219906921"
+    },
+    {
+      "id": "V-REM001-003",
+      "criterion": "Commit distance, prohibited blob and recovery evidence remain observable",
+      "status": "PASS",
+      "observed": "79 commits; blob cd9335c6562fda5acf2e9d958a36c60baea8dec9 size 152651034; recovery/clone records retained"
+    },
+    {
+      "id": "V-REM001-004",
+      "criterion": "History rewrite, ref removal, push and publication remain unexecuted pending authority",
+      "status": "PASS",
+      "observed": "Dry-run artifact says NÃO EXECUTADO; no destructive command was run"
+    },
+    {
+      "id": "V-REM001-005",
+      "criterion": "Independent-critique boundary is explicit and not converted into a false approval",
+      "status": "PASS_WITH_CONDITIONS",
+      "observed": "Single-primary-agent limitation recorded in evidence and gate"
+    }
+  ],
+  "evidence": ".agent/evidence/rem-001-verification-20260922.txt",
+  "artifacts": [
+    "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/SHA256SUMS",
+    "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/repository-all-refs.bundle",
+    "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/bundle-verify.txt",
+    "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/bundle-recovery.txt",
+    "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/history-rewrite-dry-run.txt"
+  ],
+  "limitations": [
+    "No independent read-only critic was available under the single-primary-agent constraint; this is an explicit limitation, not an approval.",
+    "The prohibited blob remains in history and REM-002 history rewrite/removal/push remains human-authorized only.",
+    "This gate does not certify release, CI/OCI, target, UAT, recovery drill or go/no-go."
+  ],
+  "next_action": "REM-001:REOPEN-IF-DRIFT",
+  "status": "DONE_LOCAL"
+}

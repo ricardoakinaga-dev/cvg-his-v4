@@ -1,0 +1,166 @@
+{
+  "evidence_id": "M01-HISTORY-RECONCILIATION-20260923",
+  "improvement_id": "M-01",
+  "observed_at": "2026-09-23T04:34:37Z",
+  "repository_identity": {
+    "local_head": "ad2f0373f68635f2579253b013a4382219906921",
+    "local_main_tracking_ref": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "live_origin_main": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "merge_base": "363c87efd653dad74afa1a6caf125debc6004641",
+    "exclusive_commit_counts_local_then_origin": "79 79",
+    "tree_difference_origin_main_to_local_head": [
+      "A .gauntlet/state.json",
+      "M .gitignore"
+    ]
+  },
+  "worktree_preservation": {
+    "modified_tracked_paths": 126,
+    "untracked_paths": 249,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "snapshot_time": "2026-09-23T04:34:37Z",
+    "additional_reliable_snapshots": [
+      {
+        "snapshot_time": "2026-09-23T04:52:45Z",
+        "modified_tracked_paths": 126,
+        "untracked_paths": 253,
+        "deleted_paths": 0,
+        "staged_paths": 0
+      },
+      {
+        "snapshot_time": "2026-09-23T04:58:08Z",
+        "modified_tracked_paths": 126,
+        "untracked_paths": 255,
+        "deleted_paths": 0,
+        "staged_paths": 0
+      },
+      {
+        "snapshot_time": "2026-09-23T05:26:00.234119Z/2026-09-23T05:26:01.536557Z",
+        "modified_tracked_paths": 126,
+        "untracked_paths": 260,
+        "deleted_paths": 0,
+        "staged_paths": 0,
+        "note": "Read-only M-02 inventory scan; path status was identical before and after hashing."
+      },
+      {
+        "snapshot_time": "2026-09-23T05:31:22.881699Z/2026-09-23T05:31:22.896317Z",
+        "modified_tracked_paths": 126,
+        "untracked_paths": 261,
+        "deleted_paths": 0,
+        "staged_paths": 0,
+        "note": "Read-only `git status --porcelain=v1 -uall` path-count snapshot after the manifest was created; 387 dirty paths total. No paths were changed by the snapshot."
+      },
+      {
+        "snapshot_time": "2026-09-23T05:35:22.074704Z/2026-09-23T05:35:22.089284Z",
+        "modified_tracked_paths": 126,
+        "untracked_paths": 261,
+        "deleted_paths": 0,
+        "staged_paths": 0,
+        "note": "Read-only git status --porcelain=v1 -uall after the independent crosswalk review checkpoint; 387 dirty paths total."
+      },
+      {
+        "snapshot_time": "2026-09-23T05:54:44.677251Z/2026-09-23T05:54:44.692171Z",
+        "modified_tracked_paths": 126,
+        "untracked_paths": 262,
+        "deleted_paths": 0,
+        "staged_paths": 0,
+        "note": "Read-only status after focused M-02 workspace manifest review evidence was created; 388 dirty paths total."
+      },
+      {
+        "snapshot_time": "2026-09-23T06:01:35.859633Z",
+        "modified_tracked_paths": 126,
+        "untracked_paths": 263,
+        "deleted_paths": 0,
+        "staged_paths": 0,
+        "total_dirty_paths": 389,
+        "status_sha256": "3582414aefc3261a6b21308905ff2db2091f0e841b9b02d79677d995825ca8a4",
+        "note": "Read-only git status --porcelain=v1 -uall snapshot. The 386-path M-02 inventory is the earlier baseline; the inventory manifest, workspace-manifest review, and content-scope review were created after that baseline and must be present in a refreshed candidate-bound inventory."
+      },
+      {
+        "snapshot_time": "2026-09-23T06:21:17.703656Z",
+        "modified_tracked_paths": 126,
+        "untracked_paths": 264,
+        "deleted_paths": 0,
+        "staged_paths": 0,
+        "total_dirty_paths": 390,
+        "status_sha256": "c66424c12c64fb43a0dad79aff5ab15445b1c688c63ab6a6e79209171b30b630",
+        "note": "Read-only git status snapshot after the first bounded API/report source-review evidence artifact was created."
+      },
+      {
+        "snapshot_time": "2026-09-23T06:25:35.618999Z",
+        "modified_tracked_paths": 126,
+        "untracked_paths": 264,
+        "deleted_paths": 0,
+        "staged_paths": 0,
+        "total_dirty_paths": 390,
+        "status_sha256": "c66424c12c64fb43a0dad79aff5ab15445b1c688c63ab6a6e79209171b30b630",
+        "note": "Read-only status capture after isolated payment gateway unit tests; no additional dirty paths appeared."
+      }
+    ],
+    "mutating_git_operations_performed": [],
+    "notes": "Existing work was left in place. No checkout, reset, clean, merge, fetch, push, prune, or ref update was performed during the M-01 read-only evidence-collection window. The separately authorized REM-002 history rewrite and single push happened earlier and are recorded in `.agent/evidence/rem-002-history-rewrite-20260923.txt`."
+  },
+  "large_object_boundary": {
+    "threshold_bytes": 104857600,
+    "local_head_reachable_blobs_at_or_above_threshold": 8,
+    "local_large_blob_location": ".gauntlet/state.json history; largest observed blob 152651034 bytes",
+    "origin_main_reachable_blobs_at_or_above_threshold": 0,
+    "interpretation": "The verified remote candidate does not contain the large state blobs reachable from the local history."
+  },
+  "recovery_artifacts": {
+    "backup_directory": "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001",
+    "sha256_manifest": "all 25 entries verified by sha256sum -c SHA256SUMS with exit 0",
+    "original_history_bundle": "repository-all-refs.bundle verified successfully; complete history recorded; 13 refs listed; preserves local pre-rewrite main at ad2f0373f68635f2579253b013a4382219906921 plus captured worktree patch and untracked archive",
+    "rem002_candidate_bundle": {
+      "path": "/home/ricardo/cvg-his-v4-backups/20260923-remediacao-integral-rem002/rem-002-rewritten.bundle",
+      "sha256": "7be6076addcb010dfd1b1a1682dbd9bc99493c92a7df458823d3fd105981711a",
+      "verification": "git bundle verify passed; complete history; ref 570920de3d12d9a1043aa2c36102a89d39f04569 refs/heads/rem-002-rewritten",
+      "supporting_evidence": [
+        ".agent/evidence/rem-002-history-rewrite-20260923.txt",
+        ".agent/gates/verified-remediacao-integral-rem-002-pushed-20260923.json",
+        ".agent/verification.jsonl#VER-REM-002-REWRITE-20260923",
+        ".agent/verification.jsonl#VER-REM-002-PUSH-20260923"
+      ]
+    }
+  },
+  "commands": [
+    {
+      "command": "git rev-parse HEAD refs/remotes/origin/main; git ls-remote origin refs/heads/main; git merge-base HEAD refs/remotes/origin/main; git rev-list --left-right --count HEAD...refs/remotes/origin/main; git diff --name-status refs/remotes/origin/main HEAD",
+      "result": "exit 0; live origin/main matched 570920de3d12d9a1043aa2c36102a89d39f04569; divergence 79/79; merge base 363c87efd653dad74afa1a6caf125debc6004641; tree difference limited to .gauntlet/state.json and .gitignore"
+    },
+    {
+      "command": "git rev-list --objects --missing=print <rev> and git cat-file --batch-check for HEAD and refs/remotes/origin/main",
+      "result": "exit 0; 8 local reachable blobs >= 100 MiB, 0 such blobs reachable from origin/main"
+    },
+    {
+      "command": "(cd /home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001 && sha256sum -c SHA256SUMS); git bundle verify /home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/repository-all-refs.bundle",
+      "result": "exit 0; all manifest entries verified and bundle reports complete history"
+    },
+    {
+      "command": "sha256sum /home/ricardo/cvg-his-v4-backups/20260923-remediacao-integral-rem002/rem-002-rewritten.bundle; git bundle verify /home/ricardo/cvg-his-v4-backups/20260923-remediacao-integral-rem002/rem-002-rewritten.bundle; git bundle list-heads /home/ricardo/cvg-his-v4-backups/20260923-remediacao-integral-rem002/rem-002-rewritten.bundle",
+      "result": "exit 0; candidate bundle SHA-256 matches 7be6076addcb010dfd1b1a1682dbd9bc99493c92a7df458823d3fd105981711a; complete 886-commit history is recoverable at the verified 570920de3d12d9a1043aa2c36102a89d39f04569 candidate"
+    },
+    {
+      "command": "git diff --check; git status --porcelain=v1 path-count audit",
+      "result": "exit 0; no whitespace errors; 126 modified tracked, 249 untracked, 0 deleted, 0 staged"
+    }
+  ],
+  "reconciliation_decision": {
+    "result": "PASS_WITH_CONDITIONS",
+    "independent_review": {
+      "review_id": "M01-CRITIC-I1-20260923-01",
+      "reviewer_agent": "/root/m01_reconciliation_critic",
+      "record": ".agent/evidence/m01-reconciliation-critique-20260923.md",
+      "decision": "PASS_WITH_CONDITIONS",
+      "scope": "M-01 recovery and reconciliation acceptance for the exact publication target refs/heads/main"
+    },
+    "decision": "Preserve the local main history and the verified origin/main candidate as separate refs. Do not merge the local history into origin/main because that would reintroduce .gauntlet/state.json blobs. Build the next clean candidate in an isolated worktree based on the verified origin/main and overlay only reviewed worktree changes; preserve the current shared tree and all recovery artifacts.",
+    "status_scope": "M-01 acceptance is recoverable refs/diffs, local/remote reconciliation, preserved exclusive commits, and no >=100 MiB blob on the exact publication target refs/heads/main. The original local history and rewritten candidate each have a verified bundle; independent critic approved the evidence after the candidate bundle was added. M-02 / REM-010 remains open for clean consolidated candidate assembly.",
+    "limitations": [
+      "This record does not authorize or perform push, ref rewrite, deletion, garbage collection, or publication.",
+      "The dirty worktree has not yet been classified path-by-path into the next candidate.",
+      "`git ls-remote --refs origin` also advertised `refs/pull/1/head` through `refs/pull/5/head`; these provider-managed pull-request refs were not scanned. The claim is limited to the authorized REM-002 publication target `refs/heads/main`, not all advertised remote refs.",
+      "The 79/79 histories remain divergent pending isolated candidate assembly and review; M-02 is a separate open acceptance."
+    ]
+  }
+}

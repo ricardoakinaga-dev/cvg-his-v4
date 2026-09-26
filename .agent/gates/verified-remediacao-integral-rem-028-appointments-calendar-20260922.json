@@ -1,0 +1,121 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-028-APPOINTMENTS-CALENDAR-20260922",
+  "timestamp": "2026-09-22T05:15:00.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "extração presentation-bound de AgendaCalendarOrList para list/day/week/month da agenda, sem aceite visual",
+  "scope_ref": "REM-028",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-040",
+      "description": "AgendaCalendarOrList possui boundary presentation-bound tipado para os quatro modos, estados vazios, dense slots, legenda e intents, sem services/router/stores.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-CALENDAR-20260922",
+        ".agent/evidence/rem-028-appointments-calendar-implementation-20260922.txt",
+        "apps/spa/src/pages/appointments/AgendaCalendarOrList.vue",
+        "apps/spa/src/pages/appointments/__tests__/AgendaCalendarOrList.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Auditoria estática não substitui browser, UAT ou prova externa de serviço."
+    },
+    {
+      "id": "V-041",
+      "description": "AppointmentsListPage reteve URL/query, overview, generation/stale-response, permission gating, services, criação e workflows; focal, typecheck, lint, build e diff passaram.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-CALENDAR-20260922",
+        ".agent/evidence/rem-028-appointments-calendar-implementation-20260922.txt",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+        "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A suíte SPA integral pós-seam permanece separada."
+    },
+    {
+      "id": "V-042",
+      "description": "Browser/visual/a11y do seam permanece explicitamente condicionado ao runtime E2E saudável; snapshots não foram atualizados.",
+      "required": true,
+      "status": "CONDITION",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-CALENDAR-20260922",
+        ".agent/evidence/rem-028-appointments-calendar-implementation-20260922.txt",
+        "playwright-spa.config.ts",
+        "e2e/spa/visual/visual-regression.spec.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "API local unhealthy; sem pixel diff, foco real, dark/mobile ou screen reader."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-028-appointments-calendar-implementation-20260922.txt",
+    ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-CALENDAR-20260922",
+    "apps/spa/src/pages/appointments/AgendaCalendarOrList.vue",
+    "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+    "apps/spa/src/pages/appointments/__tests__/AgendaCalendarOrList.test.ts",
+    "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Browser/visual/a11y atual não executado por API local unhealthy.",
+    "Suíte SPA integral pós-seam, crítica E7 e revisão de owners continuam abertas.",
+    "Outros seams da agenda — action controller, query/overview e create flow — permanecem não extraídos."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-028-APPOINTMENTS-CALENDAR-BROWSER",
+      "description": "Reexecutar list/day/week/month em browser com API saudável, incluindo empty/error/partial, dense slots, teclado/foco, dark/mobile, reduced-motion e largura intermediária.",
+      "non_blocking": true,
+      "impact": "Bloqueia claim visual/a11y e fechamento integral de REM-028, mas não continuidade local.",
+      "owner": "frontend/design",
+      "due_or_trigger": "Antes do VERIFIED integral de REM-028 ou atualização de baseline visual.",
+      "verification_method": "Playwright focal/interação e inspeção de artefatos atuais.",
+      "due_at": "2026-09-23T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-calendar-implementation-20260922.txt",
+        "playwright-spa.config.ts"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-028-APPOINTMENTS-CALENDAR-OWNER",
+      "description": "A extração e o contrato de intents ainda aguardam revisão identificada dos owners de scheduling/frontend/design.",
+      "non_blocking": true,
+      "impact": "Não bloqueia implementação local reversível; bloqueia aceite organizacional do contrato.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de promover o seam a compromisso de roadmap ou aceitar mudança de workflow.",
+      "verification_method": "Registrar revisão/decisão do owner e superseder a condição.",
+      "due_at": "2026-09-24T12:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-calendar-implementation-20260922.txt",
+        "docs/engineering/OWNERSHIP_AND_COMPLEXITY.md"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "extração local reversível da apresentação da agenda em REM-028",
+    "decision": "A instrução autoriza verificação local; não autoriza UAT, target, release ou aceite visual humano.",
+    "evidence_ref": ".agent/evidence/rem-028-appointments-calendar-implementation-20260922.txt",
+    "expires_or_revalidates": "Revalidar quando o runtime E2E ficar saudável, os handlers mudarem ou a integração cruzar nova fronteira de workflow."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-028:PREPARE-APPOINTMENTS-ACTION-SEAM",
+  "revalidation_triggers": [
+    "Mover overview, query, generation, permission, service, modal ou mutation ownership para AgendaCalendarOrList.",
+    "Alterar emits/predicados sem teste focal e typecheck.",
+    "Atualizar snapshots enquanto a API/health E2E estiver unhealthy.",
+    "Promover o seam local a aceite integral sem concluir actions, query/overview, create flow, browser, E7 e owners."
+  ],
+  "supersedes": ".agent/gates/implementation-ready-remediacao-integral-rem-028-appointments-20260922.json"
+}

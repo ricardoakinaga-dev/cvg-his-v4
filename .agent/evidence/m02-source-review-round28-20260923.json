@@ -1,0 +1,116 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND28-20260923",
+  "recorded_at": "2026-09-23T09:56:05Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "docs/README.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "9b6aa85e9a7c09074e895815a682eee3ba78ef670615e1853348100cc68ca3c6",
+      "current_sha256": "9b6aa85e9a7c09074e895815a682eee3ba78ef670615e1853348100cc68ca3c6",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Distinguishes the 23/09 local 66/100 supplemental snapshot from the 21/09 formal 68/100 release-blocked baseline and links the new M backlog without replacing the REM source. However, its closing sentence says .agent passes structurally and puts independent fresh review next; that is stale against the current global controller FAIL and active M-02 path review."
+    },
+    {
+      "path": "docs/document-governance.json",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "01fad7cd641d9ec98da16d7bdc0b26371e399e2f78dc8e45081ff86d7e213afe",
+      "current_sha256": "01fad7cd641d9ec98da16d7bdc0b26371e399e2f78dc8e45081ff86d7e213afe",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Promotes the 21/09 audit/plan/roadmap/backlog to current_documents and links earlier 20/09 and older executives as historical; the 23/09 package remains explicitly supplemental. Links resolve under the current local docs validation."
+    },
+    {
+      "path": "docs/430-fonte-de-verdade-documental.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "9544d6cf66a916151f0da335b3beab97afa78697815212424b8d6063af6ebeec",
+      "current_sha256": "9544d6cf66a916151f0da335b3beab97afa78697815212424b8d6063af6ebeec",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Updates the executive source-of-truth pointer to the 21/09 baseline (68/100, release blocked), identifies the 23/09 66/100 local audit and M documents as complementary, and retains the prior candidate identity as historical context. It also requires an external GBrain operational summary before task closure; this local review does not perform that external write."
+    }
+  ],
+  "candidate_relative_change": {
+    "readme": "Changes the start-here pointers from the 20/09 executive set to the 21/09 remediation set, adds the 23/09 complementary M package, and updates the formal score/status. It labels the local M audit as complementary rather than current candidate proof.",
+    "governance": "Makes the four 21/09 executive docs current and lists the 20/09 and earlier docs as superseded historical entries; linked indexes remain README and docs/430.",
+    "source_of_truth": "Aligns the current executive pointers with the 21/09 formal baseline and describes the 23/09 worktree report as supplemental; preserves release blocks."
+  },
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "Documentation links/governance and the Triple-A current snapshot validator passed. This validates structural pointers and links, not the truth/freshness of every status sentence.",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-README-AGENT-STRUCTURAL-STATUS-STALE",
+      "classification": "HOLD_DOCUMENT_STATUS_FRESHNESS",
+      "observation": "The README says the operational .agent state passes structurally and that the next technical step is independent fresh review. The latest canonical controller run is RESULT FAIL (pass=6 warn=0 fail=788), and M-02 is still reviewing original paths; the sentence no longer describes current state."
+    },
+    {
+      "id": "M02-CURRENT-DOCS-SEPARATE-BASELINE-AND-SUPPLEMENT",
+      "classification": "LOCAL_DOCUMENT_LINKAGE",
+      "observation": "The README, document-governance manifest and 430 source-of-truth index consistently distinguish the 21/09 formal 68/100 release-blocked baseline from the 23/09 supplemental 66/100 shared-tree snapshot. The 23/09 M documents are not promoted to current baseline."
+    },
+    {
+      "id": "M02-DOCS-VALIDATOR-IS-STRUCTURAL",
+      "classification": "HOLD_SEMANTIC_VALIDATION",
+      "observation": "pnpm docs:validate confirms configured documents/links resolve and the current snapshot is candidate-bound. It does not catch the README structural-status statement that is stale relative to the live controller."
+    },
+    {
+      "id": "M02-GBRAIN-UPDATE-REMAINS-EXTERNAL",
+      "classification": "HOLD_EXTERNAL_HANDOFF",
+      "observation": "The 430 source-of-truth document says every verifiable advance must be written to the canonical GBrain project page before task closure. This round updates local evidence only; no external page write was performed."
+    }
+  ],
+  "candidate_actions": [
+    "Keep the 21/09 baseline as the formal executive pointer while the 23/09 local package remains supplemental and candidate-unfrozen.",
+    "Refresh the README .agent/controller and next-step statement after M-02 reconciliation so the index does not claim a stale structural PASS.",
+    "Track the documented GBrain handoff as a separate external action; this local docs PASS does not satisfy it."
+  ],
+  "limitations": [
+    "No production documentation was edited during this review; the stale README statement remains an open finding.",
+    "The docs validator is structural and does not certify factual freshness or candidate identity of every listed report.",
+    "No external GBrain/Drive write, candidate, overlay, frozen SHA or release action occurred; self-review only."
+  ],
+  "checkpoint_validation": {
+    "docs_validate": {
+      "result": "PASS",
+      "command": "pnpm docs:validate"
+    },
+    "json_and_jsonl_parse": {
+      "result": "PASS",
+      "scope": "state, backlog, content-scope, round-28 evidence, execution log and verification log"
+    },
+    "git_diff_check": {
+      "result": "PASS",
+      "command": "git diff --check"
+    },
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 27; no new REM-010/M-02 finding and no gate-v2 finding. The global controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T09:57:29Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 291,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 417,
+    "status_sha256": "5fab1081d828246146b98067cc7733bddce5ba6bd590568e382355f3d709f4a4",
+    "note": "Read-only porcelain status after M-02 round 28 and checkpoint validation; original 386-path denominator unchanged. Round-28 evidence is the thirty-first post-inventory artifact."
+  }
+}

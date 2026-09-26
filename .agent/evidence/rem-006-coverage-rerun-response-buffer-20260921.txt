@@ -1,0 +1,27 @@
+# REM-006 — rerun integral após ajuste de response-buffer
+
+timestamp_utc=2026-09-21T18:01:45+00:00
+repository=/home/ricardo/cvg-his-v4
+head=ad2f0373f68635f2579253b013a4382219906921
+runtime=node-v22.23.2
+package_manager=pnpm-10.33.0
+command=pnpm test:coverage
+thresholds=preservados; branch global >=82%; excludes congelados
+
+## Resultado
+
+- exit=1 após 291.04s.
+- 278 arquivos passaram; 1 arquivo falhou; 1 arquivo foi skipped.
+- 3.010 testes passaram; 1 falhou; 3 foram skipped.
+- Statements 87.20% (10.488/12.027).
+- Branches 81.98% (8.196/9.997), faltando 2 branches para atingir 82%.
+- Functions 88.90% (2.340/2.632).
+- Lines 88.65% (9.895/11.161).
+- O único teste falho foi `tests/unit/infra/complexity-hotspots.test.ts`: `apps/api/src/server.ts` ficou em 8.406 linhas contra orçamento congelado de 8.335 (71 acima), residual REM-026.
+- O teste `apps/api/src/helpers/response-buffer.test.ts` passou como `node:test`, mas não é coletado pelo runner Vitest/V8; o arquivo ainda ficou sem os dois branches no relatório agregado.
+
+## Próximo passo
+
+Adicionar uma representação Vitest em `tests/unit/` para que o comportamento já provado seja contado no coverage global. Não alterar threshold, excludes ou orçamento de complexity.
+
+result=FAIL

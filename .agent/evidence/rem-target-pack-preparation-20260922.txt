@@ -1,0 +1,55 @@
+REM target certification pack — local preparation
+Observed at: 2026-09-22T08:57:41-03:00
+Operator: primary agent / Direct mode
+Scope: REM-022, REM-023, REM-024, REM-025 and REM-030 preparation only
+
+STATUS=PREPARED_NOT_EXECUTED
+
+Purpose:
+- Consolidate the Phase 3 target runbook/checklist without claiming target proof.
+- Bind RLS, worker recovery, restore/RPO-RTO, load/soak/SLO and migration target
+  evidence to explicit invariants, known-bads, authority records and a common
+  candidate SHA.
+- Add a read-only local checker so drift in files, package commands or safety
+  markers fails closed.
+
+Implemented artifacts:
+- docs/operations/REM_TARGET_CERTIFICATION_RUNBOOK.md
+- scripts/validate-remediation-target-pack.mjs
+- scripts/validate-remediation-target-pack.test.mjs
+- package.json: validate:remediation-target-pack
+
+Executed locally with Node 22.23.2 / pnpm 10.33.0:
+- PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm validate:remediation-target-pack -- --json
+  PASS; checked_files=20; checked_markers=15; checked_package_scripts=9; failures=0.
+- node --test scripts/validate-remediation-target-pack.test.mjs
+  PASS; 2/2 tests, including a known-bad runbook missing REM-025 that failed.
+- node --check scripts/validate-remediation-target-pack.mjs
+  PASS.
+- pnpm exec prettier --check docs/operations/REM_TARGET_CERTIFICATION_RUNBOOK.md scripts/validate-remediation-target-pack.mjs scripts/validate-remediation-target-pack.test.mjs package.json
+  PASS; all matched files use Prettier code style.
+- git diff --check
+  PASS.
+
+Source hashes at observation:
+- docs/operations/REM_TARGET_CERTIFICATION_RUNBOOK.md
+  62eb4f52f1505e909e85b9475708c78da4beb6d12b1da838035ad4de3465a648
+- scripts/validate-remediation-target-pack.mjs
+  9f85c1dbdd5e9d2df9a79a3c3af00583a63d38192fad5300e79fd43d41c65f35
+- scripts/validate-remediation-target-pack.test.mjs
+  a2ecc8f20a33d07b54c0a3a484f452a0ea129d3032a1a685f24820a12ae7e41e
+- package.json (shared worktree includes prior remediation changes)
+  bf8780af15a54cc586c2ca0b4dcf362c9c40a56aaa3e3b8629fb37d399742c41
+
+Boundary and limitations:
+- No DATABASE_URL, target credential, provider, cluster or external service was
+  read or used.
+- No restore, rollback, load, soak, worker interruption, migration against a
+  target, deploy, push or release action was executed.
+- Existing local rehearsal scripts/fixtures are referenced and reconciled; this
+  record does not rerun them and does not promote their local evidence to target
+  acceptance.
+- REM-022/023/024/025/030 remain BLOCKED; REM-021 and authority/target
+  prerequisites remain open. No REM item was marked DONE by this preparation.
+- Independent critic, CI/OCI, target owner sign-off, UAT and go/no-go remain
+  outside this evidence.

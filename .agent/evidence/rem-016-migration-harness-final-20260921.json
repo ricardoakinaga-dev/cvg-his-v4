@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "task": "REM-016",
+  "status": "PASS",
+  "runId": "6f22a9c1733846bf",
+  "image": "postgres@sha256:cf78e76683b9ca8c5733cbbdce6c9262b45b6767934dd0a95e671f9a0fc20685",
+  "databaseIsolation": "owned disposable PostgreSQL container and per-run databases",
+  "migrationCount": 176,
+  "prefixTarget": "0169_clinical_workflow_event_order",
+  "scenarios": {
+    "install": {
+      "status": "passed",
+      "target": "HEAD",
+      "migrationCount": 176,
+      "syntheticRows": 12,
+      "reexecution": {
+        "status": "passed",
+        "durationMs": 3366,
+        "dataUnchanged": true
+      }
+    },
+    "mixedVersion": {
+      "status": "passed",
+      "oldVersionTarget": "0169_clinical_workflow_event_order",
+      "oldVersionMigrationCount": 168,
+      "headMigrationCount": 176,
+      "syntheticRows": 12,
+      "compatibilityProbe": {
+        "oldVersionReadable": true,
+        "rows": 12
+      },
+      "dataPreserved": true
+    },
+    "lock": {
+      "status": "passed",
+      "observedWaiting": true,
+      "heldMs": 1200,
+      "elapsedMs": 5259,
+      "migrationExitCode": 0
+    },
+    "rollback": {
+      "status": "passed",
+      "rollbackMethod": "pg_dump-custom-plus-pg_restore-into-owned-replacement-database",
+      "sourceHeadAfterUpgrade": true,
+      "restoredTarget": "0169_clinical_workflow_event_order",
+      "restoredMigrationCount": 168,
+      "syntheticRowsRestored": 12,
+      "dataPreserved": true
+    },
+    "failureRecovery": {
+      "status": "passed",
+      "knownBad": "corrupted-applied-migration-checksum",
+      "knownBadExitCode": 1,
+      "noAdditionalMutationDuringFailure": true,
+      "recoveredToHead": true
+    },
+    "unknownTarget": {
+      "status": "passed",
+      "knownBad": "unknown-migration-target",
+      "exitCode": 1,
+      "noMigrationRowsCreated": true
+    }
+  },
+  "limitations": [
+    "Synthetic data and a disposable local container do not prove target rollback, RPO/RTO, operator readiness or human approval.",
+    "Mixed-version is represented by an old migration-prefix schema followed by the current migration runner; it does not certify an independently built historical application binary.",
+    "No shared database, real credential, provider, clinical/PII data, deploy, restore drill or release action was used."
+  ]
+}

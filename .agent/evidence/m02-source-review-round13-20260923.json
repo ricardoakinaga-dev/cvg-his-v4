@@ -1,0 +1,106 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND13-20260923",
+  "recorded_at": "2026-09-23T08:02:51Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PARTIAL; SPA manifest lint migration, shared launcher, lint rules and contract test reviewed; complete inventory, full CI invocation boundary, M-44 warning debt, and independent critique remain open",
+  "paths_reviewed": [
+    {
+      "path": "apps/spa/package.json",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "ba0a8b115a55dbd85d8e028a32dc6eb3ad15a1f31ef8a6af4e239c84da4ae0c4",
+      "current_sha256": "ba0a8b115a55dbd85d8e028a32dc6eb3ad15a1f31ef8a6af4e239c84da4ae0c4",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_LINT_TYPECHECK_GATE_BOUNDARY",
+      "review_notes": "The only manifest diff changes lint from vue-tsc to the shared semantic lint launcher. The build and typecheck scripts still invoke vue-tsc separately; no dependency version or package dependency changed.",
+      "candidate_overlay_decision": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE"
+    },
+    {
+      "path": "scripts/run-semantic-lint.mjs",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "520064ed8d4e3eac9f79e27ad94f2b6e5e3e764dc3cb0c0d3883ddcbc656c2a8",
+      "current_sha256": "520064ed8d4e3eac9f79e27ad94f2b6e5e3e764dc3cb0c0d3883ddcbc656c2a8",
+      "sha_matches_inventory": true,
+      "scope_classification": "TOOLING_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_TYPECHECK_SEPARATION_LIMIT",
+      "review_notes": "The launcher resolves the workspace src directory from process.cwd(), calls the root ESLint binary directly with a root semantic config and an explicit TS/JS extension set, propagates the child exit status, fails if ESLint cannot start, and exits cleanly for workspaces without src. It does not invoke a shell, mutate files, or access network/database services.",
+      "candidate_overlay_decision": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE"
+    },
+    {
+      "path": ".eslintrc.semantic.cjs",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "e02d3c9f043192b6df13005f665af1ff135dbceeeac0d268e00a1698122cea52",
+      "current_sha256": "e02d3c9f043192b6df13005f665af1ff135dbceeeac0d268e00a1698122cea52",
+      "sha_matches_inventory": true,
+      "scope_classification": "OTHER_REVIEW_REQUIRED",
+      "content_review": "REVIEWED_WITH_MINIMAL_RULESET_LIMIT",
+      "review_notes": "The shared config freezes three error rules (debugger, unreachable code, unsafe finally) and one warning rule (explicit any), with TypeScript parsing and no Vue SFC processor. Typechecking remains in the separate workspace build/typecheck contract.",
+      "candidate_overlay_decision": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE"
+    },
+    {
+      "path": "tests/unit/infra/lint-contract.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "1e1acefceb521d6494993f32b7108bcb58da2761dbbfb4df8d7d85f3c033ed7f",
+      "current_sha256": "1e1acefceb521d6494993f32b7108bcb58da2761dbbfb4df8d7d85f3c033ed7f",
+      "sha_matches_inventory": true,
+      "scope_classification": "TEST_OR_QUALITY_CONTRACT",
+      "content_review": "REVIEWED_WITH_FILESYSTEM_ONLY_TEST_BOUNDARY",
+      "review_notes": "Three Vitest cases inspect workspace manifests and config text to assert 68 lint/typecheck contracts, separate root lint/typecheck commands, and the minimum rule set. It uses filesystem reads and no DB, network, provider, or shell child process.",
+      "candidate_overlay_decision": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE"
+    }
+  ],
+  "related_evidence": {
+    "rem013_ref": ".agent/evidence/rem-013-semantic-lint-20260921.txt",
+    "relationship": "This earlier linked M-13 record documents the workspace-wide migration and its 68-package lint/typecheck run; round 13 independently checks the SPA manifest's local command boundary and contract test."
+  },
+  "test_execution": {
+    "contract_command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config apps/spa/vitest.config.ts tests/unit/infra/lint-contract.test.ts",
+    "contract_working_directory": ".",
+    "contract_started_at_utc": "2026-09-23T08:01:53Z",
+    "contract_finished_at_utc": "2026-09-23T08:01:54Z",
+    "contract_test_files_passed": 1,
+    "contract_tests_passed": 3,
+    "contract_tests_failed": 0,
+    "contract_environment": "Standalone SPA Vitest/JSDOM config with Vue Test Utils setup only; the selected test reads workspace manifests/config from disk. No database global setup, provider, or live network call was observed.",
+    "spa_lint_command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm --filter @cvg-his-v2/spa lint",
+    "spa_lint_exit_status": 0,
+    "spa_lint_summary": "0 errors, 32 non-blocking @typescript-eslint/no-explicit-any warnings",
+    "spa_lint_scope": "Launcher ran ESLint over apps/spa/src with the shared TypeScript/JavaScript extension list; it does not lint Vue SFC files. The separately invoked typecheck/build gate covers Vue type checking."
+  },
+  "architecture_observations": [
+    "The package-level lint and typecheck responsibilities are separate by design: semantic rules run through ESLint, while Vue and TypeScript correctness remains in vue-tsc/typecheck/build commands.",
+    "The launcher derives the workspace path from the package command's current working directory and resolves the ESLint binary/config from repository root; it runs a single process without shell interpolation or cleanup side effects.",
+    "The workspace contract test checks every current apps/packages manifest (68), requires a lint and typecheck command, rejects lint aliases to tsc/vue-tsc, and verifies separate root aggregate commands and configured rules.",
+    "The lint rule set is deliberately minimal, not a replacement for typechecking or the full M-44 semantic-quality backlog. The SPA lint run reported 32 warnings and zero errors; the broader M-13 record reports 164 warnings across 14 workspaces."
+  ],
+  "findings_and_limits": [
+    {
+      "id": "M02-SPA-LINT-TYPECHECK-GATE-SEPARATION",
+      "classification": "HOLD_PIPELINE_INVOCATION_BOUNDARY",
+      "observation": "Running the SPA lint command alone no longer performs vue-tsc; that responsibility is on the separate typecheck/build command. The contract proves both scripts exist and differ, but this source round does not verify every CI/developer pipeline invokes both gates.",
+      "required_followup": "Keep lint and typecheck as separate explicit pipeline gates and do not treat a lint-only success as Vue/type correctness evidence."
+    },
+    {
+      "id": "M02-SEMANTIC-LINT-RULESET-SCOPE",
+      "classification": "KNOWN_OPEN_M44_SCOPE",
+      "observation": "The current rules catch three safety patterns and warn on explicit any; Vue SFCs are not linted by this launcher and explicit-any warnings remain non-blocking.",
+      "required_followup": "Preserve the documented typecheck gate and continue M-44 rule/warning reduction separately; this review does not claim comprehensive static analysis."
+    }
+  ],
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "hold_reason": "The four lint-boundary paths are hash-stable and focused checks pass, but pipeline invocation of both gates, M-44 warning debt, complete inventory review, and independent critique remain open."
+  },
+  "limitations": [
+    "The SPA lint command passed with 32 warnings; warnings remain configured as non-failing and do not make M-44 complete.",
+    "The contract test verifies manifest/script presence and config snippets, not every CI workflow's actual command sequence.",
+    "The contract test path is included among the four original-inventory paths; its filesystem-only test uses the standalone SPA config and no DB setup.",
+    "This is a primary-operator review, not independent tooling, CI, release or M-44 acceptance."
+  ]
+}

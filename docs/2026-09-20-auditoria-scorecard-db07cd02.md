@@ -1,5 +1,5 @@
 ---
-document_status: current
+document_status: historical
 document_kind: baseline
 effective_date: 2026-09-21
 owner: Liderança técnica, Plataforma, Segurança, QA e Operações CVG-HIS
@@ -7,6 +7,7 @@ review_cycle: on-candidate-change-or-material-evidence
 candidate_sha: 74b8669f2c387ece87181e469a60566e7249fb7e
 overall_score: 72
 verdict: LOCAL_COMPLETE / EXTERNAL_BLOCKED
+superseded_by: docs/2026-09-26-auditoria-completa-sistema.md
 ---
 
 # Auditoria e scorecard do candidato local — identidade `74b8669f`

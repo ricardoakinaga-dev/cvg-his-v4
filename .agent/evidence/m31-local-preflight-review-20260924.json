@@ -1,0 +1,72 @@
+{
+  "evidence_id": "M31-LOCAL-PREFLIGHT-I1-20260924",
+  "recorded_at_utc": "2026-09-24T02:45:38Z",
+  "criterion": "M31-LOCAL",
+  "verdict": "PASS",
+  "critic": "critic_m31_preflight_review_v3_i1",
+  "independence": "I1",
+  "review_packet": {
+    "path": "/tmp/m31-local-review-packet-v3.json",
+    "sha256": "1d6e1d0d09109cf18a23e65e97d17da3e0ed9dd5ba90fe5203d2e5618d8b85a4"
+  },
+  "frozen_acceptance_bar": {
+    "path": "/tmp/m31-database-preflight-bar-v1.json",
+    "sha256": "a3030b5912dd581a4b3ffa0abed516249b390b326555cb408bfd22a428384e5e"
+  },
+  "reviewed_artifacts_sha256": {
+    "packages/db/src/database-preflight.ts": "93c5ffaf7d239b2e29b408b6bca440447e7262f9ac658da08e71e3a29d5730ee",
+    "packages/db/src/database-preflight-cli.ts": "f86ebc1fc3fb6ea2544a53d09e3ad42095f0749d58bedbfed74e6f5f8f21a0c3",
+    "packages/db/src/database-preflight.test.ts": "81710b70eb77b04f0f38bbb555c64664daa5eedb8134dc45f6596506426870ba",
+    "packages/db/src/migration-files.ts": "d577d19fcaa76a459ff5cc5564b0bac3b5a9d943299053c5917d82e1a859da07",
+    "packages/db/src/migrate.ts": "067507c56c186a666c00be44dc479b5afba71013782de8e3fc3fd3249fabe0aa",
+    "packages/db/src/migration-query.ts": "a6212a87ff15e5b372bd3c3f3778e1f395a687ed14627d8b6c2b63c7ef2e8bcd",
+    "packages/db/package.json": "510e586a0c40b36cfcd0f7293bd057b6bb5b71fdb1a6c72b15c0b1fa549d15f2",
+    "package.json": "32c6ccef58b77cc2a72e24383f76e262a45a2ab3b0cc91e482a009070fb33927",
+    "apps/api/README.md": "3b321f2fa46691f1e00ca2c5a6fa21361b6b41fae380bb0ec0f0e94acbecdb46",
+    ".agent/evidence/m31-operational-reconciliation-20260924.json": "e683080e038debe0f12772c9575331e47d78aed8449d96c356c90d464b336bc1"
+  },
+  "checks": [
+    {
+      "id": "M31-PURE",
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx --test packages/db/src/database-preflight.test.ts",
+      "result": "PASS: 6 tests"
+    },
+    {
+      "id": "M31-MIGRATION-ASSESSMENT",
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec vitest run --config /tmp/cvg-his-m35-no-db-vitest.config.mjs --reporter=verbose packages/db/src/migration-preflight.test.ts",
+      "result": "PASS: 14 tests; config disables DB setup/globalSetup"
+    },
+    {
+      "id": "M31-TYPECHECK",
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his/db typecheck",
+      "result": "PASS: exit 0"
+    },
+    {
+      "id": "M31-NO-CREDENTIAL",
+      "command": "env -u DATABASE_URL -u DATABASE_URL_TEST -u PGPASSWORD PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx packages/db/src/database-preflight-cli.ts --no-env-file",
+      "result": "EXPECTED REJECTION: exit 1; DATABASE_URL is required; no database was contacted."
+    },
+    {
+      "id": "M31-NONLOOPBACK",
+      "command": "env -u DATABASE_URL_TEST DATABASE_URL=<synthetic loopback-negative URI> PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx packages/db/src/database-preflight-cli.ts --no-env-file",
+      "result": "EXPECTED REJECTION: exit 1; loopback destinations only; synthetic username, password, and host absent from output. No connection attempted."
+    },
+    {
+      "id": "M31-WHITESPACE",
+      "result": "PASS: git diff --check for changed tracked files; direct trailing-whitespace/final-newline checks for 10 new artifacts."
+    }
+  ],
+  "review_findings": [
+    "CLI and pool reject non-loopback connection URLs and suppress credential/connection details.",
+    "Connection and query waits are bounded; database SQL runs in BEGIN READ ONLY and only reads version, migration ledger, and pg_catalog.",
+    "PostgreSQL 16, applied migration checksums, no pending migration, and Drizzle table/column names are checked.",
+    "Persistent API and test commands run preflight first. Persistent tests require DATABASE_URL_TEST and clear TEST_DB_SUFFIX while forcing TEST_DB_EPHEMERAL=0, so the tested URL equals the preflight URL and the global setup does not reset/migrate/seed/drop the DB.",
+    "Repository-root .env is the shared file source for preflight and the root Vitest setup."
+  ],
+  "m31_live": {
+    "status": "BLOCKED/NOT_RUN",
+    "reason": "The user prohibited database access and service/container startup for this run.",
+    "claim": "No positive, stale, or drifted real PostgreSQL 16 state was tested; no database was contacted."
+  },
+  "global_release_claim": "NONE"
+}

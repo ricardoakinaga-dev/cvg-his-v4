@@ -1,0 +1,163 @@
+{
+  "evidence_id": "M21-MEDICAL-ATTACHMENT-ENCOUNTER-ROUTES-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T08:55:17Z",
+  "scope": "Hash-bound local evidence for medical-record collection reads, attachment listing, encounter deletion, and signed attachment download URL route extractions under M-21/M-23.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Each route snapshot is bound to the dirty worktree revision reviewed at that point; no candidate or release state is asserted."
+  },
+  "environment": {
+    "node": "22.23.2",
+    "pnpm": "10.33.0",
+    "focused_http_tests": "Run in-process using the server.emit test helper; DATABASE_URL, TEST_DATABASE_URL, and DATABASE_URL_TEST unset.",
+    "services": "No database, persistent API listener, worker, container, or port was started for the local focused checks."
+  },
+  "extractions": [
+    {
+      "route_family": "GET /medical-records and GET /medical-records/entries",
+      "module": {
+        "path": "apps/api/src/routes/medical-record-read-routes.ts",
+        "sha256": "98c5beb486daae0de33eafd619473b892e1f3fda7b0813baa3dc9b1d60d6fa32"
+      },
+      "server_snapshot": {
+        "path": "apps/api/src/server.ts",
+        "sha256": "9e922c1d4c2dee5b28324677d57bf5acdf652b93d8d8532a74a8c77472db3bae"
+      },
+      "test_snapshot": {
+        "path": "apps/api/src/server.test.ts",
+        "sha256": "28e5bf7c2fd2ef1c34359b94eb320e5220b4d560d76ba3f76e7bd7964bf81a3b"
+      },
+      "complexity_snapshot": {
+        "path": "docs/engineering/complexity-hotspots.json",
+        "sha256": "5f01ef70dacca7a1fee6d7776ac02b72925ceb319fb919278910c7c00775f4d1",
+        "server_lines": 4275,
+        "cap": 8323
+      },
+      "behavior_preserved": [
+        "GET collection and entry-list responses remain account scoped.",
+        "Absent or empty collection encounterId still uses listAll without an audit event.",
+        "Entries preserve permission, nonempty query validation, includeArchived parsing, account guard, audit, and list order."
+      ],
+      "focused_tests": "The medical-record account-isolation and contaminated attachment collection tests passed 2/2 before and after extraction; the account-isolation test asserts the empty-filter collection fallback.",
+      "independent_review": {
+        "critic_id": "critic_m21_medical_record_reads_i1",
+        "result": "PASS",
+        "review_scope": "Source behavior and focused HTTP tests for the route extraction."
+      }
+    },
+    {
+      "route_family": "GET /attachments",
+      "module": {
+        "path": "apps/api/src/routes/attachment-read-routes.ts",
+        "sha256": "b7564658089fea1786577bba8cce574f25c055fbdf035e8f56e5e116a6f1f15"
+      },
+      "server_snapshot": {
+        "path": "apps/api/src/server.ts",
+        "sha256": "1899ee3416b85fa72f07a48a9df6da790c9755258b41c4d85e5eac9e0a359d89"
+      },
+      "test_snapshot": {
+        "path": "apps/api/src/server.test.ts",
+        "sha256": "28e5bf7c2fd2ef1c34359b94eb320e5220b4d560d76ba3f76e7bd7964bf81a3b"
+      },
+      "complexity_snapshot": {
+        "path": "docs/engineering/complexity-hotspots.json",
+        "sha256": "14a1d409b70068496a9bd4b71dd85c7d78d00f503d9acdbf1344acc97cbf8ba4"
+      },
+      "behavior_preserved": [
+        "Exact attachment collection GET branch, permission, linked-entity assertion, and query validation order.",
+        "Target/account guard precedes audit and repository list; response shape is unchanged."
+      ],
+      "focused_tests": "Authenticated-account attachment listing and contaminated-repository account-filter tests passed 2/2 before and after extraction.",
+      "independent_review": {
+        "critic_id": "critic_m21_attachment_read_routes_i1",
+        "result": "PASS",
+        "review_scope": "Source comparison and focused account-scoped attachment listing tests."
+      }
+    },
+    {
+      "route_family": "DELETE /encounters/:id",
+      "module": {
+        "path": "apps/api/src/routes/encounter-delete-routes.ts",
+        "sha256": "8db179749482d47dd2090b25d8f5560d81df998ecda3651ee9736e2136c154a9"
+      },
+      "server_snapshot": {
+        "path": "apps/api/src/server.ts",
+        "sha256": "b2502bdcee6e8773b5266bc322f2647a0913821a7a07f91f96459ada8508e9bf"
+      },
+      "test_snapshot": {
+        "path": "apps/api/src/server.test.ts",
+        "sha256": "9fec95377e6ba9710f9cff7a095ce260b929adf4bc0debbf8e19438540706195"
+      },
+      "path_helper": {
+        "path": "apps/api/src/routes/resource-route-path.ts",
+        "sha256": "14fba17b195fe78f330b8b7be119d4801716cd5683141388b7b8598b464e9d03"
+      },
+      "complexity_snapshot": {
+        "path": "docs/engineering/complexity-hotspots.json",
+        "sha256": "13ed4b7e1338d23a278f9c82fc47138506e25f6f69e180783902977dbb491338",
+        "server_lines": 4233,
+        "cap": 8323
+      },
+      "behavior_preserved": [
+        "Strict collection-item path match prevents nested suffix paths from deleting the parent encounter.",
+        "Permission and account guard, optional cash-receipt guard, delete/persistence wait, audit, and 204 response remain ordered as before."
+      ],
+      "regression_found_and_fixed": "The first I1 reviewer found that preserving the broad prefix match would delete a parent encounter on a nested DELETE path. The handler now uses matchesCollectionItemPath; the HTTP test asserts nested DELETE 404 and parent remains, then exact DELETE 204.",
+      "focused_tests": "Encounter deletion HTTP semantics, receipt-guard unit test, and two shared path-helper tests passed separately.",
+      "independent_review": {
+        "critic_id": "critic_m21_encounter_delete_i1",
+        "result": "PASS after fix",
+        "review_scope": "Final hash-bound source and focused HTTP test; confirmed the nested DELETE hazard was closed."
+      }
+    },
+    {
+      "route_family": "POST /attachments/:id/download-url",
+      "module": {
+        "path": "apps/api/src/routes/attachment-download-url-routes.ts",
+        "sha256": "7213079eccb3d18045b3b788b666c556f3bdd4fe61d97f6ecb82f825b8b1fed1"
+      },
+      "server_snapshot": {
+        "path": "apps/api/src/server.ts",
+        "sha256": "db14e439f0c4a1fb004cfe1f9cdbba26b03f04b48082bbd212ad332a999ccb15"
+      },
+      "test_snapshot": {
+        "path": "apps/api/src/server.test.ts",
+        "sha256": "8367deeaca3556ffe1dff6a6267513504b81b647c07d101a9f4addfab943ae9e"
+      },
+      "complexity_snapshot": {
+        "path": "docs/engineering/complexity-hotspots.json",
+        "sha256": "2e17da0b2bbc5004ebfe4328dbb6f47d260903cf1c381812e6b4be303ab35050",
+        "server_lines": 4196,
+        "cap": 8323
+      },
+      "behavior_preserved": [
+        "POST one-segment route match and attachments.read permission.",
+        "Explicit account check and pending-scan 409 remain before URL issuance.",
+        "Five-minute token claims, encoded URL, audit-before-response, and response shape are unchanged."
+      ],
+      "focused_tests": "Cross-account/owner signed-download HTTP test passed under Node 22; the fixture also verifies a pending-scan response is 409.",
+      "review_runtime_correction": "The first reviewer test attempt under Node 24 failed fixture login (401 rather than 200); with Node 22.23.2 on PATH and the test-name option before the file, the single focused test passed locally and in the I1 follow-up.",
+      "independent_review": {
+        "critic_id": "critic_m21_attachment_download_url_i1",
+        "result": "PASS",
+        "review_scope": "Static route comparison and a focused Node 22 HTTP test rerun; the token helper implementation itself was outside this route-focused review."
+      }
+    }
+  ],
+  "focused_command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test pnpm exec tsx --test --test-reporter=spec --test-name-pattern='diagnostic summaries and attachments preserve the authenticated account over HTTP|diagnostic summaries, orders and attachments fail closed across authenticated accounts|bootstrap deletes encounters over HTTP semantics|medical-record HTTP collections, timeline and mutations fail closed across accounts|medical-record attachment collections filter contaminated repository rows by account|cross-account attachment download requests return opaque 404 while the owner can retrieve content|triage creation rejects a closed encounter without speculative list or timeline state' apps/api/src/server.test.ts",
+  "focused_command_result": "PASS, seven selected in-process HTTP tests; no database or listener. This grouped run was completed after these route extractions and before the subsequent medical-record timeline/revisions and triage-update extractions.",
+  "other_checks": [
+    "API TypeScript check passed after each route extraction.",
+    "pnpm complexity:check passed after each measured server.ts update; the cap remained 8,323 and previous maximum 8,335.",
+    "Prettier and scoped whitespace checks passed after each extraction."
+  ],
+  "execution_incident": "During the medical-record review, a reviewer placed --test-name-pattern after the test file and unintentionally ran all 82 server tests. That run opened and closed an ephemeral loopback listener on 127.0.0.1:0. It did not use a database. The corrected focused run passed; the incident was disclosed to the user and is retained here.",
+  "limitations": [
+    "The receipt-guard helper is unit-tested; its database-backed integration with encounter deletion remains source-reviewed only.",
+    "No PostgreSQL/RLS role proof, explicit persisted-audit assertion, persistent storage/worker behavior, or full PROD-041 acceptance is established.",
+    "The token-signing helper implementation was not part of the attachment URL route reviewer’s scope.",
+    "The worktree remains dirty; no candidate, remote CI, target, UAT, or release acceptance is asserted."
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND32-20260923",
+  "recorded_at": "2026-09-23T10:09:22Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "docs/2026-09-21-rem-001-backup-manifest.md",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "20154f5499f0b9abfb1e8346d30931c46fe08a841f4ba99fcd37b3e3b47488a0",
+      "current_sha256": "20154f5499f0b9abfb1e8346d30931c46fe08a841f4ba99fcd37b3e3b47488a0",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Dated 21/09 backup evidence index records an external all-refs bundle, patch/untracked/control-plane copies and clone recovery, and explicitly says no rewrite/removal/push/publication occurred. Its recorded origin/main SHA is the 21/09 snapshot (363c87e...), not the current 23/09 remote tip; the date must remain visible and the evidence itself was not revalidated in this content review."
+    },
+    {
+      "path": "docs/operations/REM_044_GIT_OBJECT_RETENTION_RUNBOOK.md",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "d6dbedda05759f79d90148ee0c98599a7ae2c7787cb9b949a095f64fc2adfc61",
+      "current_sha256": "d6dbedda05759f79d90148ee0c98599a7ae2c7787cb9b949a095f64fc2adfc61",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Dated 23/09 runbook explicitly forbids mutating the dirty shared checkout and gates prune/ref/reflog/compaction actions on named owner, approved retention period and REM-044 authority. It lists a prior dry-run and protected refs; no operational action was run here. It includes local absolute backup locations and is internal-only until publication redaction."
+    }
+  ],
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "Documentation links/governance and current Triple-A snapshot validators passed.",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-REM001-INDEX-IS-A-DATED-SNAPSHOT",
+      "classification": "HOLD_SNAPSHOT_PROVENANCE",
+      "observation": "The REM-001 index states an effective date of 21/09 and records origin/main at 363c87e, which predates the current 23/09 origin/main at 570920de. This is consistent as a dated backup evidence index, but the frontmatter status “current” should not be read as a current branch identity or fresh backup verification."
+    },
+    {
+      "id": "M02-REM044-MUTATION-REQUIRES-EXPLICIT-AUTHORITY",
+      "classification": "LOCAL_OPERATIONAL_BOUNDARY",
+      "observation": "The retention runbook clearly blocks prune, gc, ref/reflog expiry and worktree mutation until named owner, approved retention period and explicit REM-044 authority exist. Shared worktree is dirty; no Git object operation was performed."
+    },
+    {
+      "id": "M02-OPERATIONAL-DOCS-LOCAL-PATH-SENSITIVITY",
+      "classification": "HOLD_PUBLICATION_REDACTION",
+      "observation": "Both documents contain local absolute backup/retention paths. They are retained as internal operational evidence; redact those local locations before any external publication."
+    }
+  ],
+  "candidate_actions": [
+    "Keep the 21/09 backup manifest clearly dated; do not present its origin SHA as the current remote tip or its textual record as a fresh bundle verification.",
+    "Retain the REM-044 stop conditions; do not run any prune/ref/reflog/compaction operation without the specified owner and authority.",
+    "Redact local absolute paths if these documents enter a published candidate."
+  ],
+  "limitations": [
+    "No backup bundle/hash/clone was re-verified in this round; only the versioned index text was reviewed.",
+    "No Git prune, gc, ref/reflog mutation, backup, restore, remote or target command was executed.",
+    "The absolute paths were read only as document content and are not repeated here; no full PII review is claimed."
+  ],
+  "checkpoint_validation": {
+    "json_and_jsonl_parse": "PASS",
+    "git_diff_check": "PASS",
+    "docs_validate": "PASS",
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 31; no new REM-010/M-02 finding and no gate-v2 finding. The global controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T10:10:36Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 295,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 421,
+    "status_sha256": "1bd637f724c43bb138965c8ae1913046fc74f65046bd2fe159112bfb75f9c53b",
+    "note": "Read-only porcelain status after M-02 round 32 and checkpoint validation; original 386-path denominator unchanged. Round-32 evidence is the thirty-fifth post-inventory artifact."
+  }
+}

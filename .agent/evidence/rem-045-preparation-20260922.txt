@@ -1,0 +1,31 @@
+REM-045 PREPARATION — 2026-09-22
+
+Task: Definir TTL/quota/ACL de artefatos.
+Dependency: REM-001 DONE and verified by .agent/gates/verified-remediacao-integral-rem-001-20260922.json.
+Boundary: local, read-only inventory plus reversible policy/script/test changes. No deletion, chmod, upload, provider mutation, target action or release action is authorized by this checkpoint.
+
+Surface inspected:
+- artifacts/ (approximately 54G on disk; 418,523 files before the new inventory run), including approximately 49G in artifacts/consolidacao-2026-09-05/coverage-scope;
+- coverage/, test-results/, playwright-report/;
+- .agent/evidence/, .agent/gates/ and .agent/archive/;
+- existing workflow retention declarations and evidence/archive scripts.
+
+Known-bad and safety rules:
+- a broad `rm`, unlink, chmod, external upload or provider retention change would be outside this action;
+- artifacts with no explicit classification must fail closed as `unknown` and remain protected;
+- legal-hold, active-evidence, checksum, manifest, metadata and evidence files must never appear as dry-run candidates;
+- TTL/quota are candidate signals only, not implicit authority to delete.
+
+Planned acceptance:
+1. versioned JSON policy defines classes, TTL, quota and desired restricted ACL;
+2. dry-run CLI scans only declared roots and has no apply mode;
+3. focal native tests cover expired candidates, active/unknown protection, no mutation and bounded report output;
+4. real workspace inventory has zero scan errors and records the candidate/protection counts;
+5. docs state that local evidence does not prove external-provider retention or ACL.
+
+Expected artifacts:
+- docs/engineering/artifact-retention-policy.json
+- docs/operations/ARTIFACT_RETENTION_POLICY.md
+- scripts/artifact-retention-dry-run.mjs
+- scripts/artifact-retention-dry-run.test.mjs
+- .agent/evidence/rem-045-artifact-retention-20260922.txt

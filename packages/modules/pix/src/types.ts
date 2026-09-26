@@ -80,6 +80,8 @@ export interface CreatePixIntentInput {
   readonly amount: number; // in cents
   readonly description: string;
   readonly expirationMinutes?: number; // defaults to provider default
+  /** Forwarded to the provider so a retried creation returns the same charge. */
+  readonly idempotencyKey?: string;
 }
 
 export interface PixIntentResult {

@@ -1,0 +1,145 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND19-20260923",
+  "recorded_at": "2026-09-23T08:56:27Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "docs/engineering/critical-coverage-scope.json",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "25f856028b2e08e598d178b6128d03daeae09d4bcafcaf370bae8c0b1557556e",
+      "current_sha256": "25f856028b2e08e598d178b6128d03daeae09d4bcafcaf370bae8c0b1557556e",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "content_review": "REVIEWED_WITH_PROPOSAL_STATUS_AND_CURRENT_SOURCE_IDENTITY_HOLD",
+      "review_notes": "The manifest is schema v1, status frozen-proposal-not-certified, revision 89 and collection head ad2f0373f68635f2579253b013a4382219906921. It lists 556 metric/specialized sources, 380 Vitest tests, 11 process tests, 95 native tests, 2,216 execution inputs and five required shards (vitest-unit, vitest-integration, native-api, native-worker, critical-process). Thresholds remain 85% for lines/statements/functions/branches. Relative to origin/main revision 88 it has eight execution input paths added and one removed/replaced (net +7), one Vitest test added and four native tests added; no source rows were added or removed and six source identities changed. Current source-set and execution-input digests recompute to the recorded values. This is structural/governance review, not a row-by-row review of all 556 source files or certification of the proposal."
+    }
+  ],
+  "verification": {
+    "inventory_hash_recheck": {
+      "result": "PASS",
+      "expected": "25f856028b2e08e598d178b6128d03daeae09d4bcafcaf370bae8c0b1557556e",
+      "actual": "25f856028b2e08e598d178b6128d03daeae09d4bcafcaf370bae8c0b1557556e"
+    },
+    "json_parse_and_manifest_digests": {
+      "result": "PASS",
+      "sourceSetSha256_matches": true,
+      "executionInputsSha256_matches": true,
+      "lastScopeHistoryRevision_matches": true
+    },
+    "manifest_diff_vs_origin_main": {
+      "base_manifest_revision": 88,
+      "current_manifest_revision": 89,
+      "source_rows_added": 0,
+      "source_rows_removed": 0,
+      "source_identity_changes": 6,
+      "execution_inputs_added": [
+        "apps/api/src/fatal-runtime.test.ts",
+        "apps/api/src/helpers/api-server-boundaries.test.ts",
+        "apps/worker/src/fatal-runtime.test.ts",
+        "apps/worker/src/health.test.ts",
+        "apps/worker/src/runtime-lifecycle.test.ts",
+        "apps/worker/src/scheduled-report-sources.test.ts",
+        "scripts/validate-openapi.mjs",
+        "tests/unit/infra/api-server-boundaries.test.ts"
+      ],
+      "execution_inputs_removed": [
+        "scripts/validate-openapi.js"
+      ],
+      "vitest_tests_added": [
+        "tests/unit/infra/api-server-boundaries.test.ts"
+      ],
+      "vitest_tests_removed": [],
+      "native_shard_changes": {
+        "native-api": {
+          "added": [
+            "apps/api/src/fatal-runtime.test.ts",
+            "apps/api/src/helpers/api-server-boundaries.test.ts"
+          ],
+          "removed": []
+        },
+        "native-worker": {
+          "added": [
+            "apps/worker/src/fatal-runtime.test.ts",
+            "apps/worker/src/health.test.ts",
+            "apps/worker/src/runtime-lifecycle.test.ts",
+            "apps/worker/src/scheduled-report-sources.test.ts"
+          ],
+          "removed": []
+        }
+      },
+      "status_unchanged": true,
+      "required_shards_unchanged": true
+    },
+    "contract_test": {
+      "command": "node --test scripts/critical-source-manifest.test.mjs",
+      "exit_status": 1,
+      "tests": 16,
+      "passed": 15,
+      "failed": 1,
+      "skipped": 0,
+      "failure": "The live-tree identity assertion found apps/api/src/payment-gateway.ts: hash mismatch. Its current SHA-256 is 495dc51f7112d634b19e842e2b0efa13d219ba0238dafa5f6f65b0e178407563; the manifest and HEAD SHA-256 are f5bdbacdd0636e696f3c37dc6e9fe75c1e765f401762423b6cd53cde0bec36b2. The source is a tracked dirty path in the original inventory, still pending content review. No manifest refresh was performed."
+    },
+    "checkpoint_validation": {
+      "recorded_at": "2026-09-23T08:58:26Z",
+      "docs_validate": {
+        "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+        "result": "PASS",
+        "exit_status": 0,
+        "summary": "Documentation validation and Triple-A current-snapshot validation passed."
+      },
+      "json_jsonl_parse": {
+        "result": "PASS",
+        "exit_status": 0,
+        "scope": "Updated state, M-02 evidence, critical coverage manifest, execution log and original inventory JSON/JSONL parsed."
+      },
+      "git_diff_check": {
+        "command": "git diff --check",
+        "result": "PASS",
+        "exit_status": 0
+      },
+      "read_only_controller": {
+        "command": "python3 /home/ricardo/.agents/skills/engineering-framework/scripts/check_state.py --quiet .",
+        "result": "FAIL_PRESERVED_BASELINE",
+        "exit_status": 1,
+        "summary": "RESULT FAIL (pass=6 warn=0 fail=788); no active-plan, REM-010 or gate-v2 finding; four preserved REM-056 v1 findings remain. The global controller does not approve a candidate/release."
+      }
+    }
+  },
+  "boundary_review": {
+    "test_scope": "The contract test validates source/execution inventory identities and synthetic fixtures. No DB-backed coverage shard, Playwright suite, Redis service, deployment, or external target was launched.",
+    "skip_policy_crosswalk": "The manifest requires only five core coverage shards. Round 17 found that the separate playwright-postgresql skip-policy shard lacks an explicit validator branch tying its nine paths to manifest membership/classification; this enforcement gap remains open.",
+    "worktree_boundary": "The manifest content itself matches the original inventory hash. The identity-test failure arises from apps/api/src/payment-gateway.ts, not a mutation to this manifest."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-CRITICAL-MANIFEST-PROPOSAL-NOT-CERTIFIED",
+      "classification": "HOLD_GOVERNANCE",
+      "observation": "The manifest explicitly remains frozen-proposal-not-certified. Hash consistency and a green synthetic contract subset do not certify the proposal or prove shard execution/current coverage."
+    },
+    {
+      "id": "M02-CRITICAL-MANIFEST-CURRENT-SOURCE-IDENTITY-DRIFT",
+      "classification": "HOLD_CONTENT_SCOPE",
+      "observation": "The canonical live-tree identity test fails on apps/api/src/payment-gateway.ts, a dirty original-inventory source path whose implementation review is pending. The recorded source-set digest is internally consistent with the frozen manifest, but the current worktree does not match the recorded source identity."
+    },
+    {
+      "id": "M02-PLAYWRIGHT-MANIFEST-BINDING-GAP",
+      "classification": "HOLD_ENFORCEMENT",
+      "observation": "The manifest requiredShards excludes Playwright/e2e; the separate test-skip validator does not explicitly bind the playwright-postgresql shard paths to critical manifest membership/classification. This was documented in round 17 and remains a release enforcement gap."
+    }
+  ],
+  "candidate_actions": [
+    "Keep critical-coverage-scope.json unchanged at frozen-proposal-not-certified; do not fold the pending payment-gateway worktree source into its identity before content/scope review.",
+    "Review the pending payment-gateway source and all other manifest source groups before any candidate overlay or source-set refresh.",
+    "Close the explicit Playwright-to-critical-manifest validator binding and separately execute only approved isolated coverage shards before claiming coverage."
+  ],
+  "limitations": [
+    "This round reviews manifest governance, structure, digests, current inventory identity and consumer relationship; it does not inspect all 556 critical sources or certify threshold attainment.",
+    "No critical DB/process/native/Playwright shard was run; no database or external target was touched.",
+    "Self-review only; independent critique, candidate-bound refreshed inventory, overlay and frozen SHA remain pending."
+  ]
+}

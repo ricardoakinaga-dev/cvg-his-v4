@@ -1,0 +1,139 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-029-REPORTS-PERSISTENCE-VERIFY-20260922",
+  "timestamp": "2026-09-22T08:29:32.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "verificação candidate-bound da fatia de persistência de reports após extração SQL/mapeadores",
+  "scope_ref": "REM-029",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-REM029-PERSIST-VERIFY-001",
+      "description": "Os hashes dos gates/evidências de preparação e implementação permaneceram estáveis e os artefatos são parseáveis.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-verify-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-029-reports-persistence-20260922.json",
+        ".agent/gates/implementation-ready-remediacao-integral-rem-029-reports-persistence-20260922.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A verificação de hash é local e não constitui assinatura externa."
+    },
+    {
+      "id": "V-REM029-PERSIST-VERIFY-002",
+      "description": "Exports runtime, import graph, boundary audit e manifest de complexidade estão reconciliados: DatabaseReportRepository/ReportsService públicos, index.ts 1.750 linhas e sem imports DB/tenant na fachada.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-verify-20260922.txt",
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/report-database-repository.ts",
+        "docs/engineering/complexity-hotspots.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A auditoria é estática/runtime local; CI e revisão independente não foram executados."
+    },
+    {
+      "id": "V-REM029-PERSIST-VERIFY-003",
+      "description": "Backlog, plano, estado e ledgers estão alinhados no active_action_id REM-029:VERIFY-REPORTS-PERSISTENCE, com JSON/JSONL válidos.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-verify-20260922.txt",
+        ".agent/backlog.json",
+        ".agent/state.json",
+        ".agent/plans/remediacao-integral-20260921.md",
+        ".agent/verification.jsonl",
+        ".agent/execution-log.jsonl"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A reconciliação não substitui aceite de owner ou autoridade humana."
+    },
+    {
+      "id": "V-REM029-PERSIST-VERIFY-004",
+      "description": "As regressões reports/worker e o processo PostgreSQL 28/28 da implementação permanecem referenciáveis como evidência corrente da fatia.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-verify-20260922.txt",
+        ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-029-reports-persistence-20260922.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A prova é local/descartável e não promove target ou provider real."
+    },
+    {
+      "id": "V-REM029-PERSIST-VERIFY-005",
+      "description": "As quatro divergências SPA do checker global, E7, owners REPORTS/RUNTIME, CI/OCI, target, UAT, visual/a11y e release continuam explicitamente condicionados.",
+      "required": true,
+      "status": "PASS_WITH_CONDITIONS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-verify-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-029-reports-persistence-20260922.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A condição impede afirmar PASS integral ou release readiness."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-029-reports-persistence-verify-20260922.txt",
+    ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+    ".agent/gates/verified-remediacao-integral-rem-029-reports-persistence-20260922.json",
+    ".agent/gates/verified-remediacao-integral-rem-029-reports-persistence-verify-20260922.json",
+    ".agent/backlog.json",
+    ".agent/state.json",
+    ".agent/plans/remediacao-integral-20260921.md",
+    "docs/engineering/complexity-hotspots.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "REM-029 ainda precisa de uma reconciliação agregada final entre sources, rendering e persistence.",
+    "Complexidade global mantém quatro medições SPA divergentes.",
+    "E7 e owners REPORTS/RUNTIME não foram executados.",
+    "CI/OCI, target, UAT, visual/a11y, release e go/no-go humano permanecem fora do claim."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-029-PERSIST-VERIFY-AGGREGATE",
+      "description": "Reconciliar os três boundaries de REM-029 em gate agregado, confirmando que claims/retries/tenant/lease/repository e exports públicos permanecem compostos sem ciclo.",
+      "non_blocking": false,
+      "impact": "Impede fechar o cartão localmente antes da revisão agregada.",
+      "owner": "lead",
+      "due_or_trigger": "Próxima ação REM-029:AGGREGATE-VERIFY.",
+      "verification_method": "Inspeção de import graph, gates superseding, testes/processo já executados e reconciliação do plano/backlog/estado.",
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-029-PERSIST-VERIFY-EXTERNAL",
+      "description": "Complexidade SPA, E7, owners, CI/OCI, target, UAT, visual/a11y e release precisam de evidência/autoridade própria.",
+      "non_blocking": true,
+      "impact": "Mantém o veredito restrito ao escopo local.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de qualquer DONE global ou release.",
+      "verification_method": "Gates específicos, revisão identificada e autoridade humana quando requerida.",
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "verificação local da fatia de persistência de reports",
+    "decision": "A instrução autoriza inspeção/verificação local; não autoriza aceite externo, release ou go/no-go.",
+    "evidence_ref": ".agent/evidence/rem-029-reports-persistence-verify-20260922.txt",
+    "expires_or_revalidates": "Revalidar se qualquer boundary ou condição externa mudar antes da reconciliação agregada."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-029:AGGREGATE-VERIFY",
+  "revalidation_triggers": [
+    "Alterar qualquer boundary desde o gate de implementação.",
+    "Reconciliar/remedir as quatro páginas SPA sem owner/evidência correspondente.",
+    "Executar target, provider real, UAT, release ou decisão humana sem gate específico."
+  ],
+  "supersedes": ".agent/gates/verified-remediacao-integral-rem-029-reports-persistence-20260922.json"
+}

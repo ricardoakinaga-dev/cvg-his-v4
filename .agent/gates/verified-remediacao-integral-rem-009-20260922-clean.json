@@ -1,0 +1,121 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-009-20260922-CLEAN",
+  "timestamp": "2026-09-22T01:08:00.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "gate local integrado de instalação, build, typecheck, lint, testes, coverage, bootstrap crítico, complexidade, segurança, documentação e validadores para REM-009",
+  "scope_ref": "REM-009",
+  "version": 2,
+  "criteria": [
+    {
+      "id": "V-001-ACCEPTANCE-EVIDENCE",
+      "description": "A matriz integrada foi executada no source candidate 36d81f472966..., o checkout candidate-bound descartável terminou limpo, a identidade e os snapshots foram validados e o checker final passou 11/11.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-009-clean-candidate-20260922.json",
+        ".agent/verification.jsonl#VER-REM-009-CLEAN-CANDIDATE-20260922",
+        "scripts/assert-clean-checkout.mjs",
+        "scripts/generate-current-candidate-identity.mjs",
+        "docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json",
+        ".agent/gates/verified-remediacao-integral-rem-009-20260921.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A prova é um clone local descartável; não é uma publicação, execução de CI remoto ou promoção do worktree compartilhado."
+    },
+    {
+      "id": "V-002-REGRESSION-RISK",
+      "description": "Build, typecheck, lint, suíte raiz/workspaces, coverage, bootstrap crítico 68/623 + 11/11 processos, complexity, security, docs, OpenAPI/RLS/Helm, supply-chain, contratos e migration harness passaram no mesmo source candidate; o retry transitório do harness terminou PASS.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-009-clean-candidate-20260922.json",
+        ".agent/verification.jsonl#VER-REM-009-CLEAN-CANDIDATE-20260922",
+        "package.json",
+        ".github/workflows/ci.yml"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A matriz local não substitui CI remoto, OCI/SBOM/scan/attestation, target, providers, UAT, recovery operacional ou release."
+    },
+    {
+      "id": "V-003-LIMITATIONS-AUTHORITY",
+      "description": "O boundary entre o clone descartável e o worktree compartilhado, os commits documentais de rebind e todas as limitações externas/humanas estão explicitamente registrados.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-009-clean-candidate-20260922.json",
+        ".agent/verification.jsonl#VER-REM-009-CLEAN-CANDIDATE-20260922",
+        ".agent/plans/remediacao-integral-20260921.md",
+        ".agent/gates/verified-remediacao-integral-rem-009-20260921.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Nenhum resultado local é promovido a release readiness, go/no-go ou aceite humano."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-009-clean-candidate-20260922.json",
+    ".agent/verification.jsonl#VER-REM-009-CLEAN-CANDIDATE-20260922",
+    "docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json",
+    "docs/triple-a/P0_REGISTRY.json",
+    "scripts/assert-clean-checkout.mjs",
+    "scripts/generate-current-candidate-identity.mjs",
+    "scripts/run-rem016-migration-harness.mjs",
+    ".agent/gates/verified-remediacao-integral-rem-009-20260921.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-REM-009-CLEAN-CHECKOUT-BOUNDARY",
+      "description": "A condição anteriormente bloqueadora foi satisfeita: o candidato source 36d81f472966... foi testado em clone descartável limpo, com identidade/snapshots/P0 rebindingados e checker final PASS 11/11.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a conclusão local de REM-009; não autoriza congelar, limpar ou commitar o worktree compartilhado.",
+      "owner": "lead",
+      "due_or_trigger": "Reabrir somente se código, lockfile, workflow, scripts ou evidência source-bound mudarem.",
+      "due_at": "2026-09-22T12:00:00.000000Z",
+      "verification_method": "Reexecutar assert-clean-checkout, candidate identity e a matriz integrada no novo source candidate antes de qualquer supersession.",
+      "evidence_refs": [
+        ".agent/evidence/rem-009-clean-candidate-20260922.json",
+        ".agent/verification.jsonl#VER-REM-009-CLEAN-CANDIDATE-20260922",
+        ".agent/gates/verified-remediacao-integral-rem-009-20260921.json"
+      ],
+      "status": "SATISFIED",
+      "residual_risk": "LOW",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-009-EXTERNAL-BOUNDARIES",
+      "description": "CI remoto candidate-bound, OCI/SBOM/scan/attestation, target/RLS/restore/rollback/RPO/RTO/soak, providers, UAT/acessibilidade e autoridade humana continuam não executados.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a conclusão local de REM-009; bloqueia qualquer claim de publicabilidade, release readiness ou go/no-go.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de CI remoto, publicação, acesso a target, providers, UAT, release ou decisão humana.",
+      "due_at": "2026-09-22T12:00:00.000000Z",
+      "verification_method": "Executar cada fronteira somente com autorização específica e reconciliar SHA, artifacts, digest, target, UAT e autoridade antes de superseder esta condição.",
+      "evidence_refs": [
+        ".agent/evidence/rem-009-clean-candidate-20260922.json",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "gate local integrado de instalação, build, typecheck, lint, testes, coverage, bootstrap crítico, complexidade, segurança, documentação e validadores para REM-009",
+    "decision": "A instrução autoriza validação local reversível; o clone e seus commits documentais são temporários. Não houve limpeza, stash, reset, commit no worktree compartilhado, push, deploy, target, provider, credencial real, UAT ou release.",
+    "evidence_ref": ".agent/evidence/rem-009-clean-candidate-20260922.json",
+    "expires_or_revalidates": "Revalidar se a fonte/control bytes mudarem ou antes de cruzar qualquer fronteira externa."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-027:PREPARE",
+  "revalidation_triggers": [
+    "Qualquer mudança em código, lockfile, CI, scripts ou evidência source-bound.",
+    "Regressão em checkout limpo, candidate identity, docs/P0 registry, checker ou qualquer comando da matriz.",
+    "Avanço para CI remoto, OCI, target, providers, UAT, release ou autoridade humana."
+  ],
+  "supersedes": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-009-20260921"
+}

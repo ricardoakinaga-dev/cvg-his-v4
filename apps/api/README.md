@@ -108,6 +108,27 @@ API principal do CVG-HIS V2.
 - `GET /ready` — readiness check
 - `GET /live` — liveness check
 
+## Demonstracao local e limites
+
+Quando a API inicia sem `DATABASE_URL`, ela usa `persistenceMode: in-memory`.
+Esse modo serve para demonstracao e exploracao local com dados sinteticos; o
+estado dos repositorios existe apenas no processo e nao e duravel nem compartilhado
+entre instancias.
+
+- `GET /live` confirma que o processo responde. Ele nao consulta banco ou Redis.
+- `GET /health` descreve a saude do servico. No fixture sem banco de
+  [`src/routes/health-routes.test.ts`](src/routes/health-routes.test.ts), retorna `200` e informa `in-memory`;
+  isso nao comprova persistencia.
+- `GET /ready` retorna `503` no mesmo fixture: a API nao anuncia prontidao
+  persistente quando banco e worker nao estao prontos.
+
+Esses resultados sao evidencias locais do modo sem banco, nao prova de
+PostgreSQL, Redis, fila compartilhada ou fluxo clinico duravel. Para executar a
+API com PostgreSQL local, use `pnpm dev:api:persistent` e o preflight descrito
+abaixo. O preflight e somente leitura; ele nao cria o banco nem aplica migrations.
+Use um banco local dedicado e descartavel, ja preparado conforme o contrato do
+projeto. A suite persistente pode gravar fixtures nesse banco.
+
 ## Stack
 
 - Node.js 22+ (http nativo, sem framework)
@@ -121,6 +142,9 @@ API principal do CVG-HIS V2.
 ```bash
 # Desenvolvimento
 pnpm dev:api
+
+# Desenvolvimento usando PostgreSQL persistente (exige DATABASE_URL local)
+pnpm dev:api:persistent
 
 # Build
 pnpm --filter @cvg-his-v2/api build
@@ -137,3 +161,39 @@ NODE_ENV=production node apps/api/dist/index.js
 - `AUTH_ACCESS_TOKEN_TTL_SECONDS` — TTL do access token (default: 900)
 - `AUTH_REFRESH_TOKEN_TTL_SECONDS` — TTL do refresh token (default: 604800)
 - `FILE_STORAGE_PATH` — diretorio para anexos
+
+### Exemplo de configuracao local sem credenciais reais
+
+Para um banco de desenvolvimento local, copie este exemplo para `.env` na raiz
+e substitua `cvg_local`, `REPLACE_ME` e `cvg_his_dev` pelos valores criados
+somente no PostgreSQL descartavel de loopback. O exemplo nao e uma credencial
+funcional; nunca versione o `.env`.
+
+```dotenv
+NODE_ENV=development
+DATABASE_URL=postgresql://cvg_local:REPLACE_ME@127.0.0.1:5432/cvg_his_dev
+REDIS_URL=redis://127.0.0.1:6379
+```
+
+Depois de preparar o schema no PostgreSQL 16 local, execute o preflight abaixo
+antes de `pnpm dev:api:persistent`. Ele falha fechado se a URL nao for local ou
+se o schema nao corresponder; este guia nao cria banco nem aplica migrations.
+
+## Preflight e testes com banco persistente
+
+`pnpm --filter @cvg-his/db run db:preflight` valida `DATABASE_URL` do ambiente ou
+do `.env` na raiz do repositorio antes do comando `pnpm dev:api:persistent`. O
+preflight aceita somente destinos loopback, valida
+credenciais ao conectar com timeout limitado, exige PostgreSQL 16, confere o ledger
+e os checksums de todas as migrations, e compara tabelas/colunas Drizzle. A consulta
+usa uma transacao `READ ONLY`; ela nao cria o ledger, nao aplica migrations e nao
+imprime a URL de conexao.
+
+Para exercitar a suite de persistencia, configure `DATABASE_URL_TEST` para um banco
+PostgreSQL 16 local, descartavel, ja existente e ja migrado, depois execute
+`pnpm test:db:persistent`. O preflight roda antes da suite. Com uma URL explicita,
+o setup global da suite verifica a existencia e nao reseta, migra, semeia ou remove o
+banco; os proprios testes ainda podem gravar fixtures, por isso use um banco dedicado
+descartavel. O comando fixa `TEST_DB_SUFFIX` vazio e `TEST_DB_EPHEMERAL=0`, para a
+suite usar exatamente a URL verificada e impedir o caminho de reset. Os comandos
+padrao de API e teste nao mudam para o modo persistente.

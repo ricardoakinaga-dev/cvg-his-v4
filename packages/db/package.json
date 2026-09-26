@@ -6,13 +6,16 @@
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "scripts": {
-    "lint": "eslint \"src/**/*.ts\" --ignore-pattern \"src/**/*.d.ts\"",
+    "lint": "node ../../scripts/run-semantic-lint.mjs",
     "test": "vitest run --passWithNoTests",
     "build": "tsc -b tsconfig.json --force",
     "db:generate": "node ../../scripts/reject-legacy-db-command.mjs @cvg-his/db:generate",
     "db:push": "node ../../scripts/reject-legacy-db-command.mjs @cvg-his/db:push",
+    "db:preflight": "tsx src/database-preflight-cli.ts",
+    "db:preflight:test": "tsx src/database-preflight-cli.ts --url-env=DATABASE_URL_TEST",
     "db:migrate": "tsx src/migrate.ts",
-    "db:seed": "tsx src/seed.ts"
+    "db:seed": "tsx src/seed.ts",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@cvg-his-v2/security": "workspace:*",

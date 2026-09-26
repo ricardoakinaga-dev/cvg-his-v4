@@ -154,9 +154,13 @@ export function isPixPaymentIntentResponse(value: unknown): value is PixPaymentI
 }
 
 export const pixService = {
-  async createIntent(payload: CreatePixPaymentIntentPayload): Promise<PixPaymentIntentResponse> {
+  async createIntent(
+    payload: CreatePixPaymentIntentPayload,
+    idempotencyKey: string = crypto.randomUUID()
+  ): Promise<PixPaymentIntentResponse> {
     const response = await apiRequest<unknown>('/payments/pix/intents', {
       method: 'POST',
+      headers: { 'Idempotency-Key': idempotencyKey },
       body: JSON.stringify(payload)
     });
 

@@ -1,0 +1,38 @@
+REM-044 PREPARATION — GIT OBJECT/REF RETENTION — 2026-09-23
+
+Scope
+- Task: REM-044 / F-026.
+- Objective: prepare a safe, measurable procedure to expire only approved refs/objects while retaining rollback and avoiding generated-state growth.
+- This preparation does not authorize or execute ref deletion, reflog expiration, prune, gc, repack, checkout, reset, clean, or worktree mutation.
+
+Current refs and candidate identity
+- Shared checkout and refs/heads/main: ad2f0373f68635f2579253b013a4382219906921.
+- Remote origin/main and refs/remotes/origin/main: 570920de3d12d9a1043aa2c36102a89d39f04569.
+- Remote and local candidate are synchronized; the shared worktree remains dirty and intentionally stays on the pre-rewrite local tip.
+- Protected local refs: refs/heads/main, refs/remotes/origin/main, refs/remotes/origin/HEAD, checkpoint-docs-db07cd02-20260920, codex/pre-publish-local-d5fccf67 and the codex turn-diff checkpoint tree.
+
+Storage inventory
+- `.git` disk usage: 758 MiB.
+- `git count-objects -vH`: count 7106; size 257.67 MiB; in-pack 27849; packs 4; size-pack 494.47 MiB; prune-packable 987; garbage 0.
+- `git fsck --full --unreachable --no-reflogs`: 696 objects without direct ref reachability (310 blobs, 286 trees, 100 commits); no unreachable blob >= 104857600 bytes.
+- `git prune --dry-run --verbose`: 111 objects enumerated as candidates under the current age policy; no object removed.
+- `git reflog expire --dry-run --all --verbose`: 1207 entries kept.
+- The REM-002 152651034-byte `.gauntlet/state.json` blobs remain reachable from the local rollback refs/tags and are intentionally retained by the external REM-001 backup; the remote publishable main ref has zero blobs >=100 MiB.
+
+Safe preparation performed
+- `git fetch origin +refs/heads/main:refs/remotes/origin/main` synchronized only the local remote-tracking main ref to the already verified remote candidate.
+- `git for-each-ref` inventory captured heads, remotes, tags and codex checkpoint refs.
+- `git fsck --full --unreachable --no-reflogs` captured unreachable object types/counts.
+- `git prune --dry-run --verbose` and `git reflog expire --dry-run --all --verbose` were run without mutation.
+- The installed Git rejected `git gc --dry-run` and `git repack -Ad --dry-run` as unsupported options; neither command performed a mutation.
+- Runbook: `docs/operations/REM_044_GIT_OBJECT_RETENTION_RUNBOOK.md`.
+
+Known-bad and stop behavior
+- A broad `git prune`, `git gc --prune=now`, or unscoped ref deletion can remove rollback or evidence and is rejected.
+- A command targeting the checked-out dirty `main`, a ref without owner/retention approval, or a missing backup must fail closed.
+- A fresh bundle/clone/hash must precede any future destructive action; post-action object inventory and recovery are mandatory.
+
+Decision
+- Preparation gate: PASS_WITH_CONDITIONS.
+- No cleanup, ref expiration, reflog expiration, repack, gc, deletion, push or deployment was performed for REM-044.
+- Next action: wait for explicit REM-044 authority naming the exact refs/objects, retention period and rollback owner before any destructive step.

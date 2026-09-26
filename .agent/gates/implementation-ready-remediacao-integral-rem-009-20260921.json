@@ -1,0 +1,104 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-REM-009-20260921",
+  "timestamp": "2026-09-21T23:55:00.000000+00:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "gate local integrado de instalação, build, typecheck, lint, testes, coverage, bootstrap crítico, complexidade, segurança, documentação e validadores para REM-009",
+  "scope_ref": "REM-009",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "O plano, o backlog, as dependências REM-006/007/008/015/016/026 e os comandos públicos do gate integrado estão disponíveis e foram descobertos no package.json/CI.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/plans/remediacao-integral-20260921.md",
+        ".agent/backlog.json",
+        ".agent/evidence/rem-009-integrated-gate-20260921.txt",
+        "package.json",
+        ".github/workflows/ci.yml"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A preparação não autoriza CI remoto, OCI, target, credenciais, deploy, UAT ou release."
+    },
+    {
+      "id": "IR-002",
+      "description": "A superfície executada é local, reversível e bounded a artefatos do repositório, PostgreSQL/Redis descartáveis e validadores read-only; nenhum recurso compartilhado foi alterado.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-009-integrated-gate-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-009-INTEGRATED-CURRENT-20260921",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A execução atual ocorreu no worktree compartilhado; o teste de checkout limpo foi somente observado e falhou fechado."
+    },
+    {
+      "id": "IR-003",
+      "description": "A matriz técnica, o conhecido timeout sob coverage e o conhecido achado de Secretlint foram reproduzidos, corrigidos de forma focal e revalidados com exit 0 nos comandos afetados.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-009-integrated-gate-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-009-INTEGRATED-CURRENT-20260921",
+        "scripts/run-rem016-migration-harness.mjs",
+        "tests/unit/infra/test-skip-policy.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A correção de timeout é específica ao teste de inventário sob instrumentação; a segurança externa/OCI continua fora do escopo."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-009-integrated-gate-20260921.txt",
+    ".agent/verification.jsonl#VER-REM-009-INTEGRATED-CURRENT-20260921",
+    ".agent/plans/remediacao-integral-20260921.md",
+    ".agent/backlog.json",
+    "package.json",
+    ".github/workflows/ci.yml",
+    "scripts/assert-clean-checkout.mjs",
+    "scripts/generate-current-candidate-identity.mjs",
+    "scripts/run-rem016-migration-harness.mjs",
+    "tests/unit/infra/test-skip-policy.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-REM-009-CLEAN-CHECKOUT-BOUNDARY",
+      "description": "A superfície técnica está preparada, mas o candidate identity e o assert-clean-checkout não podem passar no worktree compartilhado atual.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a preparação técnica; bloqueia VERIFIED/DONE, publicabilidade e qualquer claim de candidato congelado.",
+      "owner": "lead",
+      "due_or_trigger": "Após autorização para congelar/usar um checkout candidate-bound limpo, repetir toda a matriz integrada e validar a identidade do candidato.",
+      "due_at": "2026-09-22T12:00:00.000000+00:00",
+      "verification_method": "Executar scripts/assert-clean-checkout.mjs, validate:candidate-identity e a matriz integrada no checkout limpo; anexar o SHA, identidade e evidência current antes de superseder esta condição.",
+      "evidence_refs": [
+        ".agent/evidence/rem-009-integrated-gate-20260921.txt",
+        "scripts/assert-clean-checkout.mjs",
+        "scripts/generate-current-candidate-identity.mjs"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "gate local integrado de instalação, build, typecheck, lint, testes, coverage, bootstrap crítico, complexidade, segurança, documentação e validadores para REM-009",
+    "decision": "A instrução autoriza validação local reversível; não autoriza limpar, reescrever, commitar, publicar, acessar target ou usar credenciais reais.",
+    "evidence_ref": ".agent/plans/remediacao-integral-20260921.md",
+    "expires_or_revalidates": "Revalidar quando o candidate-bound checkout estiver autorizado e congelado."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-009:VERIFY-CLEAN-CHECKOUT",
+  "revalidation_triggers": [
+    "O worktree, lockfile, código, scripts, CI, plano ou evidência mudar.",
+    "A matriz integrada, candidate identity ou assert-clean-checkout regressar.",
+    "O escopo avançar para CI remoto, OCI, target, UAT, release ou autoridade humana."
+  ],
+  "supersedes": null
+}

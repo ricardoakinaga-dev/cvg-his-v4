@@ -1,8 +1,7 @@
 import { z } from 'zod';
 import {
-  createPaginatedResponseSchema,
+  errorResponseSchema,
   idParamSchema,
-  paginationQuerySchema,
   requiredString,
   trim,
   uuidSchema
@@ -81,10 +80,30 @@ export const patientIdParamSchema = idParamSchema;
 /**
  * GET /patients - List patients query
  */
-export const listPatientsQuerySchema = paginationQuerySchema.extend({
-  ownerId: uuidSchema.optional(),
-  species: z.string().trim().min(1).max(60).optional(),
-  q: z.string().trim().max(120).optional()
+const patientListPageSizeSchema = z.coerce.number().int().min(1).max(200);
+
+export const listPatientsQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).max(Number.MAX_SAFE_INTEGER).optional(),
+  pageSize: patientListPageSizeSchema.optional(),
+  limit: z.unknown().optional(),
+  ownerId: z.string().optional(),
+  species: z.string().optional(),
+  q: z.string().optional(),
+  status: z.enum(['active', 'inactive', 'deceased']).optional()
+}).superRefine((query, context) => {
+  if (query.pageSize === undefined && query.limit !== undefined &&
+    !patientListPageSizeSchema.safeParse(query.limit).success
+  ) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      path: ['limit'],
+      message: 'limit must be an integer between 1 and 200'
+    });
+  }
+}).transform(({ limit, pageSize, ...query }) => {
+  if (pageSize !== undefined) return { ...query, pageSize };
+  if (limit === undefined) return query;
+  return { ...query, limit: patientListPageSizeSchema.parse(limit) };
 });
 
 /**
@@ -114,9 +133,56 @@ export const patientResponseSchema = z.object({
 });
 
 /**
- * Paginated patients response
+ * Patient list item returned by the live registry route.
  */
-export const listPatientsResponseSchema = createPaginatedResponseSchema(patientResponseSchema);
+export const patientListItemSchema = z.object({
+  id: z.string().min(1),
+  accountId: z.string().min(1),
+  name: z.string(),
+  species: z.string(),
+  breed: z.string().optional(),
+  sex: z.enum(['male', 'female', 'unknown']),
+  size: z.enum(['small', 'medium', 'large']).optional(),
+  baseWeightKg: z.number().nonnegative().optional(),
+  birthDateApproximate: z.string().optional(),
+  isNeutered: z.boolean().optional(),
+  microchip: z.string().optional(),
+  pedigreeNumber: z.string().optional(),
+  color: z.string().optional(),
+  chronicDisease: z.string().optional(),
+  allergy: z.string().optional(),
+  temperament: z.string().optional(),
+  generalNotes: z.string().optional(),
+  legacyVetusId: z.string().optional(),
+  originalCreatedAt: z.string().optional(),
+  primaryOwnerId: z.string().min(1),
+  status: z.enum(['active', 'inactive', 'deceased']),
+  createdAt: z.string().datetime({ offset: true }),
+  updatedAt: z.string().datetime({ offset: true })
+}).strict();
+
+const unpaginatedPatientsResponseSchema = z.object({
+  items: z.array(patientListItemSchema)
+}).strict();
+
+const paginatedPatientsResponseSchema = z.object({
+  items: z.array(patientListItemSchema),
+  page: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
+  pageSize: z.number().int().positive().max(200),
+  total: z.number().int().nonnegative(),
+  totalPages: z.number().int().positive().max(Number.MAX_SAFE_INTEGER)
+}).strict().refine(
+  ({ pageSize, total, totalPages }) => totalPages === Math.max(1, Math.ceil(total / pageSize)),
+  { path: ['totalPages'], message: 'totalPages must match total and pageSize' }
+);
+
+/**
+ * The route keeps its legacy `{ items }` form unless a paging parameter is supplied.
+ */
+export const listPatientsResponseSchema = z.union([
+  paginatedPatientsResponseSchema,
+  unpaginatedPatientsResponseSchema
+]);
 
 /**
  * Patient summary response (for /patients/:id/summary)
@@ -185,7 +251,11 @@ export const patientsContract = {
     path: '/patients',
     query: listPatientsQuerySchema,
     responses: {
-      200: listPatientsResponseSchema
+      200: listPatientsResponseSchema,
+      400: errorResponseSchema,
+      401: errorResponseSchema,
+      403: errorResponseSchema,
+      500: errorResponseSchema
     }
   },
   update: {

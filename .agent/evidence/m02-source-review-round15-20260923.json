@@ -1,0 +1,98 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND15-20260923",
+  "recorded_at": "2026-09-23T08:26:46Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PARTIAL; REM-016 harness source/test statically reviewed; runtime migration harness, image override provenance, lock timeout, interruption cleanup, disposable target approval, complete inventory and independent critique remain open",
+  "paths_reviewed": [
+    {
+      "path": "scripts/run-rem016-migration-harness.mjs",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "2ebc6fb188661fb55e115f868cdd3853b1cdfd0d068873110f08a7b34294f077",
+      "current_sha256": "2ebc6fb188661fb55e115f868cdd3853b1cdfd0d068873110f08a7b34294f077",
+      "sha_matches_inventory": true,
+      "scope_classification": "TOOLING_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true,
+      "content_review": "REVIEWED_WITH_DISPOSABLE_BOUNDARY_AND_EXECUTION_HOLD",
+      "review_notes": "The harness pins a default PostgreSQL image digest, generates per-run container/database identifiers, publishes only a dynamic loopback port, strips ambient DB URL/PG variables from migration children, uses fixed URLs for owned per-run databases, inserts synthetic accounts, and drops DBs/removes container in finally. Output is repo-relative, exclusive-create, mode 0600. It exercises install/reexecution, prefix-to-head upgrade, advisory lock, pg_dump/restore into a replacement DB, checksum failure/recovery, and unknown target. No harness execution occurred.",
+      "candidate_overlay_decision": "HOLD_PENDING_IMAGE_TRUST_TIMEOUT_SIGNAL_CLEANUP_AND_CANDIDATE_REVIEW"
+    },
+    {
+      "path": "tests/unit/infra/migration-harness-contract.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "1460047218d94a26944d20dcea2cda26cb19f0d33800d70c47c87d9f7f8dafed",
+      "current_sha256": "1460047218d94a26944d20dcea2cda26cb19f0d33800d70c47c87d9f7f8dafed",
+      "sha_matches_inventory": true,
+      "scope_classification": "TEST_OR_QUALITY_CONTRACT",
+      "counted_as_new_original_path_this_round": true,
+      "content_review": "REVIEWED_WITH_DISPOSABLE_BOUNDARY_AND_EXECUTION_HOLD",
+      "review_notes": "The test reads the harness, package manifest, and CI workflow as text and asserts pinned image/default isolation markers, scenario names, and package/CI wiring. It does not import/execute Docker, PostgreSQL, migration code, or output writing; this is a static contract only.",
+      "candidate_overlay_decision": "HOLD_PENDING_IMAGE_TRUST_TIMEOUT_SIGNAL_CLEANUP_AND_CANDIDATE_REVIEW"
+    }
+  ],
+  "test_execution": {
+    "contract_command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config apps/spa/vitest.config.ts tests/unit/infra/migration-harness-contract.test.ts",
+    "syntax_command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" node --check scripts/run-rem016-migration-harness.mjs",
+    "started_at_utc": "2026-09-23T08:26:17Z",
+    "finished_at_utc": "2026-09-23T08:26:18Z",
+    "contract_files_passed": 1,
+    "contract_tests_passed": 3,
+    "contract_tests_failed": 0,
+    "syntax_check_exit_status": 0,
+    "environment": "The contract ran under the standalone SPA Vitest/JSDOM config, without a database global setup. It only reads source/config files. The source was syntax-checked but not imported or executed. No Docker, database, provider, or network operation occurred.",
+    "runtime_harness": "NOT RUN: it starts Docker, creates/drops PostgreSQL databases, executes migrations and writes optional output. No disposable runtime target was authorized for this round."
+  },
+  "boundary_review": {
+    "database_isolation": "Migration subprocess environment deletes ambient DATABASE_URL/DATABASE_URL_TEST/MIGRATION_DATABASE_URL/E2E_DATABASE_URL and PG connection keys, then sets URLs constructed from the harness-owned container and per-run DB names. Port binding is 127.0.0.1 with dynamic host port.",
+    "data_scope": "Only synthetic account rows and migration-ledger checks are authored by this harness; the report explicitly disclaims target rollback, RPO/RTO, independently built historical application compatibility, and production data use.",
+    "cleanup": "Ordinary errors/success pass through finally that drops created databases and force-removes the named container; rollback dump temp files are removed in finally. Cleanup failures are best-effort and do not replace the scenario failure.",
+    "output": "Output path is constrained to repository-relative paths and opened with wx and mode 0600; CI output path is fixed under artifacts/operations and upload retention is 30 days."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-REM016-IMAGE-OVERRIDE-TRUST",
+      "classification": "HOLD_IMAGE_PROVENANCE",
+      "observation": "Default image is digest-pinned, but MIGRATION_HARNESS_IMAGE may replace it with any string containing @sha256:. The harness does not allowlist the digest/registry and Docker network egress is not disabled. The edited CI workflow does not set the override, but an ambient override could select arbitrary image code.",
+      "required_followup": "Restrict the override to an approved image digest/registry or remove the override before relying on this as a controlled local harness."
+    },
+    {
+      "id": "M02-REM016-LOCK-PROBE-UNBOUNDED-WAIT",
+      "classification": "HOLD_LIVENESS",
+      "observation": "spawnMigration starts the lock-probe migration with spawn and no timeout. runLockProbe awaits migration.promise after unlocking; if that child never exits, the await can hang before finally reaches the SIGTERM cleanup.",
+      "required_followup": "Add a bounded child completion timeout/cancellation path and await cleanup, then test timeout/release behavior in an approved disposable container."
+    },
+    {
+      "id": "M02-REM016-SIGNAL-CLEANUP",
+      "classification": "HOLD_INTERRUPTION_CLEANUP",
+      "observation": "The database/container cleanup is in finally for normal async completion/failure, but no explicit SIGINT/SIGTERM handler is installed for the harness process. Abrupt interruption may leave its named container or database behind; cleanup commands also intentionally swallow failure.",
+      "required_followup": "Define and verify interruption cleanup, including safe recovery for containers left by a killed process."
+    },
+    {
+      "id": "M02-REM016-STATIC-TEST-LIMIT",
+      "classification": "HOLD_RUNTIME_EVIDENCE",
+      "observation": "The focused contract test asserts text markers and wiring; it does not execute Docker, verify actual ambient-variable isolation, perform migrations, assert cleanup, test image trust, or check report output permissions. node --check only establishes syntax.",
+      "required_followup": "Treat the 3/3 contract as static evidence only; require a separately approved disposable-runtime verification for migration, rollback/replacement restore and cleanup claims."
+    },
+    {
+      "id": "M02-REM016-ROLLBACK-SCOPE",
+      "classification": "SCOPE_LIMIT",
+      "observation": "The rollback scenario restores a pg_dump into a newly created replacement database and compares prefix ledger/data. It does not test an in-place migration downgrade or certify production restore/RPO/RTO; the source report states these limits.",
+      "required_followup": "Keep production rollback/restore and RPO/RTO under REM-024/M-14 authority and evidence."
+    }
+  ],
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "hold_reason": "Source hashes and focused static contract are verified, but the default image override boundary, lock-child liveness, interruption cleanup and runtime database behavior remain unresolved and were not executed."
+  },
+  "limitations": [
+    "Primary-operator static review only; no independent critique.",
+    "No docker command or database connection was made.",
+    "The CI workflow invocation was reviewed in round 14; this round reviews the called harness implementation but does not execute it.",
+    "No candidate-bound test or overlay is implied."
+  ]
+}

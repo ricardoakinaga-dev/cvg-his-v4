@@ -89,7 +89,7 @@ export const integrationContract = {
     method: 'POST' as const,
     path: '/encounters/:id/exam-orders',
     body: createExamOrderFromEncounterBodySchema,
-    responses: { 201: z.any() }
+    responses: { 201: z.unknown() }
   },
   getEncounterIntegratedSummary: {
     method: 'GET' as const,

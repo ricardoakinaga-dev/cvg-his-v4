@@ -1,0 +1,98 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-009-20260921",
+  "timestamp": "2026-09-21T23:55:10.000000+00:00",
+  "gate_id": "VERIFIED",
+  "scope": "gate local integrado de instalação, build, typecheck, lint, testes, coverage, bootstrap crítico, complexidade, segurança, documentação e validadores para REM-009",
+  "scope_ref": "REM-009",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-ACCEPTANCE-EVIDENCE",
+      "description": "A matriz técnica integrada passou, mas o aceite observável exige checkout limpo/candidate identity e ambos terminaram exit 1 no worktree compartilhado; portanto o aceite integral não está satisfeito.",
+      "required": true,
+      "status": "FAIL",
+      "evidence_refs": [
+        ".agent/evidence/rem-009-integrated-gate-20260921.txt",
+        "scripts/assert-clean-checkout.mjs",
+        "scripts/generate-current-candidate-identity.mjs"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A falha é de boundary de checkout, não de uma falha observada nos comandos técnicos locais."
+    },
+    {
+      "id": "V-002-REGRESSION-RISK",
+      "description": "Build, typecheck, lint, testes raiz/workspaces, coverage com branches 82.06%, critical bootstrap 68/623 + 11/11 processos, complexidade, segurança, docs e validadores locais passaram.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-009-integrated-gate-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-009-INTEGRATED-CURRENT-20260921"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Não substitui CI remoto, candidate OCI, target, providers, UAT ou release."
+    },
+    {
+      "id": "V-003-LIMITATIONS-AUTHORITY",
+      "description": "O boundary de checkout limpo, a ausência de autoridade para mutar o worktree e as limitações externas/humanas estão explicitamente registradas.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-009-integrated-gate-20260921.txt",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Nenhum resultado local é promovido a publicabilidade, release readiness ou go/no-go."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-009-integrated-gate-20260921.txt",
+    ".agent/verification.jsonl#VER-REM-009-INTEGRATED-CURRENT-20260921",
+    ".agent/gates/implementation-ready-remediacao-integral-rem-009-20260921.json",
+    "package.json",
+    ".github/workflows/ci.yml",
+    "scripts/assert-clean-checkout.mjs",
+    "scripts/generate-current-candidate-identity.mjs"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "Checkout limpo candidate-bound e validação de identidade ainda não executáveis no worktree compartilhado sem autorização para congelar/mutar a superfície."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-009-CLEAN-CHECKOUT-BOUNDARY",
+      "description": "O gate VERIFIED permanece reprovado até que o checkout candidate-bound esteja limpo e a matriz completa seja repetida nesse estado.",
+      "non_blocking": false,
+      "impact": "Bloqueia REM-009 DONE, o freeze publicável e qualquer claim de candidato integrado.",
+      "owner": "lead",
+      "due_or_trigger": "Após autorização para congelar/usar um checkout candidate-bound limpo.",
+      "due_at": "2026-09-22T12:00:00.000000+00:00",
+      "verification_method": "Reexecutar assert-clean-checkout, candidate identity e todos os comandos da matriz; criar nova verificação e novo gate VERIFIED que superseda este registro.",
+      "evidence_refs": [
+        ".agent/evidence/rem-009-integrated-gate-20260921.txt",
+        "scripts/assert-clean-checkout.mjs",
+        "scripts/generate-current-candidate-identity.mjs"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "gate local integrado de instalação, build, typecheck, lint, testes, coverage, bootstrap crítico, complexidade, segurança, documentação e validadores para REM-009",
+    "decision": "A execução local foi autorizada; não houve autorização para limpar, reescrever, commitar, publicar, acessar target ou usar credenciais reais.",
+    "evidence_ref": ".agent/plans/remediacao-integral-20260921.md",
+    "expires_or_revalidates": "Revalidar no checkout candidate-bound autorizado."
+  },
+  "residual_risk": "HIGH",
+  "decision": "FAIL",
+  "next_action": "REM-009:VERIFY-CLEAN-CHECKOUT",
+  "revalidation_triggers": [
+    "Checkout candidate-bound limpo disponibilizado com autorização.",
+    "Qualquer mudança em código, lockfile, CI, scripts ou evidência após a verificação current.",
+    "Qualquer avanço para CI remoto, OCI, target, UAT, release ou autoridade humana."
+  ],
+  "supersedes": null
+}

@@ -1,0 +1,28 @@
+REM-028 — extração presentation-bound do status de query/execução de relatórios
+Data: 2026-09-22
+Runtime: Node v22.23.2; pnpm 10.33.0; Linux local; worktree dirty compartilhado preservado.
+
+Escopo executado:
+- Extraído o feedback da query/execução para ReportQueryStatus.vue.
+- O componente recebe somente mensagens/flags tipados de erro, sucesso, filtros stale, exportação pendente e loading de reconciliação.
+- O componente emite apenas dismiss-error, dismiss-success, reconcile-export e retry-export.
+- A ReportWorkbenchPage mantém estado, idempotência, pendingExport, services/reports, timeout, download, handlers, filtros, URL e execução server-side.
+- Mantidos os textos de reconciliação, estados de retry e o aviso de última execução server-side.
+- Adicionado teste focal ReportQueryStatus.test.ts cobrindo feedback e intenções de recuperação.
+
+Verificações executadas:
+- PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/reports/__tests__/ReportQueryStatus.test.ts src/pages/reports/__tests__/ReportResultTable.test.ts src/pages/reports/__tests__/ReportWorkbenchPage.test.ts — PASS, 3 arquivos / 83 testes.
+- PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit — PASS.
+- PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa lint — PASS, 0 erros e 32 warnings preexistentes de no-explicit-any.
+- PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa build — PASS, Vite/PWA com 841 módulos transformados.
+- git diff --check — PASS.
+- Auditoria estática do boundary — PASS: ReportQueryStatus.vue não contém referências runtime a services, router ou stores.
+
+Artefatos e fingerprints:
+- apps/spa/src/pages/reports/ReportWorkbenchPage.vue — sha256 d9d5c91942a1aa7933f3b24cd049622c2c28329c9caaee253aa779aa92a07541; 2915 linhas.
+- apps/spa/src/pages/reports/ReportQueryStatus.vue — sha256 1a1acdf24c8c1b2b7508f3f18f651dbefcb7a87861fc8608480e15ebe865db43; 105 linhas.
+- apps/spa/src/pages/reports/__tests__/ReportQueryStatus.test.ts — sha256 b2f0ead9f662e026d1606ec537639584216ae3a18935c87940990e21e5ac6f58; 46 linhas.
+- A superfície anterior permanece estável: ReportResultTable.vue sha256 3107ac2b57b8e9db576e3111a165cd39832cc0931097a43d3b332ed43e58c501.
+
+Resultado: PASS_WITH_CONDITIONS para esta fatia local. A prova browser/visual não foi executada porque o runtime/API local permanece unhealthy; não houve pixel diff, inspeção real de foco/teclado, dark/mobile ou atualização de snapshots. A suíte SPA integral pós-seam, crítica adversarial E7 e aprovação de owners continuam abertas.
+Próxima ação: REM-028:IMPLEMENT-REPORTS-EXPORT-SEAM.

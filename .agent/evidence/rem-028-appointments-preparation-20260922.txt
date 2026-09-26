@@ -1,0 +1,68 @@
+REM-028 — preparação do seam candidate-bound da agenda
+Data: 2026-09-22T04:54:03.000000Z
+Escopo: inspeção E1 e contrato de implementação local reversível; nenhuma mutação da SPA nesta preparação
+Status: PASS_WITH_CONDITIONS para IMPLEMENTATION_READY
+
+## Autoridade e limite
+
+A instrução autoriza inspeção e implementação local reversível no worktree compartilhado.
+Não autoriza CI remoto, target, UAT, release, credenciais ou aceite de owner. O worktree
+dirty foi preservado.
+
+## Topologia observada
+
+- `apps/spa/src/pages/appointments/AppointmentsListPage.vue`: 3.082 linhas; template nas linhas 1–850, script setup nas linhas 852–1.655 e estilos locais a partir da linha 1.657.
+- `apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts`: 995 linhas e 35 casos `it`.
+- `apps/spa/src/pages/appointments/AppointmentsListPage.css`: 170 linhas de adaptações dark-theme; tokens e breakpoints existentes devem ser preservados.
+- `agendaContext.ts` já centraliza `agendaDate`, `agendaView`, `agendaStatus`, `agendaProfessional`, `agendaService`, `agendaUnit`, `agendaSpecialty` e `agendaMarker`; texto livre permanece fora da URL/histórico.
+- `agendaPresentation.ts` e `appointmentCalendar.ts` já concentram formatadores e derivação pura de slots/calendário, sem services, router ou stores.
+
+## Ownership atual que não pode migrar
+
+| Fronteira | Owner preservado | Evidência/contrato |
+| --- | --- | --- |
+| URL, deep-link, back/forward e memória | `useRoute`, `useRouter`, `agendaContextKey`, `readAgendaContext`, `writeAgendaQuery` na page | `AppointmentsListPage.vue:878–931,1320–1367`; `agendaContext.ts:49–78` |
+| server state e enriquecimento opcional | `overview`, `services`, `ownerCache`, `patientCache`, `loadOverview`, `loadReferenceData` | `AppointmentsListPage.vue:934–964,1397–1472`; resposta primária não espera nomes/serviços opcionais |
+| stale response e fail-closed | `overviewRequest`, `disposed`, `isCurrentOverview`, `invalidateOverview`, `canReadScheduling` | `AppointmentsListPage.vue:932–937,1004–1008,1367–1395` |
+| workflows e mutações | `actionGeneration`, `checkIn`, `markNoShow`, `cancelAppointmentFromAgenda`, `openEncounter` | `AppointmentsListPage.vue:943–945,1478–1594` |
+| criação/modal/drawer | `showClientSelector`, `showQuickCreate`, `selectedAppointment`, `pendingSlotPreset` e handlers da page | `AppointmentsListPage.vue:939–946,1596–1633` |
+
+## Seam escolhido
+
+O próximo componente será `apps/spa/src/pages/appointments/AgendaCalendarOrList.vue`,
+responsável apenas pela renderização dos modos `list`, `day`, `week` e `month`, resumo
+visual da grade quando já houver `overview`, legenda, estados vazio e intents de interação.
+
+Contrato mínimo planejado:
+
+- props readonly para `view`, `referenceDate`, itens já filtrados/enriquecidos,
+  blocks, colunas profissionais, caches de nomes, dias visíveis, permissões de criação,
+  labels/summary e `loading`/empty já decididos pela page;
+- emits tipados para `open-appointment`, `create-slot`, `select-date` e `change-view`;
+- somente imports de tipos, design-system, `EmptyState` e helpers puros de calendário/apresentação;
+- nenhum `useRoute`, `useRouter`, service, store, permission fetch, mutation, query update,
+  geração, retry, modal de criação ou drawer de ações;
+- controles nativos, `aria-label`, `aria-current`, foco visível, estados dense/empty e
+  responsive/dark tokens permanecem observáveis; a page continua dona da decisão
+  `canManageScheduling` e dos handlers emitidos.
+
+## Verificação esperada
+
+Após a extração: teste focal novo + `AppointmentsListPage.test.ts`, `vue-tsc`, lint,
+build, `git diff --check` e auditoria estática de imports/ownership. Browser/visual,
+keyboard/focus real, dark/mobile e reduced-motion continuam condição aberta enquanto
+o `/health` da API local permanecer unhealthy; snapshots não devem ser atualizados.
+
+## Known-bads bloqueadores do seam
+
+- mover query/contexto, server state, `overviewRequest`, permission gating ou ações para o filho;
+- aguardar enriquecimento de owner/paciente/serviços para renderizar a grade;
+- eliminar loading/empty/error, dense-slot summary, controles nativos ou fallback semântico;
+- reimplementar serviços, criar store universal, alterar tokens/breakpoints ou atualizar snapshots sem browser saudável.
+
+## Evidência reproduzível
+
+- `wc -l apps/spa/src/pages/appointments/AppointmentsListPage.vue apps/spa/src/pages/appointments/AppointmentsListPage.css apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts`
+- `rg -n "from '@/services|from 'vue-router'|from '@/stores|use[A-Za-z]+Store" apps/spa/src/pages/appointments/AppointmentsListPage.vue`
+- `rg -n '^\\s*(it|test)\\(' apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts`
+- hashes observados: page `5876905fcca8b995560b79950400407bf1f72c7cf9b9d57c9305556f06000bfb`, context `f579abf9c8cf55a001bf0b4a58748c789b241f2bb5b328be127e6faf0f1e9dee`, presentation `c2a6e9aa93292e131de769898215c63477a04bfaa65e86e736b8a58ae673f298`, test `80774459b0cce923c6bc0e6abafcf0bb472f8a22a441ad8f52fffdcfd358c265`.

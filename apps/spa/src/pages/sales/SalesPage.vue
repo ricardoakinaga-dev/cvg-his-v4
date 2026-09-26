@@ -13,11 +13,35 @@
       </template>
     </AppPageHeader>
 
-    <section class="sales-kpis">
-      <DsStatCard :value="openSales.length.toString()" label="vendas abertas" icon="🟠" />
-      <DsStatCard :value="closedSales.length.toString()" label="vendas fechadas" icon="🟢" />
-      <DsStatCard :value="totalProducts.toString()" label="produtos vendidos" icon="📦" />
-      <DsStatCard :value="totalFinalFormatted" label="valor final" icon="💰" />
+    <section class="sales-kpis" aria-label="Resumo de vendas" :aria-busy="loading || undefined">
+      <DsStatCard
+        :value="openSales.length.toString()"
+        label="vendas abertas"
+        icon="🟠"
+        :loading="loading"
+        :error="errorMessage ? 'Indisponível' : undefined"
+      />
+      <DsStatCard
+        :value="closedSales.length.toString()"
+        label="vendas fechadas"
+        icon="🟢"
+        :loading="loading"
+        :error="errorMessage ? 'Indisponível' : undefined"
+      />
+      <DsStatCard
+        :value="totalProducts.toString()"
+        label="produtos vendidos"
+        icon="📦"
+        :loading="loading"
+        :error="errorMessage ? 'Indisponível' : undefined"
+      />
+      <DsStatCard
+        :value="totalFinalFormatted"
+        label="valor final"
+        icon="💰"
+        :loading="loading"
+        :error="errorMessage ? 'Indisponível' : undefined"
+      />
     </section>
 
     <section class="sales-flow-grid" aria-label="Leitura funcional de vendas">
@@ -38,12 +62,6 @@
     <div class="sales-layout">
       <section class="sales-list">
         <DsCard title="Vendas abertas">
-          <div v-if="loading" class="sales-empty">Carregando vendas...</div>
-          <div v-else-if="errorMessage" class="sales-empty sales-empty--error">
-            {{ errorMessage }}
-            <DsButton size="sm" variant="secondary" @click="loadSales">Tentar novamente</DsButton>
-          </div>
-
           <div class="sales-toolbar">
             <DsInput
               v-model="filters.search"
@@ -71,7 +89,7 @@
               <input type="checkbox" aria-label="Selecionar todas as vendas visíveis" />
               <span>Selecionar Tudo</span>
             </label>
-            <span>{{ resultsSummary }}</span>
+            <span aria-live="polite">{{ resultsSummary }}</span>
             <DsInput v-model="filters.pageSize" type="select" label="Resultados">
               <option value="20">20 resultados por página</option>
               <option value="50">50 resultados por página</option>
@@ -79,8 +97,28 @@
             </DsInput>
           </div>
 
-          <div v-if="filteredSales.length === 0" class="sales-empty">
-            Você ainda não tem vendas cadastradas
+          <div v-if="loading" class="sales-empty" role="status" aria-live="polite">
+            Carregando vendas...
+          </div>
+          <div v-else-if="errorMessage" class="sales-empty sales-empty--error" role="alert">
+            <p>{{ errorMessage }}</p>
+            <DsButton size="sm" variant="secondary" @click="loadSales">Tentar novamente</DsButton>
+          </div>
+          <div
+            v-else-if="filteredSales.length === 0"
+            class="sales-empty sales-empty--empty"
+            role="status"
+            aria-live="polite"
+          >
+            <template v-if="sales.length === 0">
+              <p>Você ainda não tem vendas cadastradas</p>
+            </template>
+            <template v-else>
+              <p>Nenhuma venda corresponde aos filtros selecionados.</p>
+              <DsButton size="sm" variant="secondary" @click="clearSalesFilters">
+                Limpar filtros
+              </DsButton>
+            </template>
           </div>
 
           <div v-else class="sales-card-list">
@@ -405,7 +443,7 @@ interface ProductSale {
 }
 
 const sales = ref<ProductSale[]>([]);
-const loading = ref(false);
+const loading = ref(true);
 const errorMessage = ref('');
 const actionError = ref('');
 const actionMessage = ref('');
@@ -479,6 +517,9 @@ const canConfirmCancellation = computed(() => {
   );
 });
 const resultsSummary = computed(() => {
+  if (loading.value) return 'Carregando resultados...';
+  if (errorMessage.value) return 'Resultados indisponíveis';
+
   const count = filteredSales.value.length;
   if (count === 0) return 'Mostrando 0 - 0 pág. de 0 resultados';
   return `Mostrando 1 - ${count} pág. de ${count} resultados`;
@@ -529,6 +570,11 @@ watch(
 
 function selectSale(saleId: string) {
   selectedSaleId.value = saleId;
+}
+
+function clearSalesFilters() {
+  filters.value.search = '';
+  filters.value.status = 'all';
 }
 
 async function closeSelectedSale() {

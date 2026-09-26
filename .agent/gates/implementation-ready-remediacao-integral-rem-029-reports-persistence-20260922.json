@@ -1,0 +1,161 @@
+{
+  "record_id": "GATE-IMPLEMENTATION-READY-REMEDIACAO-INTEGRAL-REM-029-REPORTS-PERSISTENCE-20260922",
+  "timestamp": "2026-09-22T07:59:21.000000Z",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "preparação candidate-bound para separar DatabaseReportRepository, SQL, parâmetros e mapeadores do module-reports",
+  "scope_ref": "REM-029",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-REM029-PERSIST-001",
+      "description": "A superfície de persistência foi delimitada: DatabaseReportRepository ocupa 428 linhas (1691–2118) e os parâmetros/mapeadores ocupam 2226–2379, separados da orquestração do ReportsService.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-preparation-20260922.txt",
+        "packages/modules/reports/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A delimitação é estática; a extração e a regressão posterior ficam para IMPLEMENT."
+    },
+    {
+      "id": "IR-REM029-PERSIST-002",
+      "description": "O contrato público ReportRepository e os callers de DatabaseReportRepository foram mapeados: oito métodos obrigatórios, oito métodos opcionais de claim/fencing e bootstrap/worker preservados.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-preparation-20260922.txt",
+        "packages/modules/reports/src/index.ts",
+        "apps/worker/src/bootstrap.ts",
+        "apps/worker/src/runner.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A compatibilidade efetiva depende da implementação e do typecheck pós-extração."
+    },
+    {
+      "id": "IR-REM029-PERSIST-003",
+      "description": "As invariantes SQL de tenant/lease/fencing foram congeladas: quatro tabelas, withTenantQuery, account_id, FOR UPDATE SKIP LOCKED, claim token/until/worker e retorno false em fencing perdido.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-preparation-20260922.txt",
+        "packages/modules/reports/src/index.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A prova atual é inspeção mais integração histórica/recente; o novo boundary ainda não foi executado."
+    },
+    {
+      "id": "IR-REM029-PERSIST-004",
+      "description": "A fronteira de mapeadores e parâmetros foi separada da lógica de IDs estáveis, renderização, delivery provider, retries e claims em memória; a semântica UTC de nextRunAt foi identificada como dependência compartilhada.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-preparation-20260922.txt",
+        "packages/modules/reports/src/index.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "O helper de tempo e o import graph serão escolhidos e verificados durante IMPLEMENT."
+    },
+    {
+      "id": "IR-REM029-PERSIST-005",
+      "description": "A implementação seguinte foi limitada a report-database-repository.ts, eventual helper puro de tempo e testes focais, mantendo index.ts como fachada/export público e ReportsService como dono da orquestração.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-preparation-20260922.txt",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Qualquer movimento de claims, leases, provider, renderer ou ownership de schedule reabre esta preparação."
+    },
+    {
+      "id": "IR-REM029-PERSIST-006",
+      "description": "O baseline local após a extração de rendering está verde: reports 38/38, typecheck, lint e diff check; os gates anteriores preservam worker e processo 28/28 em PostgreSQL efêmero.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-preparation-20260922.txt",
+        ".agent/evidence/rem-029-reports-rendering-implementation-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-029-reports-rendering-20260922.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "O baseline é local; CI/OCI e revisão independente não estão representados."
+    },
+    {
+      "id": "IR-REM029-PERSIST-007",
+      "description": "Limites de autoridade e revisão estão explícitos: mutação local reversível autorizada; sem target, provider real, UAT, owners, E7, release ou go/no-go.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-preparation-20260922.txt",
+        ".agent/execution-log.jsonl#EVT-REM-029-CHECKPOINT-PREPARE-REPORTS-PERSISTENCE-20260922"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A ausência de crítica independente mantém qualquer aceite posterior condicionado."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-029-reports-persistence-preparation-20260922.txt",
+    "packages/modules/reports/src/index.ts",
+    "packages/modules/reports/src/reports.test.ts",
+    "packages/modules/reports/package.json",
+    "apps/worker/src/bootstrap.ts",
+    "apps/worker/src/runner.ts",
+    "tests/integration/process/worker-run-once-reports.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "A implementação do adapter SQL/mapeadores e teste focal ainda não existem.",
+    "A nova fronteira ainda precisa provar que index.ts conserva exports sem ciclo runtime.",
+    "A checagem global de complexidade mantém quatro medições SPA divergentes fora desta fatia.",
+    "Crítica E7 e revisão formal dos owners REPORTS/RUNTIME permanecem abertas.",
+    "CI/OCI, target, provider real, UAT, browser visual/a11y, release e go/no-go humano permanecem fora do claim."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-029-PERSIST-IMPLEMENTATION",
+      "description": "Extrair somente DatabaseReportRepository, SQL, parâmetros e mapeadores, mantendo ReportRepository, withTenantQuery, claims, leases e fencing compatíveis.",
+      "non_blocking": false,
+      "impact": "Qualquer mudança de ownership ou perda de account/claim fencing reabre esta preparação.",
+      "owner": "REPORTS",
+      "due_or_trigger": "Durante REM-029:IMPLEMENT-REPORTS-PERSISTENCE.",
+      "verification_method": "Testes reports/worker, typecheck, lint, processo PostgreSQL descartável, diff check e boundary audit.",
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-029-PERSIST-REVIEW",
+      "description": "Owners REPORTS/RUNTIME e crítica E7 devem revisar o boundary antes do fechamento de REM-029.",
+      "non_blocking": true,
+      "impact": "Não bloqueia implementação local; bloqueia aceite organizacional.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de fechar REM-029.",
+      "verification_method": "Revisão identificada em contexto fresco e gate superseding.",
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "preparação e implementação local reversível do adapter de persistência de reports",
+    "decision": "A instrução autoriza inspeção e futura mutação local; não autoriza target, provider real, UAT, aceite de owners, release ou go/no-go.",
+    "evidence_ref": ".agent/evidence/rem-029-reports-persistence-preparation-20260922.txt",
+    "expires_or_revalidates": "Revalidar se a implementação tocar claims fora do repository, delivery/provider, renderer, worker ou qualquer superfície SPA."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-029:IMPLEMENT-REPORTS-PERSISTENCE",
+  "revalidation_triggers": [
+    "Alterar ReportRepository, exports públicos ou instanciação do bootstrap.",
+    "Mover stableReportId, retry, delivery provider, renderização, claims em memória ou orquestração de schedule para o adapter.",
+    "Remover withTenantQuery, account_id, SKIP LOCKED, claim token/until/worker ou retorno false de fencing.",
+    "Alterar chaves de conflito, ordenação, JSON/date mapping ou semântica UTC de nextRunAt sem novos known-bads.",
+    "Executar target, provider real, UAT, release ou alteração visual sem os gates próprios."
+  ],
+  "supersedes": ".agent/gates/verified-remediacao-integral-rem-029-reports-rendering-20260922.json"
+}

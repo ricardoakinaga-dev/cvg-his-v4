@@ -1,0 +1,163 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-029-REPORTS-RENDERING-20260922",
+  "timestamp": "2026-09-22T07:45:08.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "implementação candidate-bound do renderer puro JSON/CSV/XLSX/PDF do module-reports e regressão local proporcional",
+  "scope_ref": "REM-029",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-REM029-RENDER-001",
+      "description": "A região pura de rendering foi extraída para report-renderers.ts; index.ts caiu de 2.631 para 2.381 linhas e ReportsService continua dono de IDs, cache, persistência e fencing.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-rendering-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-REPORTS-RENDERING-20260922",
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/report-renderers.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A próxima concentração relevante é o adapter SQL/mapeadores do DatabaseReportRepository."
+    },
+    {
+      "id": "V-REM029-RENDER-002",
+      "description": "O renderer preserva content types/encodings e os contratos de CSV/BOM/formula-safe, JSON, XLSX/ZIP/CRC e PDF escaping/bounds, com teste focal direto.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-rendering-implementation-20260922.txt",
+        "packages/modules/reports/src/report-renderers.ts",
+        "packages/modules/reports/src/report-renderers.test.ts",
+        "packages/modules/reports/src/reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A validação de bytes é local; não prova abertura em todos os clientes externos."
+    },
+    {
+      "id": "V-REM029-RENDER-003",
+      "description": "ReportsService mantém stableReportId, cache de retry interativo, filename, actor, persistExport, saveExportForScheduleClaim, ReportScheduleLeaseLostError e delivery/claim ownership.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-rendering-implementation-20260922.txt",
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/reports.test.ts",
+        "apps/worker/src/jobs/scheduled-report-job.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A auditoria é candidate-bound local e não substitui consumers externos."
+    },
+    {
+      "id": "V-REM029-RENDER-004",
+      "description": "Reports test 38/38, build/typecheck/lint, worker test/typecheck e process test run-once 28/28 passaram após a extração.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-rendering-implementation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-REPORTS-RENDERING-20260922",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A prova processual é local e sintética; não promove target ou provider real."
+    },
+    {
+      "id": "V-REM029-RENDER-005",
+      "description": "O boundary audit confirmou que report-renderers.ts não importa database, tenant-context, repository, provider, router, store ou serviços globais; diff check passou.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-rendering-implementation-20260922.txt",
+        "packages/modules/reports/src/report-renderers.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Auditoria estática não substitui revisão de owners."
+    },
+    {
+      "id": "V-REM029-RENDER-006",
+      "description": "O hotspot reports foi reconciliado para 2.381 linhas e o worker runner permanece em 231; a checagem global segue aberta por quatro entradas SPA fora desta ação.",
+      "required": true,
+      "status": "CONDITION",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-rendering-implementation-20260922.txt",
+        "docs/engineering/complexity-hotspots.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Não se afirma PASS integral de complexity:check enquanto as quatro entradas SPA divergirem."
+    },
+    {
+      "id": "V-REM029-RENDER-007",
+      "description": "Crítica adversarial E7 e revisão formal dos owners REPORTS/RUNTIME permanecem pendentes.",
+      "required": true,
+      "status": "CONDITION",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-rendering-implementation-20260922.txt"
+      ],
+      "confidence": "HIGH",
+      "limitations": "O programa está sendo executado por agente primário único."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-029-reports-rendering-implementation-20260922.txt",
+    ".agent/verification.jsonl#VER-REM-029-IMPLEMENT-REPORTS-RENDERING-20260922",
+    "packages/modules/reports/src/index.ts",
+    "packages/modules/reports/src/report-renderers.ts",
+    "packages/modules/reports/src/report-renderers.test.ts",
+    "packages/modules/reports/src/reports.test.ts",
+    "apps/worker/src/jobs/scheduled-report-job.test.ts",
+    "tests/integration/process/worker-run-once-reports.test.ts",
+    "docs/engineering/complexity-hotspots.json"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "A checagem global de complexidade mantém quatro medições SPA divergentes fora desta ação.",
+    "Crítica E7 e owners REPORTS/RUNTIME não foram realizados em contexto independente.",
+    "O adapter SQL/mapeadores do DatabaseReportRepository ainda não foi separado.",
+    "CI/OCI, target, provider real, UAT, browser visual/a11y, release e go/no-go humano permanecem fora do claim."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-029-RENDER-COMPLEXITY",
+      "description": "Reconciliar as quatro medições SPA divergentes sem mascarar o checker global.",
+      "non_blocking": true,
+      "impact": "Mantém o gate integral de complexidade aberto, mas não bloqueia a próxima preparação local.",
+      "owner": "WEB/RUNTIME",
+      "due_or_trigger": "Antes do gate integral do programa.",
+      "verification_method": "`pnpm complexity:check` com todas as medições físicas coerentes.",
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-029-RENDER-REVIEW",
+      "description": "Obter crítica E7 e revisão identificada dos owners REPORTS/RUNTIME.",
+      "non_blocking": true,
+      "impact": "Bloqueia aceite organizacional e fechamento do cartão, não a continuidade local reversível.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de fechar REM-029.",
+      "verification_method": "Crítica em contexto fresco e gate superseding.",
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "implementação e verificação local reversível do renderer puro de reports",
+    "decision": "A instrução autoriza mutação local e testes locais; não autoriza target, provider real, UAT, aceite de owners, release ou go/no-go.",
+    "evidence_ref": ".agent/evidence/rem-029-reports-rendering-implementation-20260922.txt",
+    "expires_or_revalidates": "Revalidar se a próxima fatia tocar contratos públicos, renderer, claims, leases, delivery, tenant context ou banco não efêmero."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-029:PREPARE-REPORTS-PERSISTENCE",
+  "revalidation_triggers": [
+    "Mover stableReportId, cache, persistExport, repository, provider ou claim para o renderer.",
+    "Alterar content type/encoding, BOM, formula-safe CSV, ZIP/XML/PDF escaping ou ordem de colunas sem regressão.",
+    "Reconciliar complexity:check atualizando entradas fora da medição real ou ocultando divergências.",
+    "Executar target, provider real, UAT, release ou aceite de owners sem gate próprio."
+  ],
+  "supersedes": ".agent/gates/implementation-ready-remediacao-integral-rem-029-reports-rendering-20260922.json"
+}

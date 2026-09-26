@@ -13,7 +13,8 @@
   "scripts": {
     "build": "tsc -b tsconfig.json --force",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "node ../../scripts/run-semantic-lint.mjs"
   },
   "dependencies": {
     "@cvg-his-v2/shared-auth-sdk": "workspace:*",

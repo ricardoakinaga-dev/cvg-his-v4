@@ -1,0 +1,103 @@
+{
+  "artifact_id": "M02-sensitivity-provenance-20260923",
+  "recorded_at": "2026-09-23",
+  "result": "VALUE_SUPPRESSED_REVIEW_COMPLETE_WITH_INTERNAL_EVIDENCE_HOLD",
+  "method": {
+    "values_written_to_report": false,
+    "worktree_scan_snapshot_paths": 432,
+    "candidate_delta_scan": "tracked added diff lines plus all lines in untracked files; path and line classifications only",
+    "historical_control_records_rewritten": false,
+    "sensitive_value_echoed_to_logs_or_user": false
+  },
+  "findings": {
+    "credential_and_secret_patterns": {
+      "private_key_markers": 0,
+      "github_tokens": 0,
+      "aws_keys": 0,
+      "jwt_shapes": 0,
+      "nonempty_bearer_tokens": 0
+    },
+    "email_shapes": {
+      "worktree_matches": 56,
+      "worktree_paths": 15,
+      "candidate_delta_matches": 1,
+      "candidate_delta_classification": "reserved example address in a lockfile-gitignore test fixture; no personal address established"
+    },
+    "database_url_shapes": {
+      "worktree_matches": 65,
+      "worktree_paths": 10,
+      "userinfo_matches": 40,
+      "candidate_delta_matches": 17,
+      "candidate_delta_paths": 8,
+      "candidate_delta_hosts": "all loopback",
+      "candidate_delta_credentials": "generic test placeholders or empty; no live credential established",
+      "worktree_nonloopback_hosts_pending_source_confirmation": 0,
+      "nonloopback_shaped_followup": {
+        "occurrences": 9,
+        "test_fixture_occurrences": 7,
+        "test_fixture_path": "tests/unit/api/startup-secrets-runtime.test.ts",
+        "test_fixture_context": "environment-resolution/security negative-test inputs and expected values; none has userinfo or password",
+        "internal_evidence_occurrences": 2,
+        "internal_evidence_path": ".agent/verification.jsonl",
+        "parse_classification": "all nine remain unparsed; no real or public host was established",
+        "candidate_added_diff_lines": 0,
+        "evidence_ref": ".agent/evidence/m02-nonloopback-db-url-provenance-20260923.json"
+      }
+    },
+    "local_path_shapes": {
+      "worktree_home_path_matches": 391,
+      "worktree_home_path_paths": 108,
+      "worktree_temp_path_matches": 97,
+      "worktree_temp_path_paths": 12,
+      "candidate_delta_home_path_matches": 361,
+      "candidate_delta_home_path_paths": 97,
+      "candidate_delta_temp_path_matches": 30,
+      "candidate_delta_temp_path_paths": 8,
+      "classification": "concentrated in internal evidence and control metadata; preserve historical records and exclude them from an external candidate until relevance and sanitization are reviewed"
+    },
+    "cpf_detector": {
+      "initial_check_digit_valid_occurrences": 6,
+      "fixture_occurrence_removed": true,
+      "remaining_check_digit_valid_occurrences": 5,
+      "remaining_paths": 3,
+      "remaining_classification": "the same 11-digit substring occurs only inside SHA-256 checksum strings in three internal JSON evidence files; no standalone CPF value remains"
+    },
+    "name_heuristic": {
+      "initial_unknown_matches": 8,
+      "source_seed_matches": "three veterinary breed/species taxonomy values, not person records",
+      "patient_page_match": "runtime bindings from patient/owner record properties, no embedded person literal",
+      "ui_test_fixtures": "replaced with explicit synthetic labels in appointments, clinical-record context, and counter-sales tests"
+    }
+  },
+  "changes_made": [
+    {
+      "path": "tests/unit/infra/api-server-boundaries.test.ts",
+      "change": "replaced one check-digit-valid CPF-shaped boundary-test input with a length-only synthetic over-limit string",
+      "verification": "3 tests passed using an isolated Vitest configuration without global setup"
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/__tests__/AppointmentsOverview.test.ts",
+      "change": "replaced person-like appointment fixture labels with synthetic service, tutor, and patient labels"
+    },
+    {
+      "path": "apps/spa/src/pages/medical-records/__tests__/ClinicalRecordContextAside.test.ts",
+      "change": "replaced person-like values with synthetic patient/tutor labels and a synthetic contact; retained empty-owner fallback coverage"
+    },
+    {
+      "path": "apps/spa/src/pages/sales/__tests__/CounterSalesWorkbench.test.ts",
+      "change": "replaced the product fixture label with an explicit synthetic product label and aligned its rendering assertion"
+    }
+  ],
+  "verification": {
+    "spa_targeted_command": "pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/appointments/__tests__/AppointmentsOverview.test.ts src/pages/medical-records/__tests__/ClinicalRecordContextAside.test.ts src/pages/sales/__tests__/CounterSalesWorkbench.test.ts --config vitest.config.ts",
+    "spa_targeted_result": "3 files passed, 8 tests passed",
+    "database_environment": "DATABASE_URL and DATABASE_URL_TEST unset; SPA Vitest config has no database global setup",
+    "api_boundary_test_result": "1 file passed, 3 tests passed with temporary no-global-setup config; temporary config removed",
+    "git_diff_check": "passed"
+  },
+  "candidate_holds": [
+    "Historical internal evidence and control metadata still contain workstation-local path references. Preserve those records; exclude them from an external candidate until per-file relevance and sanitization are accepted.",
+    "No candidate overlay has been assembled or approved. This report is provenance evidence, not a candidate approval.",
+    "Nine nonloopback-shaped URL occurrences were inspected in context: seven are opaque environment-validation test fixtures without userinfo/password and two are authority-empty internal evidence entries; all remain unparsed, none is on an added diff line, and no real/public endpoint was established."
+  ]
+}

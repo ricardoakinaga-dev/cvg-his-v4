@@ -1,0 +1,88 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-050-20260922",
+  "timestamp": "2026-09-22T09:27:59.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "verificação candidate-bound da política de visibilidade do pnpm-lock.yaml",
+  "scope_ref": "REM-050",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-REM050-001",
+      "description": "O lockfile canônico continua versionado e deixa de ser ignorado pelo `.gitignore`.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-050-lockfile-policy-20260922.txt", ".gitignore", "pnpm-lock.yaml"],
+      "confidence": "HIGH",
+      "limitations": "A prova é local ao checkout compartilhado."
+    },
+    {
+      "id": "V-REM050-002",
+      "description": "O teste focal prova lockfile novo visível, ausência de ignore via check-ignore e lockfile rastreado modificado visível no status.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-050-lockfile-policy-20260922.txt", "tests/unit/infra/lockfile-gitignore.test.ts"],
+      "confidence": "HIGH",
+      "limitations": "O checkout temporário é sintético e não publica alteração."
+    },
+    {
+      "id": "V-REM050-003",
+      "description": "A política de dependências permanece verde com o lockfile presente: 69 manifests ativos validados.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-050-lockfile-policy-20260922.txt", "scripts/validate-dependency-policy.mjs"],
+      "confidence": "HIGH",
+      "limitations": "Não substitui instalação/CI remoto candidate-bound."
+    },
+    {
+      "id": "V-REM050-004",
+      "description": "A mudança ficou limitada ao `.gitignore` e ao teste hermético; não alterou lockfile, dependências ou comportamento de runtime.",
+      "required": true,
+      "status": "PASS_WITH_CONDITIONS",
+      "evidence_refs": [".agent/evidence/rem-050-lockfile-policy-20260922.txt", ".gitignore", "tests/unit/infra/lockfile-gitignore.test.ts"],
+      "confidence": "HIGH",
+      "limitations": "Crítica independente, CI, release e branch governance permanecem fora do escopo."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-050-lockfile-policy-20260922.txt",
+    ".gitignore",
+    "tests/unit/infra/lockfile-gitignore.test.ts",
+    "pnpm-lock.yaml",
+    "scripts/validate-dependency-policy.mjs"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "CI remoto, branch protection, release, crítica independente e go/no-go permanecem fora do claim."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM050-DRIFT",
+      "description": "Reabrir REM-050 se o lockfile canônico, a política de ignore ou o teste de clean checkout mudar.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a correção local; impede aceitar novamente sem prova current.",
+      "owner": "lead",
+      "due_or_trigger": "Drift em `.gitignore`, `pnpm-lock.yaml` ou no teste focal.",
+      "verification_method": "Executar teste focal, check-ignore e validate:dependencies com gate superseding.",
+      "status": "OPEN",
+      "residual_risk": "LOW",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "correção local reversível da regra de ignore do lockfile",
+    "decision": "A instrução autoriza mudança local e teste hermético; não autoriza push, CI remoto, release ou decisão humana.",
+    "evidence_ref": ".agent/evidence/rem-050-lockfile-policy-20260922.txt",
+    "expires_or_revalidates": "Revalidar em qualquer drift do lockfile, ignore policy ou teste."
+  },
+  "residual_risk": "LOW",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-050:REOPEN-IF-DRIFT",
+  "revalidation_triggers": [
+    "Adicionar novamente uma regra que oculte `pnpm-lock.yaml`.",
+    "Alterar o teste de clean checkout ou a política de dependências.",
+    "Executar push, CI, release ou decisão humana sem gate próprio."
+  ]
+}

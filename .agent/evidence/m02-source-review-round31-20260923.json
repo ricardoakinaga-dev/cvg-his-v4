@@ -1,0 +1,97 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND31-20260923",
+  "recorded_at": "2026-09-23T10:06:13Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "tests/unit/infra/api-server-boundaries.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "419a59486f096dee3426a3f80fa5a7e8a5744489365ecf56abef4fa17141c2c2",
+      "current_sha256": "419a59486f096dee3426a3f80fa5a7e8a5744489365ecf56abef4fa17141c2c2",
+      "sha_matches_inventory": true,
+      "scope_classification": "TEST_OR_QUALITY_CONTRACT",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "New contract test covers header type handling, validation of optional/required/null/type/min/max/enum fields, accountId argument ordering to getOrThrow, and queue synchronization decisions for absent, closed, reception and active states. Service implementations are fakes; service/helper implementation and companion source test were reviewed and counted in round 1."
+    }
+  ],
+  "related_reviewed_paths": [
+    {
+      "path": "apps/api/src/helpers/api-server-boundaries.ts",
+      "source_review_ref": ".agent/evidence/m02-source-review-round1-20260923.json",
+      "counted_in_prior_round": true
+    },
+    {
+      "path": "apps/api/src/helpers/api-server-boundaries.test.ts",
+      "source_review_ref": ".agent/evidence/m02-source-review-round1-20260923.json",
+      "counted_in_prior_round": true
+    }
+  ],
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config vitest.unit.config.ts tests/unit/infra/api-server-boundaries.test.ts",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "1 file passed; 3 tests passed. Node environment, no global setup; runtime inputs are in-memory requests and fake services.",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0; Vitest 4.1.11."
+  },
+  "boundary_review": {
+    "imports": "EncountersService and SchedulingService are type-only imports; no service implementations are instantiated. ValidationError and helper functions are local code.",
+    "effects": "No network, database, filesystem writes, provider or external target is used.",
+    "integration": "No HTTP server or PostgreSQL authorization/queue integration runs."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-API-BOUNDARIES-FAKE-SERVICE-SCOPE",
+      "classification": "HOLD_INTEGRATION_BOUNDARY",
+      "observation": "The test exercises helper contracts and expected call arguments only. It does not prove the service enforces tenant isolation, persistent queue transitions or route-level authorization against a database."
+    },
+    {
+      "id": "M02-ACCOUNT-GUARD-TEST-ASSERTION-SCOPE",
+      "classification": "LOCAL_UNIT_COVERAGE",
+      "observation": "The added test verifies getOrThrow receives accountId before encounterId and returns the fake result. Cross-tenant rejection depends on the service contract and is not demonstrated by this test."
+    }
+  ],
+  "candidate_actions": [
+    "Keep the contract test for helper edge cases and call ordering.",
+    "Use the previously reviewed source test and approved database-backed route/integration evidence for tenant isolation and durable queue behavior; the current Node-only unit pass does not prove those boundaries."
+  ],
+  "limitations": [
+    "Only one new original inventory path was reviewed this round; the helper source and companion source test were already counted in round 1.",
+    "No database, API server, HTTP socket, browser, target, candidate checkout, overlay or CI run occurred.",
+    "Self-review only; 35 original paths remain pending and independent M-02 critique is open."
+  ],
+  "checkpoint_validation": {
+    "docs_validate": {
+      "result": "PASS",
+      "command": "pnpm docs:validate"
+    },
+    "json_and_jsonl_parse": {
+      "result": "PASS",
+      "scope": "state, backlog, content-scope, round-31 evidence, execution log and verification log"
+    },
+    "git_diff_check": {
+      "result": "PASS",
+      "command": "git diff --check"
+    },
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 30; no new REM-010/M-02 finding and no gate-v2 finding. The global controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T10:07:24Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 294,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 420,
+    "status_sha256": "47a56e990cdb6fb081a8b1e90975870344c278ed711e400503e7b6c770097b5b",
+    "note": "Read-only porcelain status after M-02 round 31 and checkpoint validation; original 386-path denominator unchanged. Round-31 evidence is the thirty-fourth post-inventory artifact."
+  }
+}

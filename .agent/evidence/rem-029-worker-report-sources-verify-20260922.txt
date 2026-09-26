@@ -1,0 +1,22 @@
+REM-029 — VERIFY DO BOUNDARY DE FONTES DE REPORTS DO WORKER
+Observado em: 2026-09-22T07:22:04Z
+HEAD observado: ad2f0373f68635f2579253b013a4382219906921
+Ambiente: Linux local; Node v22.23.2; pnpm 10.33.0; PostgreSQL local descartável; worktree compartilhado dirty preservado
+
+VERIFICAÇÃO PROCESSUAL
+- O primeiro comando sem override explícito de conexão foi bloqueado pelo `.env`, antes dos testes, ao tentar criar um banco com permissão inadequada.
+- A alternativa segura foi executada com `DATABASE_URL_TEST=postgres://postgres:postgres@127.0.0.1:5433/cvg_his_v2_test`, `DATABASE_URL` igual, `REQUIRE_TEST_DB=1`, `TEST_DB_EPHEMERAL=1` e sufixo `rem029_worker_sources_20260922b`.
+- O setup criou e resetou somente `cvg_his_v2_test_rem029_worker_sources_20260922b`, aplicou 178 migrations, seed e integridade (189 tabelas, 43 enums, 530 FKs).
+- `tests/integration/process/worker-run-once-reports.test.ts` passou 1 arquivo/28 testes em 50,56 s, cobrindo claims, account/tenant isolation, concorrência, retry, SIGKILL, delivery identity e lease fencing do fluxo run-once.
+- O teardown removeu o banco efêmero; não houve mutação de banco explícito do `.env`, target compartilhado, provider real ou credencial real.
+
+RECONCILIAÇÃO DO GATE
+- A implementação local anterior continua sustentada por `.agent/evidence/rem-029-worker-report-sources-implementation-20260922.txt` e pelo gate `GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-029-WORKER-REPORT-SOURCES-20260922`.
+- O adapter, re-export público, caps/filtros/account guards, typecheck, lint, worker package, module-reports 36/36, diff e boundary audit permanecem PASS sob Node 22.23.2.
+- `pnpm complexity:check` continua condicionado por quatro medições SPA divergentes fora desta ação; o hotspot do runner permanece reconciliado em 231 linhas.
+- E7/owners REPORTS/RUNTIME, CI/OCI, target, UAT, visual/a11y e release não são inferidos.
+
+DECISÃO LOCAL
+- A verificação processual fecha a condição de integração de REM-029 com PASS local.
+- O resultado global permanece `PASS_WITH_CONDITIONS` por complexidade global não reconciliada e ausência de crítica/owners formais.
+- Próxima ação: `REM-029:PREPARE-REPORTS-RENDERING`, mantendo leases, persistência e contratos públicos fora da preparação.

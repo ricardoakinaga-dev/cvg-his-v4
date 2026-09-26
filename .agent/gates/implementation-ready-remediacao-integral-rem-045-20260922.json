@@ -1,0 +1,44 @@
+{
+  "gate_id": "GATE-IMPLEMENTATION-READY-REMEDIACAO-INTEGRAL-REM-045-20260922",
+  "task": "REM-045",
+  "timestamp": "2026-09-22T11:18:00.000000Z",
+  "gate_type": "IMPLEMENTATION_READY",
+  "decision": "PASS_WITH_CONDITIONS",
+  "criteria": [
+    {
+      "id": "V-REM045-PREP-001",
+      "criterion": "A superfície local, a causa de crescimento e as raízes gerenciadas foram identificadas.",
+      "status": "PASS",
+      "observed": "artifacts/ ocupa aproximadamente 54G; consolidation coverage é aproximadamente 49G; raízes geradas e ledgers foram enumeradas.",
+      "evidence_refs": [".agent/evidence/rem-045-preparation-20260922.txt"]
+    },
+    {
+      "id": "V-REM045-PREP-002",
+      "criterion": "A política de segurança falha fechada para desconhecido e mantém evidência legal/ativa fora da limpeza.",
+      "status": "PASS",
+      "observed": "unknown, legal-hold, active-evidence e marcadores de integridade serão protegidos; exclusão efetiva não faz parte desta autorização.",
+      "evidence_refs": [
+        ".agent/evidence/rem-045-preparation-20260922.txt",
+        "docs/engineering/artifact-retention-policy.json"
+      ]
+    },
+    {
+      "id": "V-REM045-PREP-003",
+      "criterion": "O teste focal e a verificação proporcional estão definidos antes do fechamento.",
+      "status": "PASS",
+      "observed": "Native Node test para policy/candidate/protection/no-mutation, inventário real, Prettier e diff check.",
+      "evidence_refs": [".agent/evidence/rem-045-preparation-20260922.txt"]
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-045-preparation-20260922.txt",
+    "docs/engineering/artifact-retention-policy.json",
+    "docs/operations/ARTIFACT_RETENTION_POLICY.md"
+  ],
+  "limitations": [
+    "A preparação autoriza apenas mudança local reversível e dry-run; não autoriza remoção, chmod, upload, provider, target, release ou go/no-go.",
+    "A crítica independente fresca E7 permanece ausente no modo de agente primário único."
+  ],
+  "next_action": "REM-045:IMPLEMENT",
+  "status": "READY"
+}

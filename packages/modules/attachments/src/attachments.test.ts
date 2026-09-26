@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { test } from 'vitest';
 
-import { NotFoundError } from '@cvg-his-v2/shared-errors';
+import { AppError, NotFoundError } from '@cvg-his-v2/shared-errors';
 
 import { AttachmentsService, LocalAttachmentSecurityScanner } from './index.js';
 
@@ -818,6 +818,156 @@ test('AttachmentsService supports durable storage, reads and cleanup on persiste
   assert.equal(deleteCalls, 1);
 });
 
+test('AttachmentsService does not publish metadata when storage fails', async () => {
+  const { encounter, diagnostics, encounters, medicalRecords } = createService();
+  const content = Buffer.from('%PDF-1.7\nstorage provider failure');
+  const checksum = createHash('sha256').update(content).digest('hex');
+  const storageError = new Error('attachment storage unavailable');
+  let repositoryCreateCalls = 0;
+  const repository = {
+    async create() {
+      repositoryCreateCalls += 1;
+    },
+    async findById() {
+      return null;
+    },
+    async findByLinkedEntity() {
+      return [];
+    },
+    async deleteById() {
+      return false;
+    }
+  };
+  const service = new AttachmentsService({
+    encounters: encounters as never,
+    medicalRecords: medicalRecords as never,
+    diagnostics: diagnostics as never,
+    fileStorage: {
+      async store() {
+        throw storageError;
+      },
+      async retrieve() {
+        return null;
+      },
+      async delete() {
+        return false;
+      },
+      async exists() {
+        return false;
+      }
+    } as never,
+    repository: repository as never
+  });
+
+  await assert.rejects(
+    () =>
+      service.upload(
+        'user_admin' as never,
+        'acc_test' as never,
+        {
+          linkedEntityType: 'encounter',
+          linkedEntityId: encounter.id,
+          category: 'document',
+          fileName: 'storage-failure.pdf',
+          mimeType: 'application/pdf',
+          checksum
+        },
+        content
+      ),
+    (error: unknown) => {
+      assert.ok(error instanceof AppError);
+      assert.notEqual(error, storageError);
+      assert.equal(error.code, 'INTERNAL_ERROR');
+      assert.equal(error.message, 'Unexpected error');
+      assert.doesNotMatch(error.message, /attachment storage unavailable/);
+      return true;
+    }
+  );
+
+  assert.equal(repositoryCreateCalls, 0);
+  assert.deepEqual(
+    await service.listByLinkedEntity('encounter', encounter.id, 'acc_test' as never),
+    []
+  );
+});
+
+test('AttachmentsService sanitizes checksum-cleanup storage failures before publishing metadata', async () => {
+  const { encounter, diagnostics, encounters, medicalRecords } = createService();
+  const content = Buffer.from('%PDF-1.7\ncleanup provider failure');
+  const checksum = createHash('sha256').update(content).digest('hex');
+  const cleanupError = new Error('private storage cleanup object key marker');
+  let repositoryCreateCalls = 0;
+  const repository = {
+    async create() {
+      repositoryCreateCalls += 1;
+    },
+    async findById() {
+      return null;
+    },
+    async findByLinkedEntity() {
+      return [];
+    },
+    async deleteById() {
+      return false;
+    }
+  };
+  const service = new AttachmentsService({
+    encounters: encounters as never,
+    medicalRecords: medicalRecords as never,
+    diagnostics: diagnostics as never,
+    fileStorage: {
+      async store(_accountId, linkedEntityId, fileName, bytes) {
+        return {
+          storageKey: `acc_test/${linkedEntityId}/uploads/${fileName}`,
+          checksum: 'provider-checksum-mismatch',
+          sizeBytes: bytes.length
+        };
+      },
+      async retrieve() {
+        return null;
+      },
+      async delete() {
+        throw cleanupError;
+      },
+      async exists() {
+        return false;
+      }
+    },
+    repository: repository as never
+  });
+
+  await assert.rejects(
+    () =>
+      service.upload(
+        'user_admin' as never,
+        'acc_test' as never,
+        {
+          linkedEntityType: 'encounter',
+          linkedEntityId: encounter.id,
+          category: 'document',
+          fileName: 'cleanup-failure.pdf',
+          mimeType: 'application/pdf',
+          checksum
+        },
+        content
+      ),
+    (error: unknown) => {
+      assert.ok(error instanceof AppError);
+      assert.notEqual(error, cleanupError);
+      assert.equal(error.code, 'INTERNAL_ERROR');
+      assert.equal(error.message, 'Unexpected error');
+      assert.doesNotMatch(error.message, /private storage cleanup object key marker/);
+      return true;
+    }
+  );
+
+  assert.equal(repositoryCreateCalls, 0);
+  assert.deepEqual(
+    await service.listByLinkedEntity('encounter', encounter.id, 'acc_test' as never),
+    []
+  );
+});
+
 test('AttachmentsService rejects foreign targets and invalid upload limits before publication', async () => {
   const foreignTargetService = new AttachmentsService({
     encounters: { getOrThrow: () => ({ accountId: 'acc_other' }) } as never,
@@ -892,4 +1042,143 @@ test('AttachmentsService rejects foreign targets and invalid upload limits befor
       ),
     /maximum allowed size/
   );
+});
+
+test('AttachmentsService fails closed when the security scanner is unavailable', async () => {
+  const { encounter, encounters, medicalRecords, diagnostics } = createService();
+  const content = Buffer.from('%PDF-1.7\nscanner outage probe');
+  const checksum = createHash('sha256').update(content).digest('hex');
+  const scannerError = new Error('attachment scanner unavailable');
+  let storageStoreCalls = 0;
+  let repositoryCreateCalls = 0;
+  const service = new AttachmentsService({
+    encounters: encounters as never,
+    medicalRecords: medicalRecords as never,
+    diagnostics: diagnostics as never,
+    scanner: {
+      async scan() {
+        throw scannerError;
+      }
+    },
+    fileStorage: {
+      async store() {
+        storageStoreCalls += 1;
+        return { storageKey: 'local/acc_test/encounter_1/x', checksum, sizeBytes: content.length };
+      },
+      async retrieve() {
+        return null;
+      },
+      async delete() {
+        return false;
+      },
+      async exists() {
+        return false;
+      }
+    } as never,
+    repository: {
+      async create() {
+        repositoryCreateCalls += 1;
+      },
+      async findById() {
+        return null;
+      },
+      async findByLinkedEntity() {
+        return [];
+      },
+      async deleteById() {
+        return false;
+      }
+    } as never
+  });
+
+  await assert.rejects(
+    () =>
+      service.upload(
+        'user_admin' as never,
+        'acc_test' as never,
+        {
+          linkedEntityType: 'encounter',
+          linkedEntityId: encounter.id,
+          category: 'document',
+          fileName: 'scanner-outage.pdf',
+          mimeType: 'application/pdf',
+          checksum
+        },
+        content
+      ),
+    (error: unknown) => error === scannerError
+  );
+
+  assert.equal(storageStoreCalls, 0);
+  assert.equal(repositoryCreateCalls, 0);
+  assert.deepEqual(
+    await service.listByLinkedEntity('encounter', encounter.id, 'acc_test' as never),
+    []
+  );
+});
+
+test('AttachmentsService keeps an object already owned by a committed attachment when a re-upload fails', async () => {
+  const { encounter, diagnostics, encounters, medicalRecords } = createService();
+  const content = Buffer.from('%PDF-1.7\nsame clinical document');
+  const checksum = createHash('sha256').update(content).digest('hex');
+  const storageKey = 'acc_test/encounter_1/deadbeef_exam.pdf';
+  const stored = new Map<string, Buffer>();
+  let deleteCalls = 0;
+  const committed: Array<Record<string, unknown>> = [];
+  let failNextCreate = false;
+  const service = new AttachmentsService({
+    encounters: encounters as never,
+    medicalRecords: medicalRecords as never,
+    diagnostics: diagnostics as never,
+    fileStorage: {
+      async store() {
+        stored.set(storageKey, content);
+        return { storageKey, checksum, sizeBytes: content.length };
+      },
+      async retrieve(_accountId: string, key: string) {
+        return stored.get(key) ?? null;
+      },
+      async delete(_accountId: string, key: string) {
+        deleteCalls += 1;
+        stored.delete(key);
+        return true;
+      },
+      async exists(_accountId: string, key: string) {
+        return stored.has(key);
+      }
+    } as never,
+    repository: {
+      async create(attachment: Record<string, unknown>) {
+        if (failNextCreate) throw new Error('attachment database unavailable');
+        committed.push(attachment);
+      },
+      async findById() {
+        return null;
+      },
+      async findByLinkedEntity() {
+        return committed;
+      },
+      async deleteById() {
+        return false;
+      }
+    } as never
+  });
+  const payload = {
+    linkedEntityType: 'encounter' as const,
+    linkedEntityId: encounter.id,
+    category: 'document' as const,
+    fileName: 'exam.pdf',
+    mimeType: 'application/pdf',
+    checksum
+  };
+
+  await service.upload('user_admin' as never, 'acc_test' as never, payload, content);
+  failNextCreate = true;
+  await assert.rejects(
+    () => service.upload('user_admin' as never, 'acc_test' as never, payload, content),
+    /attachment database unavailable/
+  );
+
+  assert.equal(deleteCalls, 0);
+  assert.deepEqual(await service.getFileContent('acc_test' as never, storageKey), content);
 });

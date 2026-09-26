@@ -77,6 +77,13 @@ function createPrincipal(): AuthenticatedPrincipal {
   };
 }
 
+function createPatients(allergy?: string) {
+  return {
+    getAuthoritativeOrThrow: async (accountId: string, patientId: string) =>
+      ({ id: patientId, accountId, allergy }) as never
+  };
+}
+
 function createPrescriptionsService(): PrescriptionsService {
   const repo = new InMemoryPrescriptionRepository();
   return new PrescriptionsService({ prescriptionRepository: repo });
@@ -122,6 +129,7 @@ test('handlePrescriptionRoutes creates a prescription', async () => {
     {
       prescriptions: service,
       audit: { write: () => ({}) } as never,
+      patients: createPatients(),
       requirePrincipal: () => createPrincipal()
     }
   );
@@ -154,6 +162,7 @@ test('handlePrescriptionRoutes gets a prescription by id', async () => {
     {
       prescriptions: service,
       audit: { write: () => ({}) } as never,
+      patients: createPatients(),
       requirePrincipal: () => createPrincipal()
     }
   );
@@ -191,6 +200,7 @@ test('handlePrescriptionRoutes lists prescriptions', async () => {
     {
       prescriptions: service,
       audit: { write: () => ({}) } as never,
+      patients: createPatients(),
       requirePrincipal: () => createPrincipal()
     }
   );
@@ -225,6 +235,7 @@ test('handlePrescriptionRoutes updates a prescription', async () => {
     {
       prescriptions: service,
       audit: { write: () => ({}) } as never,
+      patients: createPatients(),
       requirePrincipal: () => createPrincipal()
     }
   );
@@ -261,6 +272,7 @@ test('handlePrescriptionRoutes renders a printable prescription document', async
     {
       prescriptions: service,
       audit: { write: () => ({}) } as never,
+      patients: createPatients(),
       requirePrincipal: () => createPrincipal()
     }
   );
@@ -293,6 +305,7 @@ test('handlePrescriptionRoutes archives a prescription', async () => {
     {
       prescriptions: service,
       audit: { write: () => ({}) } as never,
+      patients: createPatients(),
       requirePrincipal: () => createPrincipal()
     }
   );
@@ -316,9 +329,63 @@ test('handlePrescriptionRoutes returns false for non-prescription paths', async 
     {
       prescriptions: service,
       audit: { write: () => ({}) } as never,
+      patients: createPatients(),
       requirePrincipal: () => createPrincipal()
     }
   );
 
   assert.equal(handled, false);
+});
+
+test('handlePrescriptionRoutes requires a justification when the medication matches a recorded allergy', async () => {
+  const service = createPrescriptionsService();
+  const auditEvents: Array<{ action: string; payloadSummary: string }> = [];
+  const handlers = {
+    prescriptions: service,
+    audit: { write: (event: { action: string; payloadSummary: string }) => (auditEvents.push(event), {}) } as never,
+    patients: createPatients('Alérgico a dipirona (edema)'),
+    requirePrincipal: () => createPrincipal()
+  };
+  const payload = {
+    medicalRecordId: 'mr-1',
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    medicationName: 'Dipirona sódica',
+    dosage: '25 mg/kg'
+  };
+
+  await assert.rejects(
+    () =>
+      handlePrescriptionRoutes(
+        '/prescriptions',
+        createMockRequest('POST', '/prescriptions', payload) as never,
+        new MockResponse() as never,
+        'corr-rx-allergy',
+        handlers
+      ),
+    (error: { code?: string; statusCode?: number; details?: { matchedTerms?: string[] } }) => {
+      assert.equal(error.code, 'ALLERGY_ACKNOWLEDGEMENT_REQUIRED');
+      assert.equal(error.statusCode, 409);
+      assert.deepEqual(error.details?.matchedTerms, ['dipirona']);
+      return true;
+    }
+  );
+  assert.equal(service.listByAccount('acc-1' as never).length, 0);
+
+  const response = new MockResponse();
+  await handlePrescriptionRoutes(
+    '/prescriptions',
+    createMockRequest('POST', '/prescriptions', {
+      ...payload,
+      allergyAcknowledgement: 'Reação prévia leve; benefício supera risco, monitorar.'
+    }) as never,
+    response as never,
+    'corr-rx-allergy-ack',
+    handlers
+  );
+
+  assert.equal(response.statusCode, 201);
+  const created = response.bodyJson<{ content?: string }>();
+  assert.match(String(created.content), /Alerta de alergia confirmado: Reação prévia leve/);
+  assert.ok(auditEvents.some((event) => event.action === 'allergy_override'));
 });

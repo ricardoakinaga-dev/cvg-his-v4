@@ -1,0 +1,4 @@
+
+> @cvg-his/db@0.1.0 typecheck /home/ricardo/cvg-his-v4/packages/db
+> tsc -p tsconfig.json --noEmit
+

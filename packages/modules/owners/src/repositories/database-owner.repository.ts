@@ -12,6 +12,25 @@ import type {
 } from '@cvg-his-v2/shared-types';
 import { requireAccountId } from '@cvg-his-v2/tenant-context';
 
+/**
+ * PostgreSQL rejects non-uuid identifiers against uuid columns with
+ * `invalid input syntax` (22P02), which would surface as a 500. Such
+ * identifiers can never match a row, so report them as unknown and keep
+ * lookups fail-closed 404s. Only this error code is absorbed, following the
+ * driver `cause` chain through query wrappers; every other failure still
+ * propagates.
+ */
+function isInvalidUuidInput(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < 4 && typeof current === 'object' && current !== null; depth += 1) {
+    if ((current as { code?: unknown }).code === '22P02') {
+      return true;
+    }
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
 interface StoredOwnerMetadata {
   readonly version: 2;
   readonly contacts?: readonly OwnerContact[];
@@ -215,7 +234,15 @@ export class DatabaseOwnerRepository implements OwnerRepository {
 
   public async findById(id: OwnerId): Promise<OwnerSummary | null> {
     requireAccountId(); // Enforce tenant context
-    const result = await this.#db.select().from(owners).where(eq(owners.id, id)).limit(1);
+    let result;
+    try {
+      result = await this.#db.select().from(owners).where(eq(owners.id, id)).limit(1);
+    } catch (error) {
+      if (isInvalidUuidInput(error)) {
+        return null;
+      }
+      throw error;
+    }
 
     if (result.length === 0) {
       return null;

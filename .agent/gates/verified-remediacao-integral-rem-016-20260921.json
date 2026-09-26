@@ -1,0 +1,100 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-016-20260921",
+  "timestamp": "2026-09-21T22:31:30.000000+00:00",
+  "gate_id": "VERIFIED",
+  "scope": "harness local de install/upgrade/mixed-version/lock/rollback/checksum recovery com PostgreSQL descartável, 176 migrations canônicas, dados sintéticos e runner canônico para REM-016",
+  "scope_ref": "REM-016",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-ACCEPTANCE-EVIDENCE",
+      "description": "O relatório final PASS comprova install HEAD com 176 migrations, reexecução idempotente, mixed-version em prefixo de 168 migrations, lock observado, dump/restore e 12 contas sintéticas preservadas.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-016-MIGRATION-HARNESS-20260921",
+        ".agent/evidence/rem-016-migration-harness-20260921.txt",
+        ".agent/evidence/rem-016-migration-harness-final-20260921.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Aceite limitado ao container e aos dados sintéticos locais; nenhum restore foi feito em target real."
+    },
+    {
+      "id": "V-002-REGRESSION-RISK",
+      "description": "Checksum aplicado corrompido e alvo desconhecido falham closed, o checksum reparado recupera HEAD, contratos focais passam 3 arquivos/25 testes e o container próprio é removido.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-016-MIGRATION-HARNESS-20260921",
+        ".agent/evidence/rem-016-migration-harness-20260921.txt",
+        "tests/unit/infra/migration-harness-contract.test.ts",
+        "tests/unit/infra/migration-source-of-truth.test.ts",
+        "tests/unit/infra/ci-contract.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A regressão é local; não substitui o pipeline remoto, OCI, target, UAT, recovery operacional ou release."
+    },
+    {
+      "id": "V-003-LIMITATIONS-AUTHORITY",
+      "description": "As limitações de target rollback, RPO/RTO, readiness, binary histórico independente, CI remoto, OCI, UAT e autoridade humana estão explicitamente registradas.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-016-MIGRATION-HARNESS-20260921",
+        ".agent/evidence/rem-016-migration-harness-20260921.txt",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Este gate não é aprovação humana, autorização de target, certificação de RPO/RTO ou decisão de release."
+    }
+  ],
+  "evidence": [
+    ".agent/verification.jsonl#VER-REM-016-MIGRATION-HARNESS-20260921",
+    ".agent/evidence/rem-016-migration-harness-20260921.txt",
+    ".agent/evidence/rem-016-migration-harness-final-20260921.json",
+    "scripts/run-rem016-migration-harness.mjs",
+    "tests/unit/infra/migration-harness-contract.test.ts",
+    "tests/unit/infra/migration-source-of-truth.test.ts",
+    "tests/unit/infra/ci-contract.test.ts",
+    ".github/workflows/ci.yml"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-REM-016-TARGET-ROLLBACK-BOUNDARY",
+      "description": "O fechamento prova somente o harness local e sintético; target rollback, RPO/RTO, readiness operacional, CI remoto, binário histórico independente e autoridade humana permanecem não executados.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a conclusão local de REM-016; bloqueia qualquer claim de recuperação target-bound, release readiness ou go/no-go.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de qualquer restore/rollback em target real, do gate integrado REM-009 ou de um claim de RPO/RTO/release",
+      "due_at": "2026-09-22T12:00:00.000000+00:00",
+      "verification_method": "Obter target, credenciais, owner e metas autorizados; executar drill target-bound e anexar logs current antes de superseder esta condição.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-016-MIGRATION-HARNESS-20260921",
+        ".agent/evidence/rem-016-migration-harness-20260921.txt"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "harness local de install/upgrade/mixed-version/lock/rollback/checksum recovery com PostgreSQL descartável, 176 migrations canônicas, dados sintéticos e runner canônico para REM-016",
+    "decision": "A instrução do usuário autoriza validações locais reversíveis; nenhuma execução remota, target, credential, provider, UAT ou release está incluída.",
+    "evidence_ref": ".agent/plans/remediacao-integral-20260921.md",
+    "expires_or_revalidates": "Revalidar antes de target, credentials, restore/rollback real, UAT ou release."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-017:PREPARE",
+  "revalidation_triggers": [
+    "Runner, migrations, harness, known-bads, contrato focal ou wiring de CI mudarem.",
+    "Qualquer cenário do relatório regressar, o container não for removido ou os known-bads deixarem de falhar.",
+    "O escopo avançar para target, restore/rollback real, RPO/RTO, CI remoto, providers, UAT ou release."
+  ],
+  "supersedes": null
+}

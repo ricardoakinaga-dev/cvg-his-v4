@@ -14,6 +14,14 @@ export function parseIncludeArchived(value: string | null): boolean {
   return value === 'true';
 }
 
+export type PatientListStatus = 'active' | 'inactive' | 'deceased';
+
+export function parsePatientListStatus(value: string | null): PatientListStatus | undefined {
+  if (value === null) return undefined;
+  if (value === 'active' || value === 'inactive' || value === 'deceased') return value;
+  throw new ValidationError('status must be active, inactive, or deceased');
+}
+
 export function parseListPagination(
   url: URL
 ): { page: number; pageSize: number } | undefined {
@@ -25,12 +33,13 @@ export function parseListPagination(
     return undefined;
   }
   const page = Number(url.searchParams.get('page') ?? '1');
-  const pageSize = Number(
-    url.searchParams.get('pageSize') ?? url.searchParams.get('limit') ?? '20'
-  );
   if (!Number.isSafeInteger(page) || page < 1) {
     throw new ValidationError('page must be a positive safe integer');
   }
+
+  const pageSize = Number(
+    url.searchParams.get('pageSize') ?? url.searchParams.get('limit') ?? '20'
+  );
   // Inline lookup screens request up to 200 records; keep that bounded batch
   // size compatible with the existing SPA while rejecting unbounded input.
   if (!Number.isSafeInteger(pageSize) || pageSize < 1 || pageSize > 200) {

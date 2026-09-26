@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import type { OutboxEvent } from '@cvg-his-v2/module-event-bus';
+import { InMemoryPixTransactionRepository } from '@cvg-his-v2/module-payments';
 
 import { PaymentsEventHandlers } from './payments.consumer.js';
 
@@ -263,13 +264,38 @@ describe('PaymentsEventHandlers PIX contract', () => {
 
   it('does not settle a billing record twice', async () => {
     const harness = createHarness({ ...PIX_TRANSACTION, billingSettlementStatus: 'applied' });
+    const pixTransactions = new InMemoryPixTransactionRepository();
+    await pixTransactions.create({
+      ...PIX_TRANSACTION,
+      provider: 'local-pix',
+      description: 'PIX payment pix-test',
+      qrCodePayload: '',
+      qrCodeBase64: '',
+      expiresAt: COMPLETED_AT,
+      status: 'completed',
+      createdAt: COMPLETED_AT,
+      updatedAt: COMPLETED_AT,
+      billingSettlementStatus: 'applied',
+      billingSettledAt: COMPLETED_AT,
+      cashReconciliationStatus: 'applied',
+      cashReconciledAt: COMPLETED_AT
+    } as never);
+    const handlers = new PaymentsEventHandlers({
+      billing: harness.billing as never,
+      encounterFinancial: harness.encounterFinancial as never,
+      pixTransactions,
+      cardTransactions: {} as never
+    } as never);
 
-    await harness.handlers.handle(
+    await handlers.handle(
       outboxEvent('payment.pix.confirmed', pixConfirmedPayload({ status: undefined }))
     );
 
     expect(harness.billing.settleByRecordId).not.toHaveBeenCalled();
-    expect(harness.pixTransactions.updateCashReconciliation).toHaveBeenCalledOnce();
+    const persisted = await pixTransactions.findByTransactionId(INTENT_ID);
+    expect(persisted?.status).toBe('completed');
+    expect(persisted?.billingSettlementStatus).toBe('applied');
+    expect(persisted?.cashReconciliationStatus).toBe('applied');
   });
 
   it('settles billing, records the receivable payment and marks both outcomes', async () => {
@@ -315,5 +341,51 @@ describe('PaymentsEventHandlers PIX contract', () => {
         billingSettlementError: 'settlement unavailable'
       })
     );
+  });
+
+  it('settles a billing record only once when duplicate confirmations arrive concurrently', async () => {
+    const billingRecord = {
+      id: BILLING_ID,
+      accountId: ACCOUNT_ID,
+      currency: 'BRL',
+      subtotalAmount: 125
+    };
+    const billing = {
+      getOrThrow: vi.fn(() => billingRecord),
+      settleByRecordId: vi.fn(async () => undefined)
+    };
+    const encounterFinancial = {
+      getSummary: vi.fn(async () => ({ payments: [] })),
+      recordPaymentForBillingRecord: vi.fn(async () => undefined)
+    };
+    const pixTransactions = new InMemoryPixTransactionRepository();
+    await pixTransactions.create({
+      ...PIX_TRANSACTION,
+      provider: 'local-pix',
+      description: 'PIX payment pix-test',
+      qrCodePayload: '',
+      qrCodeBase64: '',
+      expiresAt: COMPLETED_AT,
+      status: 'completed',
+      createdAt: COMPLETED_AT,
+      updatedAt: COMPLETED_AT,
+      billingSettlementStatus: 'pending_billing'
+    } as never);
+    const handlers = new PaymentsEventHandlers({
+      billing,
+      encounterFinancial,
+      pixTransactions,
+      cardTransactions: {}
+    } as never);
+    const event = outboxEvent('payment.pix.confirmed', pixConfirmedPayload());
+
+    await Promise.all(
+      Array.from({ length: 8 }, () => handlers.handle(event))
+    );
+
+    expect(billing.settleByRecordId).toHaveBeenCalledTimes(1);
+    expect(encounterFinancial.recordPaymentForBillingRecord).toHaveBeenCalledTimes(1);
+    const persisted = await pixTransactions.findByTransactionId(INTENT_ID);
+    expect(persisted?.billingSettlementStatus).toBe('applied');
   });
 });

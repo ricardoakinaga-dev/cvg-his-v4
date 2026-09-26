@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /home/ricardo/cvg-his-v4
+
+No test files found, exiting with code 1
+
+filter: packages/modules/event-consumers/src/payments.consumer.test.ts
+include: tests/unit/**/*.test.ts
+exclude:  node_modules/**, dist/**, e2e/**
+

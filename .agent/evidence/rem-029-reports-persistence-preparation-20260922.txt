@@ -1,0 +1,57 @@
+REM-029 — PREPARAÇÃO DO BOUNDARY DE PERSISTÊNCIA DOS REPORTS
+Observado em: 2026-09-22T07:59:21Z
+HEAD observado: ad2f0373f68635f2579253b013a4382219906921
+Ambiente: Linux local; Node v22.23.2; pnpm 10.33.0; agente primário único em modo Direct; worktree compartilhado dirty preservado
+
+OBJETIVO E LIMITE
+- Esta ação prepara a separação da persistência SQL do `ReportsService`; nenhum arquivo de produção do adapter foi alterado nesta preparação.
+- A autorização permanece local e reversível: sem push, deploy, target compartilhado, credenciais/provider real, UAT, aprovação de owner, release ou go/no-go.
+- O boundary futuro não recebe claims em memória, retries, delivery provider, renderização, fontes agendadas, router/store ou estado visual.
+
+SUPERFÍCIE INSPECIONADA
+- `packages/modules/reports/src/index.ts` mede 2.381 linhas após a extração do renderer. `ReportRepository` ocupa as linhas 182–232 e é export público do módulo.
+- `DatabaseReportRepository` ocupa as linhas 1.691–2.118 (428 linhas), com os métodos de save/find, claims de schedules/deliveries, fenced writes e consultas account-scoped.
+- `executionParams`, `exportParams`, `scheduleParams`, `deliveryParams` e os mapeadores `mapExecution`, `mapExport`, `mapDelivery`, `mapDeliveryClaim`, `mapScheduleClaim`, `mapSchedule` ocupam as linhas 2.226–2.379.
+- `dateIso`, `jsonRecord`, `jsonRecordArray`, `jsonColumnArray` e `jsonStringArray` ficam nas linhas 2.188–2.224 e devem acompanhar os mapeadores ou um helper puro compartilhado.
+- `stableReportId`, normalização de rows/filters/frequency/status/format/recipients, `nextRunAt` e a orquestração de `ReportsService` não são persistência; a semântica UTC de `nextRunAt` deve ser compartilhada sem duplicação divergente se o mapper for extraído.
+- `getPool` e `withTenantQuery` entram no topo do agregador; há 15 ocorrências de `withTenantQuery(getPool(), ...)` no adapter SQL atual.
+
+CONTRATO PÚBLICO E OWNERSHIP
+- `ReportRepository` tem oito métodos obrigatórios: `saveExecution`, `saveExport`, `saveSchedule`, `saveDelivery`, `findExecutions`, `findExports`, `findSchedules` e `findDeliveries`.
+- Há oito métodos opcionais de compatibilidade/fencing: `saveExecutionForScheduleClaim`, `saveExportForScheduleClaim`, `saveDeliveryForScheduleClaim`, `claimDueSchedules`, `claimDueSchedulesWithLease`, `saveClaimedSchedule`, `claimFailedDeliveries` e `saveClaimedDelivery`.
+- `ReportsService` continua dono das transições de domínio, mapas em memória, `stableReportId`, cache/idempotência, `ReportScheduleLeaseLostError`, retries e da ordem execução → exportação → delivery → finalização do schedule.
+- `apps/worker/src/bootstrap.ts:936` instancia `new DatabaseReportRepository()`; `apps/worker/src/bootstrap.ts:147` e `apps/worker/src/runner.ts` consomem o contrato tipado. A exportação pública da classe e do tipo deve permanecer compatível.
+- Os testes unitários de reports usam repositórios fake; o teste processual `tests/integration/process/worker-run-once-reports.test.ts` é a prova atual da integração SQL, isolamento e fencing.
+
+SQL, TENANT E LEASES A PRESERVAR
+- As quatro tabelas persistidas são `report_executions`, `report_exports`, `report_schedules` e `report_schedule_deliveries`; o adapter também usa CTEs `active_schedule_claim`, `candidates` e `due`.
+- Todo acesso deve continuar dentro de `withTenantQuery(getPool(), ...)`, com `account_id` nos writes/reads e sem acesso direto ao pool fora do adapter.
+- `saveExecutionForScheduleClaim`, `saveExportForScheduleClaim` e `saveDeliveryForScheduleClaim` exigem schedule existente, `claim_token` igual e `claim_until > clock_timestamp()`, com `FOR UPDATE` no claim ativo; retorno `false` é fencing perdido.
+- `saveClaimedSchedule` e `saveClaimedDelivery` exigem conta, id, token e lease vigente e limpam `claim_token`, `claim_until` e `claim_worker_id` somente após update de uma linha.
+- `claimDueSchedulesWithLease` e `claimFailedDeliveries` mantêm `FOR UPDATE SKIP LOCKED`, ordenação determinística, limites, token correlacionado, `claim_until` e `claim_worker_id`.
+- `saveSchedule` preserva o reset de claim no upsert; conflitos de execution/export permanecem account-scoped e as consultas continuam ordenadas por seus campos atuais.
+
+BOUNDARY SELECIONADO PARA IMPLEMENTAÇÃO
+- Criar `packages/modules/reports/src/report-database-repository.ts` com `DatabaseReportRepository`, SQL, parâmetros e mapeadores, usando imports de tipo para os contratos públicos; `index.ts` conservará os exports e delegará para a classe.
+- Extrair, se necessário para impedir ciclo runtime e duplicação de semântica, um helper puro de tempo de schedule compartilhado entre `ReportsService` e o mapper; não duplicar a regra UTC diária/semanal/mensal.
+- O novo arquivo não deve importar `ReportsService`, worker, router, store, API, provider ou renderer; suas únicas dependências de runtime permitidas são database/tenant context, erros e utilitários de correlação necessários aos claims.
+- A implementação deve adicionar teste focal de mapeadores/contratos/claims ou ampliar a prova processual com o mesmo conjunto de known-bads; nenhum contrato público será renomeado ou tornado obrigatório de forma nova.
+
+KNOWN-BADS E REGRESSÕES OBRIGATÓRIAS
+- Perder o export `DatabaseReportRepository`, o tipo `ReportRepository` ou qualquer método opcional quebra bootstrap, worker e fakes existentes.
+- Remover `withTenantQuery`, um filtro `account_id`, `FOR UPDATE SKIP LOCKED`, `claim_until`, `claim_worker_id` ou o token em um write permite vazamento tenant, claim duplicado ou finalização sem fencing.
+- Alterar as chaves de conflito, ordenações, nullability, datas UTC, JSON de filters/rows/columns/recipients ou o fallback de `nextRunAt` muda dados persistidos.
+- Mover `stableReportId`, delivery identity, retry operation key, renderização ou provider para o adapter cruza ownership e pode duplicar efeitos após SIGKILL/retry.
+- Criar ciclo runtime entre `index.ts` e o adapter, ou transformar mapeadores em dependentes de estado global, reabre a preparação.
+
+BASELINE EXECUTADO
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:/home/ricardo/.local/share/pnpm:$PATH pnpm --filter @cvg-his-v2/module-reports test` — PASS, 4 arquivos/38 testes.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:/home/ricardo/.local/share/pnpm:$PATH pnpm --filter @cvg-his-v2/module-reports typecheck` — PASS.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:/home/ricardo/.local/share/pnpm:$PATH pnpm --filter @cvg-his-v2/module-reports lint` — PASS.
+- `git diff --check` — PASS.
+- Gates anteriores permanecem válidos: worker completo/typecheck e processo `worker-run-once-reports` 28/28 em PostgreSQL efêmero explícito, com teardown; esses gates não promovem CI, target, owners, E7 ou release.
+
+PRÓXIMA AÇÃO E VERIFICAÇÃO PROPORCIONAL
+- Próxima ação única: `REM-029:IMPLEMENT-REPORTS-PERSISTENCE`.
+- Implementar o adapter SQL/mapeadores com export compatibility; executar reports test/typecheck/lint, worker test/typecheck, processo PostgreSQL descartável, `git diff --check`, auditoria de imports e `pnpm complexity:check`.
+- A checagem global continua condicionada por quatro medições SPA divergentes do manifesto; E7, owners REPORTS/RUNTIME, CI/OCI, target, UAT, visual/a11y e release permanecem fora do claim.

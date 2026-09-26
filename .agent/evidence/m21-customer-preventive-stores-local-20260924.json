@@ -1,0 +1,141 @@
+{
+  "evidence_id": "M21-CUSTOMER-PREVENTIVE-STORES-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T07:09:53Z",
+  "scope": "Bounded M-21 extraction of customer-group and preventive-event stores, explicit in-memory route test setup, and current M-23 hotspot measurement.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence applies to this dirty working tree based on the recorded HEAD, not a candidate or release."
+  },
+  "environment": {
+    "node": "v22.23.2",
+    "pnpm": "10.33.0",
+    "database_url_variables_unset_for_route_tests": true,
+    "catalog_store_mode_explicitly_in_memory": true,
+    "database_or_service_started": false,
+    "listener_or_port_opened": false
+  },
+  "extracted_store_families": [
+    {
+      "domain": "responsibility terms",
+      "path": "apps/api/src/repositories/responsibility-term-store.ts",
+      "physical_lines": 389,
+      "sha256": "a3c9d15d8f04972fe79a0e3718bf9a6a7ca0546718e620d405b6c962d2863983",
+      "evidence": "m21-responsibility-term-store-local-20260924.json"
+    },
+    {
+      "domain": "breed, animal species, and coat color",
+      "path": "apps/api/src/repositories/animal-catalog-stores.ts",
+      "source_block_lines_moved": 1325,
+      "physical_lines": 1331,
+      "sha256": "d0a2841c40700653105cd8d6d8bf908292f0c4bf98bd20463fa0309b68e3a9a0",
+      "evidence": "m21-catalog-stores-local-20260924.json"
+    },
+    {
+      "domain": "customer groups",
+      "path": "apps/api/src/repositories/customer-group-store.ts",
+      "source_block_lines_moved": 408,
+      "pre_extraction_source_span_lines": 409,
+      "physical_lines": 414,
+      "sha256": "6c31b169b906588b23cbf0a8f13b1d2318f4f54af853be348c72784a60405254",
+      "exports": ["CustomerGroupInput", "createCustomerGroupStore"]
+    },
+    {
+      "domain": "preventive events",
+      "path": "apps/api/src/repositories/preventive-event-store.ts",
+      "source_block_lines_moved": 802,
+      "physical_lines": 808,
+      "sha256": "59d35055e9afefacd6afd745de52ae74e53c983c3f2d6babcefbfacb6806a361",
+      "exports": [
+        "PreventiveEventInput",
+        "PreventiveEventExecuteInput",
+        "PreventiveEventListFilters",
+        "createPreventiveEventStore"
+      ]
+    }
+  ],
+  "integration_boundary": "Store factories remain wired in server.ts. Route dispatch, service.read/service.write authorization, account checks, audit calls, and tenant context remain in server.ts. The customer-group block differed only by newly exported symbols and removal of one trailing blank line; the preventive-event store and route blocks were textually unchanged apart from exports.",
+  "changed_paths": [
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "e679038d242617605ff59c7a0d9f79936eacdf4331f20f5b4f72516b91fb3638",
+      "physical_lines_after": 5423,
+      "reduction_since_7_943_line_measurement": 2520,
+      "reduction_since_8_332_line_pre_slice_measurement": 2909
+    },
+    {
+      "path": "apps/api/src/server.test.ts",
+      "sha256": "162782c734e7ca1dc969cb5a9d5beae3139c7be1d30e2d387dc626a87fbefd75",
+      "note": "The combined catalog HTTP test now passes useDatabaseCatalogStores:false so focused verification remains in memory."
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "45a9f8ecc181540ad8c3eca3053c5fab5d6981a93c239a596bd944a99e751c2e",
+      "server_ts_budget": {
+        "current_lines": 5423,
+        "max_lines": 8323,
+        "previous_max_lines": 8335,
+        "current_margin_lines": 2900
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test pnpm exec tsx --test --test-name-pattern='catalog stores honor the in-memory persistence mode|catalog endpoints respect frontend search filters over HTTP semantics' apps/api/src/server.test.ts",
+      "result": "PASS; 2/2 tests. The combined in-process HTTP test explicitly selects in-memory catalog stores and covers catalog filters/aliases plus preventive-event create/list/execute/reschedule/reminder flows.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsc -p apps/api/tsconfig.json --noEmit",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; current line measurement matches and existing max_lines/previous_max_lines were not increased.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec vitest run --config /tmp/cvg-his-m35-no-db-vitest.config.mjs tests/unit/infra/complexity-hotspots.test.ts --reporter=dot",
+      "result": "PASS; 1 file, 4 tests",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/repositories/animal-catalog-stores.ts apps/api/src/repositories/customer-group-store.ts apps/api/src/repositories/preventive-event-store.ts",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check -- apps/api/src/server.ts apps/api/src/server.test.ts apps/api/src/repositories/animal-catalog-stores.ts apps/api/src/repositories/customer-group-store.ts apps/api/src/repositories/preventive-event-store.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/server.test.ts",
+      "result": "FAIL because of pre-existing formatting differences at lines 2263, 5754, and 5764; the changed test setup line matches Prettier output. The test file was not reformatted wholesale.",
+      "exit_code": 1
+    }
+  ],
+  "independent_review": {
+    "result": "PASS; independent source audit found no logic or route-boundary changes in the extracted customer-group and preventive-event stores.",
+    "observations": [
+      "Customer-group routes retain service.read/service.write checks, accountId on list/create, and account equality guards before GET/PATCH/DELETE.",
+      "Preventive routes retain read/write permissions and item ownership checks. Database list and bulk operations remain account scoped and use withTenantQuery. Execution and rescheduling retain their shared tenant-query client boundary.",
+      "The customer-group block differs only by exported symbols and trailing whitespace; the preventive store and route blocks are otherwise textually unchanged apart from exports."
+    ],
+    "database_or_service_used": false,
+    "port_opened": false
+  },
+  "coverage_gaps": [
+    "No PostgreSQL/RLS store verification was run.",
+    "No explicit unauthorized or cross-account store route cases were added for these domains.",
+    "Customer-group item GET/DELETE and numeric-validation boundary cases remain untested by the focused slice.",
+    "Preventive-event item GET/PATCH/DELETE and single-email route cases remain outside the focused test."
+  ],
+  "limitations": [
+    "This extraction covers four cohesive store families; route dispatch and most server composition remain in server.ts.",
+    "M-21 remains partial; remaining route/composition decomposition and PROD-041 acceptance remain open.",
+    "M-02 candidate freeze and integrated candidate-bound release evidence remain open."
+  ]
+}

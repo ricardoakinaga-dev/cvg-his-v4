@@ -1,0 +1,145 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND40-20260923",
+  "recorded_at": "2026-09-23T11:00:48Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": ".agent/authority.jsonl",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "a4fb9fce1b991299ad4095c4c373994e643b1c1b41a820cd4172e5daa6f1b0fd",
+      "current_sha256": "a4fb9fce1b991299ad4095c4c373994e643b1c1b41a820cd4172e5daa6f1b0fd",
+      "sha_matches_inventory": true,
+      "scope_classification": "CONTROL_LEDGER",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Two records bind explicit human authorization only to the REM-002 history rewrite/push and its final verification. Both retain exclusions for deploy, target, unrelated refs and destructive actions; no REM-044 or release authority is granted. Hash matches inventory."
+    },
+    {
+      "path": ".agent/backlog.json",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "9f91adaf003e742f3380425b435e758ec95eb983a98cd628b29a225244a88321",
+      "current_sha256": "3969e8d156c76ddd440b62a479a4e13c6697a12d74c7415cd0a192f0d5033721",
+      "sha_matches_inventory": false,
+      "scope_classification": "CONTROL_LEDGER",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Structured live control plane has 128 unique IDs across TRIPLE-A (5), PROD (65), REM (56), P0-CLOSURE and UNIFY-MAIN. REM-010 is IN_PROGRESS with INSPECT/REM-010:PREPARE and 49 source-review evidence refs before this round; 26 REM items are DONE only as control claims, with local/external conditions elsewhere. Four scoped /home-or-/tmp path tokens need redaction before external publication. Hash drift is expected from recorded M-02 evidence_refs appended since the original inventory."
+    },
+    {
+      "path": ".agent/execution-log.jsonl",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "ad7b9d12a65537570e22b50c31294f94e654a761d4b1966dc8a42719ce4237df",
+      "current_sha256": "feadcd7e413094f004518d9e2596c3b9f41c30980201433fec080e8f40980503",
+      "sha_matches_inventory": false,
+      "scope_classification": "CONTROL_LEDGER",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "557 unique JSONL events, timestamps parse and append in chronological order; latest event is round 39, result PARTIAL. The ledger mixes historical PASS/PARTIAL/blocked claims and is not proof by itself; controller remains FAIL 788. 31 scoped /home-or-/tmp path tokens need redaction before publication. Hash drift is expected from appended M-02 checkpoint events since inventory."
+    },
+    {
+      "path": ".agent/state.json",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "e434ee0d050d194201f346eeec93f556a5b29b3b66881550d7b8ebbdd61b7aa8",
+      "current_sha256": "c752337f9faf1ef4047a1b8e507d01c6a37dd93bcbc5f3f8388c94d29b691ed0",
+      "sha_matches_inventory": false,
+      "scope_classification": "CONTROL_LEDGER",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Schema-v2 live state identifies active task REM-010, activity INSPECT, action REM-010:PREPARE, verification PARTIAL, state revision 342 and active ExecPlan .agent/plans/melhorias-20260923.md. Repository narrative repeats dated local/target claims and explicitly says no candidate/overlay/target; human-approval list preserves external/destructive boundaries. One local path token. Hash drift is expected from controlled M-02 revision/narrative updates."
+    },
+    {
+      "path": ".agent/verification.jsonl",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "64d82962fb45a475b136f465d40fcff20277f5dd3a5983df4330a3ba7a4b353b",
+      "current_sha256": "ab277433e32a3f49690db6ba1da8c6f971bdca60c5626369d7f00b1da77f9272",
+      "sha_matches_inventory": false,
+      "scope_classification": "CONTROL_LEDGER",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "241 unique JSONL records; timestamp syntax and IDs are valid, but one append-order timestamp inversion exists: REM-049 implementation (09:11:08Z) precedes REM-027 revalidation (09:09:58Z) in file order. Preserve as a historical ordering defect; do not sort an append-only ledger. Round 39 is the latest PASS command record; the other results span PASS, PASS_WITH_CONDITIONS, PARTIAL, FAIL and BLOCKED. 143 scoped /home-or-/tmp path tokens need redaction before publication. Hash drift is expected from appended M-02 verification records."
+    },
+    {
+      "path": ".agent/plans/remediacao-integral-20260921.md",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "c6c71f0b652085fbe9ac5692ddede8c5eebea6fd15be6d5c70cace98ad16a278",
+      "current_sha256": "c6c71f0b652085fbe9ac5692ddede8c5eebea6fd15be6d5c70cace98ad16a278",
+      "sha_matches_inventory": true,
+      "scope_classification": "CONTROL_PLAN",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical REM remediation ExecPlan, not the active plan (state points to .agent/plans/melhorias-20260923.md). It retains an old active-action marker and sole Concrete Step REM-044:WAIT-AUTHORITY, while its progress/outcome includes later REM-002 completion and still calls REM-044 active; its opening origin/main snapshot is pre-push 363c87ef, superseded by later 570920de entries. Historical milestones/checklists also include duplicate/out-of-order numbering and an unchecked REM-009 action before its checked completion. Do not use its stale marker as current state. Two scoped local-path tokens need redaction before publication; current hash drift predates this round and no change from round 39 remains."
+    }
+  ],
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "Post-round pnpm docs:validate passed; documentation links/governance and current Triple-A snapshot validators passed.",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-CONTROL-AUTHORITY-IS-REM002-ONLY",
+      "classification": "HOLD_AUTHORITY_SCOPE",
+      "observation": "The two authority records are explicit and exact for REM-002 history rewrite/push. They confer no authority for REM-044 object deletion, deploy, target, provider, UAT or release."
+    },
+    {
+      "id": "M02-CONTROL-VERIFICATION-ORDER-INVERSION",
+      "classification": "HOLD_LEDGER_PROVENANCE",
+      "observation": "The append-only verification ledger contains one timestamp inversion: VER-REM-049-IMPLEMENT-20260922 at 09:11:08Z is followed by VER-REM-027-HOTSPOT-RECONCILIATION-20260922 at 09:09:58Z. IDs are unique; preserve ordering and flag provenance rather than sorting."
+    },
+    {
+      "id": "M02-CONTROL-OLD-EXECPLAN-STALE-ACTION",
+      "classification": "HOLD_HISTORICAL_STATUS",
+      "observation": "The 21/09 REM plan still marks REM-044:WAIT-AUTHORITY as active and its outcome calls REM-044:PREPARE active, while current state names the 23/09 improvements plan and REM-010:PREPARE. Treat the older plan as historical narrative, not live status."
+    },
+    {
+      "id": "M02-CONTROL-HASH-DRIFT-IS-RECORDED",
+      "classification": "HOLD_SNAPSHOT_PROVENANCE",
+      "observation": "Five control files have current hashes different from their inventory hashes because the M-02 process has appended/updated evidence references, state revision/narrative, logs, and historical plan annotations after the original snapshot. The authority ledger remains byte-stable. Round-40 current hashes are recorded after this round’s own ledger updates."
+    },
+    {
+      "id": "M02-CONTROL-LOCAL-PATH-REDACTION",
+      "classification": "HOLD_PUBLICATION_REDACTION",
+      "observation": "A scoped scan found local /home-or-/tmp path tokens in the backlog, execution log, state, verification ledger and old plan; no email/CPF/JWT/common-token marker was found in this six-file scan. This is not full PII/security clearance."
+    },
+    {
+      "id": "M02-CONTROL-CURRENT-STATUS-IS-NOT-RELEASE",
+      "classification": "SCOPE_LIMIT",
+      "observation": "The live records keep REM-010 IN_PROGRESS/PARTIAL and external/human/target gates open. DONE values in backlog/ledgers are recorded local/control assertions; the global controller remains non-approving and reports 788 findings."
+    }
+  ],
+  "candidate_actions": [
+    "Retain exact REM-002 authority scope; do not infer approval for other operations.",
+    "Use .agent/state.json and .agent/backlog.json plus the active .agent/plans/melhorias-20260923.md for current status; preserve the older plan as historical evidence.",
+    "Do not reorder append-only verification history; independently reconcile the timestamp inversion and stale plan marker before relying on them.",
+    "Redact local paths before external publication; no full privacy clearance is claimed."
+  ],
+  "limitations": [
+    "Control-plane content review; historical actions and gates in the ledgers were not rerun.",
+    "No DB, target, provider, CI, restore, deploy, UAT or release action occurred.",
+    "Pattern scan is limited; no claim of comprehensive secrets/PII or independent review.",
+    "No candidate, overlay or frozen SHA exists; FK test remains the final original path pending."
+  ],
+  "checkpoint_validation": {
+    "json_and_jsonl_parse": "PASS (184 JSON and 8 JSONL files under .agent; docs/document-governance.json also parsed)",
+    "git_diff_check": "PASS",
+    "docs_validate": "PASS",
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 39. Exact REM-010 and gate-v2 searches return no finding; the controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T11:03:19Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 303,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 429,
+    "status_sha256": "549d0dd2152062eac0281a3d477b25e070edfe401b0f77649b46d20191eeb113",
+    "note": "Read-only porcelain snapshot after M-02 round 40 and checkpoint validation; original 386-path denominator unchanged. Round-40 review artifact is the forty-third post-inventory path. No candidate, overlay or frozen SHA exists."
+  },
+  "verification_record_correction": "The newly appended round-40 verification draft initially used noncanonical PENDING. After pnpm docs:validate, git diff --check and JSON/JSONL parsing all returned success, only that newly appended row was corrected to PASS/exit 0; no earlier verification record was changed. The final controller returned to the pre-round result FAIL 788 with zero REM-010 and gate-v2 findings."
+}

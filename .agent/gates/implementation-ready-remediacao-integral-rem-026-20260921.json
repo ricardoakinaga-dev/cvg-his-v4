@@ -1,0 +1,100 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-REM-026-20260921",
+  "timestamp": "2026-09-21T19:17:30.000000+00:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "REM-026 bounded server composition extraction and local canonical verification; reversible worktree-only scope",
+  "scope_ref": "REM-026",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The active remediation plan, REM-001 recovery package and official Node/pnpm baseline remain current before reconciling the hotspot.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/plans/remediacao-integral-20260921.md",
+        "docs/2026-09-21-rem-001-backup-manifest.md",
+        ".agent/evidence/rem-003-runtime-baseline-20260921.txt"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Recovery and runtime are local evidence; history rewrite and external boundaries remain unauthorized."
+    },
+    {
+      "id": "IR-002",
+      "description": "The complexity hotspot budget and the composition call sites were inspected, and the implementation removes only bounded helper/composition responsibilities.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-026-server-composition-20260921.txt",
+        "docs/engineering/complexity-hotspots.json",
+        "apps/api/src/server.ts",
+        "apps/api/src/helpers/api-server-boundaries.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The extraction does not certify broader architecture, CI or release quality."
+    },
+    {
+      "id": "IR-003",
+      "description": "The extracted boundaries have focused tests, the server test contract remains green, the frozen hotspot test passes, and the canonical root/workspace runner completes locally.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-026-server-composition-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-026-FOCUSED-20260921",
+        ".agent/verification.jsonl#VER-REM-026-CANONICAL-20260921"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The canonical result is local and the final workspace exit code was observed through completion; no external gate is implied."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-026-server-composition-20260921.txt",
+    ".agent/plans/remediacao-integral-20260921.md",
+    ".agent/evidence/rem-003-runtime-baseline-20260921.txt",
+    "docs/engineering/complexity-hotspots.json",
+    "apps/api/src/server.ts",
+    "apps/api/src/helpers/api-server-boundaries.ts",
+    "apps/api/src/helpers/api-server-boundaries.test.ts",
+    "scripts/run-root-test-suite.mjs",
+    "package.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-REM-026-EXTERNAL-BOUNDARY",
+      "description": "CI, target, providers, UAT, recovery drills, release authority and human go/no-go remain separate obligations.",
+      "non_blocking": true,
+      "impact": "This gate closes only the local decomposition slice and cannot imply release readiness.",
+      "owner": "lead",
+      "due_or_trigger": "Before REM-009 integrated local gate and any external boundary",
+      "due_at": "2026-09-21T20:30:00.000000+00:00",
+      "verification_method": "Reconcile the next gate against the authority ledger and external evidence requirements.",
+      "evidence_refs": [
+        ".agent/state.json",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "REM-026 bounded server composition extraction and local canonical verification; reversible worktree-only scope",
+    "decision": "The user instruction permits reversible local code and test changes; no external or destructive action is included.",
+    "evidence_ref": ".agent/plans/remediacao-integral-20260921.md",
+    "expires_or_revalidates": "Revalidate before changing the frozen quality bar or crossing CI, target, UAT, credentials, deployment or release boundaries."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-026:VERIFY-COMPOSITION",
+  "revalidation_triggers": [
+    "The frozen complexity budget, helper contracts or canonical runner changes.",
+    "The local server/helper tests or canonical runner regress.",
+    "The scope expands beyond reversible local implementation and verification."
+  ],
+  "supersedes": null
+}

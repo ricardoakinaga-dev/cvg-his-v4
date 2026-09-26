@@ -6,7 +6,14 @@ import type {
   UpdatePrescriptionRequest,
   ArchivePrescriptionRequest
 } from '@cvg-his-v2/module-prescriptions';
+import type { PatientsService } from '@cvg-his-v2/module-patients';
 import { PrescriptionsService } from '@cvg-his-v2/module-prescriptions';
+import {
+  ALLERGY_ACKNOWLEDGEMENT_MIN_LENGTH,
+  ALLERGY_ACKNOWLEDGEMENT_REQUIRED_CODE,
+  findAllergyConflicts
+} from '@cvg-his-v2/shared-contracts';
+import { AppError } from '@cvg-his-v2/shared-errors';
 import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
@@ -16,6 +23,7 @@ import { readJsonBody, readJsonBodyOrEmpty } from '../helpers/common.js';
 export interface PrescriptionRoutesHandlers {
   prescriptions: PrescriptionsService;
   audit: AuditService;
+  patients: Pick<PatientsService, 'getAuthoritativeOrThrow'>;
   requirePrincipal: (
     request: IncomingMessage,
     permissionCode: string
@@ -41,7 +49,7 @@ export async function handlePrescriptionRoutes(
     return false;
   }
 
-  const { prescriptions, audit, requirePrincipal } = handlers;
+  const { prescriptions, audit, patients, requirePrincipal } = handlers;
 
   const documentMatch = pathname.match(/^\/prescriptions\/([^/]+)\/document$/);
   if (documentMatch && request.method === 'POST') {
@@ -113,8 +121,31 @@ export async function handlePrescriptionRoutes(
   if (pathname === '/prescriptions' && request.method === 'POST') {
     const principal = await requirePrincipal(request, 'prescriptions.write');
     const payload = (await readJsonBody(request)) as CreatePrescriptionRequest;
-    const rx = prescriptions.create(principal.user.accountId, principal.user.id, payload);
+    prescriptions.assertValidCreateRequest(payload);
+    const allergyOverride = await screenPrescriptionAllergy(
+      patients,
+      principal.user.accountId,
+      payload
+    );
+    const rx = prescriptions.create(principal.user.accountId, principal.user.id, {
+      ...payload,
+      allergyAcknowledgement: allergyOverride?.justification
+    });
     await prescriptions.waitForPersistence();
+
+    if (allergyOverride) {
+      appendAudit(audit, {
+        actorId: principal.user.id,
+        accountId: principal.user.accountId,
+        module: 'prescriptions',
+        action: 'allergy_override',
+        entityType: 'prescription',
+        entityId: rx.id,
+        payloadSummary: `Allergy alert acknowledged for ${rx.medicationName}; matched=${allergyOverride.matchedTerms.join(',')}; justification=${allergyOverride.justification}`,
+        riskLevel: 'high',
+        correlationId
+      });
+    }
 
     appendAudit(audit, {
       actorId: principal.user.id,
@@ -244,4 +275,33 @@ export async function handlePrescriptionRoutes(
   }
 
   return false;
+}
+
+/**
+ * A medication that matches the patient's recorded allergy is only accepted
+ * with the prescriber's justification; it is never silently created nor
+ * hard-blocked (free-text allergies make the match advisory).
+ */
+async function screenPrescriptionAllergy(
+  patients: PrescriptionRoutesHandlers['patients'],
+  accountId: string,
+  payload: CreatePrescriptionRequest
+): Promise<{ readonly matchedTerms: string[]; readonly justification: string } | undefined> {
+  const patient = await patients.getAuthoritativeOrThrow(
+    accountId as never,
+    payload.patientId as never
+  );
+  const matchedTerms = findAllergyConflicts(payload.medicationName, patient.allergy);
+  if (matchedTerms.length === 0) return undefined;
+  const justification =
+    typeof payload.allergyAcknowledgement === 'string' ? payload.allergyAcknowledgement.trim() : '';
+  if (justification.length < ALLERGY_ACKNOWLEDGEMENT_MIN_LENGTH) {
+    throw new AppError(
+      ALLERGY_ACKNOWLEDGEMENT_REQUIRED_CODE,
+      'O medicamento coincide com uma alergia registrada do paciente. Confirme com uma justificativa clínica.',
+      409,
+      { allergy: patient.allergy, matchedTerms }
+    );
+  }
+  return { matchedTerms, justification: justification.slice(0, 500) };
 }

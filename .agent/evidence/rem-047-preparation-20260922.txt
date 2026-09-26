@@ -1,0 +1,23 @@
+REM-047 PREPARATION — 2026-09-22T10:23:24.000000Z
+
+Scope
+- F-029 identifies three packages that declared no tests: packages/chaos, packages/shared/contracts and packages/shared/types; the audit marks chaos as the highest-risk surface.
+- REM-047 acceptance requires tests for chaos and runtime-contract coverage for shared/contracts/types when applicable.
+
+Known-bad reproduced by inspection
+- packages/chaos/package.json, packages/shared/contracts/package.json and packages/shared/types/package.json each used a no-tests placeholder, so the workspace test contract could report success without executing package assertions.
+- packages/shared/types/src/types.test.ts already contains Vitest assertions but was not wired by the package test script.
+- packages/chaos has public engine, fault, experiment and metric runtime code with no package test files.
+- packages/shared/contracts is mostly type-only; its runtime export is upload-limits.ts and is the candidate for a focused executable contract test.
+
+Candidate-bound implementation selected
+- Add native node:test coverage to packages/chaos for ChaosEngine registration/lifecycle, AsyncLocalStorage context, fault determinism/probability, timeout/error behavior, resource cleanup and experiment start/stop/auto-expiry without contacting a real target, provider or database.
+- Wire packages/shared/types to execute its existing Vitest type-shape suite and add focused event-envelope runtime tests for validation, merge protection and read/assert behavior.
+- Add a native node:test contract for packages/shared/contracts/src/upload-limits.ts and replace the no-tests placeholder with compile-plus-test execution.
+- Keep all tests local and synthetic; no chaos mutation, shared infrastructure drill, credentials, UAT, deploy or release action is authorized by this preparation.
+
+Verification plan
+- Node 22.23.2/pnpm 10.33.0: package build/typecheck, package tests, targeted regressions, semantic lint where applicable, JSON/control-plane parse and git diff --check.
+- Evidence must distinguish executable runtime contracts from compile-time-only TypeScript interfaces and must not claim target-bound chaos readiness.
+
+Result: IMPLEMENTATION_READY with PASS_WITH_CONDITIONS. The next action is REM-047:IMPLEMENT.

@@ -1,0 +1,90 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND18-20260923",
+  "recorded_at": "2026-09-23T08:44:59Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "scripts/run-redis-rate-limiter-shard.mjs",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "ae05075b5575f0d436092e8d260cd0dbce6f3a9863655d76d9b6b2632554f518",
+      "current_sha256": "ae05075b5575f0d436092e8d260cd0dbce6f3a9863655d76d9b6b2632554f518",
+      "sha_matches_inventory": true,
+      "scope_classification": "TOOLING_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true,
+      "content_review": "REVIEWED_WITH_TARGET_AND_RUNTIME_LIMITS",
+      "review_notes": "The runner requires REDIS_RATE_LIMITER_TEST_URL, builds the fixed @cvg-his-v2/shared-rate-limiter workspace, then runs its compiled dist/rate-limiter.test.js with node --test TAP. It requires TAP summaries to say zero skipped/todo, but does not validate URL scheme/host, set a subprocess timeout, or require a nonzero/expected test count. CI sets redis://localhost:6380 and its job provisions a pinned Redis service. The related compiled test uses unique process/time key prefixes and resetAll scoped to those prefixes; no FLUSHDB behavior was observed."
+    }
+  ],
+  "verification": {
+    "syntax_check": {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" node --check scripts/run-redis-rate-limiter-shard.mjs",
+      "exit_status": 0
+    },
+    "build": {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm --filter @cvg-his-v2/shared-rate-limiter run build",
+      "exit_status": 0,
+      "scope": "TypeScript package build; generated dist is ignored by Git; no Redis/DB/network call."
+    },
+    "source_test_attempt": {
+      "command": "env -u REDIS_RATE_LIMITER_TEST_URL PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec tsx --test packages/shared/rate-limiter/src/rate-limiter.test.ts",
+      "result": "FAIL_DUE_TO_SOURCE_ENTRY_LAYOUT",
+      "summary": "23 passed, one failed, two skipped. The failed test starts Node with an import.meta.url pointing to src/index.js, which does not exist from the TypeScript source location. The mandatory runner builds and tests dist instead; this was an invalid source-mode invocation, not the CI runner path."
+    },
+    "built_test": {
+      "command": "env -u REDIS_RATE_LIMITER_TEST_URL PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" node --test --test-reporter=tap packages/shared/rate-limiter/dist/rate-limiter.test.js",
+      "result": "PASS_WITH_EXPECTED_REDIS_SKIPS",
+      "tests": 26,
+      "passed": 24,
+      "failed": 0,
+      "skipped": 2,
+      "todo": 0,
+      "scope": "The two live Redis tests were skipped because the Redis URL was explicitly unset. A loopback-only refusal probe at 127.0.0.1:1 and fake-client tests ran. No external Redis was contacted."
+    }
+  },
+  "boundary_review": {
+    "ci_reference": "Round 14 reviewed the edited CI job: a pinned Redis service is mapped to localhost:6380 and REDIS_RATE_LIMITER_TEST_URL is set for pnpm test and pnpm test:redis.",
+    "test_data": "The live tests generate per-process/time key prefixes and reset only matching keys; no database FLUSHDB or global keyspace clearing is in the reviewed test code.",
+    "local_effect": "The package TypeScript build generated ignored dist output. It remains in the workspace as a build artifact; it did not alter tracked files."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-REDIS-SHARD-URL-TARGET-UNVALIDATED",
+      "classification": "HOLD_TARGET_BOUNDARY",
+      "observation": "The runner accepts any nonempty REDIS_RATE_LIMITER_TEST_URL and passes the whole process environment to build/test. The live test uses unique prefixed keys and scoped reset, but a manually configured shared or production Redis endpoint would still receive writes/deletes in that prefix.",
+      "required_followup": "Require an explicitly disposable/loopback target or other approved isolation token before running; do not execute this shard with an ambient unknown URL."
+    },
+    {
+      "id": "M02-REDIS-SHARD-NO-TIMEOUT",
+      "classification": "HOLD_LIVENESS",
+      "observation": "Both build and node --test use spawnSync without a timeout in the runner. An unresponsive build or Redis endpoint can block until the CI job limit; there is no runner-level timeout policy.",
+      "required_followup": "Add bounded child timeouts and verify child termination/cleanup."
+    },
+    {
+      "id": "M02-REDIS-SHARD-ZERO-TEST-PASS",
+      "classification": "HOLD-ASSERTION-DEPTH",
+      "observation": "The runner checks only that TAP reports zero skipped and zero todo after exit status 0; it does not assert a positive or frozen total test count, so a zero-test or stale dist bundle could satisfy the summary predicate.",
+      "required_followup": "Assert an expected minimum/count or required integration test names and clean stale build output before running the shard."
+    },
+    {
+      "id": "M02-REDIS-SHARD-RUNTIME-UNVERIFIED",
+      "classification": "HOLD_RUNTIME",
+      "observation": "The actual mandatory runner was not invoked because no disposable Redis target was selected. The built suite ran with the Redis URL unset, so two integration tests skipped.",
+      "required_followup": "Run the shard only in the CI-local pinned Redis service or another explicitly approved disposable target."
+    }
+  ],
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "hold_reason": "Runner hash is stable and non-Redis suite/build checks are bounded, but live Redis target validation, child timeouts and positive test-count guarantees remain open."
+  },
+  "limitations": [
+    "No live Redis service or external cache was contacted.",
+    "The TS source-mode test attempt is recorded separately from the built dist run used by the canonical runner.",
+    "Primary-operator review only; no independent inclusion approval."
+  ]
+}

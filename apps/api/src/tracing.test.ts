@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { ServerResponse } from 'node:http';
 import test from 'node:test';
 
 import {
@@ -18,6 +18,7 @@ import {
   tracingMiddleware,
   type TraceableIncomingMessage
 } from './tracing.js';
+import { attachHttpRequestTelemetry } from './http-request-telemetry.js';
 
 /** The API package intentionally does not install a global context manager. */
 class TestContextManager implements ContextManager {
@@ -97,8 +98,9 @@ test('tracing middleware creates the request span before dispatch and activates 
 test('telemetry target removes query credentials from span-safe HTTP targets', () => {
   assert.equal(
     sanitizeHttpTarget('/attachments/attachment-1/content?token=secret-token&download=1'),
-    '/attachments/attachment-1/content'
+    '/{resource}/:id'
   );
+  assert.equal(sanitizeHttpTarget('/patients/patient-private-123?access_token=secret'), '/{resource}/:id');
   assert.equal(sanitizeHttpTarget(undefined), '/');
 
   const headers: Record<string, string> = {};
@@ -126,4 +128,61 @@ test('tracing middleware awaits async handlers and preserves handler errors', as
   );
 
   assert.deepEqual(events, ['start', 'end']);
+});
+
+test('tracing span names omit dynamic resource IDs and query credentials', async () => {
+  const request = createRequest();
+  request.url = '/patients/patient-private-123?token=secret';
+  const { response } = createResponse();
+
+  await tracingMiddleware(request, response, () => undefined);
+
+  assert.equal(request.span?.name, 'HTTP GET /{resource}/:id');
+  assert.doesNotMatch(request.span?.name ?? '', /patient-private-123|secret/);
+});
+
+test('tracing span names bound unrecognized HTTP methods', async () => {
+  const request = createRequest();
+  request.method = 'PRIVATE-METHOD-TOKEN';
+  const { response } = createResponse();
+
+  await tracingMiddleware(request, response, () => undefined);
+
+  assert.equal(request.span?.name, 'HTTP OTHER /health');
+  assert.doesNotMatch(request.span?.name ?? '', /PRIVATE-METHOD-TOKEN/);
+});
+
+test('HTTP target telemetry uses the normalized route and omits raw path and query values', () => {
+  const request = createRequest();
+  request.url = '/patients/patient-private-123?token=secret';
+  const finishListeners: Array<() => void> = [];
+  const response = {
+    statusCode: 200,
+    once(_event: string, listener: () => void) {
+      finishListeners.push(listener);
+      return this;
+    }
+  } as unknown as ServerResponse;
+  const attributes: Record<string, string | number> = {};
+  const span = {
+    context: { traceId: 'a'.repeat(32), spanId: 'b'.repeat(16), traceFlags: 0 },
+    startTime: process.hrtime.bigint(),
+    name: 'HTTP GET /{resource}/:id',
+    status: 'ok' as const,
+    attributes
+  };
+
+  attachHttpRequestTelemetry({
+    request,
+    response,
+    startTime: process.hrtime.bigint(),
+    correlationId: 'correlation-1',
+    requestRoles: new WeakMap(),
+    span,
+    logger: { info() {} } as never
+  });
+  finishListeners[0]?.();
+
+  assert.equal(attributes['http.target'], '/{resource}/:id');
+  assert.doesNotMatch(String(attributes['http.target']), /patient-private-123|secret/);
 });

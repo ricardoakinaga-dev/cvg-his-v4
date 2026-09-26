@@ -1,0 +1,120 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-028-CLINICAL-NAVIGATOR-20260922",
+  "timestamp": "2026-09-22T02:45:50.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "segunda extração presentation-bound do navigator de etapas do prontuário, com contrato de tabs/keyboard e verificação local; sem aceite visual",
+  "scope_ref": "REM-028",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-004",
+      "description": "O ClinicalStepNavigator possui ownership de interação de tabs, props readonly, evento select, IDs estáveis, roving tabindex e foco por teclado; o page mantém o painel e workflows clínicos.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-CLINICAL-NAVIGATOR-20260922",
+        ".agent/evidence/rem-028-clinical-navigator-implementation-20260922.txt",
+        "apps/spa/src/pages/medical-records/ClinicalStepNavigator.vue",
+        "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Component test cobre o contrato DOM/evento; foco e interação de browser real continuam condicionados."
+    },
+    {
+      "id": "V-005",
+      "description": "O navigator e o prontuário passaram teste focal, vue-tsc, lint semântico, build Vite/PWA e diff check; uma incompatibilidade inicial de tipo foi reproduzida e corrigida fail-closed.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-CLINICAL-NAVIGATOR-20260922",
+        ".agent/evidence/rem-028-clinical-navigator-implementation-20260922.txt",
+        "apps/spa/src/pages/medical-records/__tests__/ClinicalStepNavigator.test.ts",
+        "apps/spa/src/pages/medical-records/__tests__/MedicalRecordsDetailPage.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A suíte SPA integral não foi repetida após este seam; o foco proporcional passou e a suíte integral anterior do primeiro seam estava verde."
+    },
+    {
+      "id": "V-006",
+      "description": "A fronteira visual foi preservada por CSS co-localizado com os valores e breakpoint existentes, sem atualização de snapshots.",
+      "required": true,
+      "status": "CONDITION",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-CLINICAL-NAVIGATOR-20260922",
+        ".agent/evidence/rem-028-clinical-navigator-implementation-20260922.txt",
+        "playwright-spa.config.ts",
+        "e2e/spa/visual/visual-regression.spec.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "A API E2E local continua unhealthy; pixel diff e foco real não foram observados."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-028-clinical-navigator-implementation-20260922.txt",
+    ".agent/verification.jsonl#VER-REM-028-CLINICAL-NAVIGATOR-20260922",
+    "apps/spa/src/pages/medical-records/ClinicalStepNavigator.vue",
+    "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue",
+    "apps/spa/src/pages/medical-records/__tests__/ClinicalStepNavigator.test.ts",
+    "apps/spa/src/pages/medical-records/__tests__/MedicalRecordsDetailPage.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Browser/visual atual não executado por API local unhealthy.",
+    "As superfícies de vendas, reports, agenda, dashboard e layout ainda estão abertas.",
+    "Nenhuma crítica adversarial independente E7 ou aprovação de owner foi obtida."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-028-CLINICAL-NAVIGATOR-BROWSER",
+      "description": "Reexecutar prontuário em browser com tabs, foco, mobile/dark e states de leitura/dirty quando o runtime E2E estiver saudável, sem atualizar snapshots automaticamente.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a continuidade local de implementação; bloqueia claim visual/a11y e fechamento integral de REM-028.",
+      "owner": "frontend/design",
+      "due_or_trigger": "Antes do VERIFIED integral de REM-028 ou de atualizar baseline visual.",
+      "verification_method": "Executar Playwright focal, inspeção de foco/teclado e diff atual com artefatos vinculados.",
+      "due_at": "2026-09-23T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-clinical-navigator-implementation-20260922.txt",
+        "playwright-spa.config.ts"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-028-REMAINING-SURFACES-2",
+      "description": "Este é o segundo seam; quatro superfícies principais e a integração final de REM-028 permanecem pendentes.",
+      "non_blocking": true,
+      "impact": "Impede marcar REM-028 como DONE; não invalida o navigator localmente verificado.",
+      "owner": "lead",
+      "due_or_trigger": "Até concluir a matriz de superfícies e o gate integral.",
+      "verification_method": "Repetir evidence/gate por seam e consolidar regressão focal/full/browser antes do fechamento.",
+      "due_at": "2026-09-26T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "segundo seam reversível de apresentação de REM-028",
+    "decision": "A instrução autoriza implementação e verificação local; não autoriza aprovação visual humana, UAT, target, release ou atualização de snapshots como baseline aceita.",
+    "evidence_ref": ".agent/evidence/rem-028-clinical-navigator-implementation-20260922.txt",
+    "expires_or_revalidates": "Revalidar quando o runtime E2E ficar saudável, o seam mudar ou a implementação cruzar workflow clínico."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-028:IMPLEMENT-NEXT",
+  "revalidation_triggers": [
+    "Alterar o contrato do navigator, os IDs públicos, roving tabindex ou regras de keyboard sem teste focal.",
+    "Mover activeClinicalStep, dirty state, generation, idempotência ou server state para o filho.",
+    "Tentar atualizar snapshots enquanto API/health E2E estiver unhealthy.",
+    "Promover o seam a aceite integral sem concluir as demais superfícies."
+  ],
+  "supersedes": null
+}

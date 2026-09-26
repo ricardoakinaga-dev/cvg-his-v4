@@ -10,7 +10,7 @@ info:
     `Authorization: Bearer <access_token>`
 
     ## Common Headers
-    - `x-correlation-id`: Optional correlation ID for request tracing (auto-generated if not provided)
+    - `x-correlation-id`: Response header containing a server-generated opaque request ID; incoming values are ignored
     - `x-tenant-id`: Accepted only by explicitly trusted internal tooling; public requests derive tenant/account scope from the authenticated session or API key
     - `x-branch-id`: Optional branch/facility identifier
 
@@ -46,7 +46,7 @@ info:
     List endpoints use cursor-based or offset pagination via `page` and `pageSize` query parameters.
 
     ## Correlation
-    Every response includes the `x-correlation-id` header matching the request (or generated if not provided).
+    Every response includes a server-generated opaque `x-correlation-id`. The API does not echo caller-selected correlation values into logs or durable event metadata.
   contact:
     name: CVG HIS Team
   license:
@@ -2281,7 +2281,10 @@ paths:
     get:
       operationId: listPatients
       summary: List patients
-      description: Returns a list of all patients (animals) in the account.
+      description: >-
+        Returns patients in the account. Requests without page, pageSize, or limit keep the legacy
+        {items} response. Supplying any pagination parameter returns page metadata; page defaults
+        to 1 and pageSize defaults to 20 in that mode.
       tags: [Patients]
       parameters:
         - name: q
@@ -2304,21 +2307,59 @@ paths:
             enum: [active, inactive, deceased]
         - name: page
           in: query
+          description: Page number; defaults to 1 when pagination is enabled.
           schema:
             type: integer
-            default: 1
+            minimum: 1
+            maximum: 9007199254740991
         - name: pageSize
           in: query
+          description: Page size; defaults to 20 when pagination is enabled.
           schema:
             type: integer
-            default: 20
+            minimum: 1
+            maximum: 200
+        - name: limit
+          in: query
+          deprecated: true
+          description: Legacy alias for pageSize. pageSize takes precedence when both are supplied.
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 200
       responses:
         '200':
           description: List of patients
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/PaginatedPatients'
+                oneOf:
+                  - $ref: '#/components/schemas/PatientList'
+                  - $ref: '#/components/schemas/PaginatedPatients'
+        '400':
+          description: Invalid list filter or pagination value
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication is required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: The caller is not authorized to read patients
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: The request failed unexpectedly
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
     post:
       operationId: createPatient
@@ -3614,6 +3655,40 @@ paths:
       responses:
         '200':
           description: List of attachments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttachmentListResponse'
+        '400':
+          description: Invalid or missing linked-entity query parameter
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Attachment read permission required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Linked entity not found in the authenticated account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected attachment lookup failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
     post:
       operationId: uploadAttachment
@@ -3636,6 +3711,10 @@ paths:
       responses:
         '201':
           description: Attachment uploaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Attachment'
         '400':
           description: Invalid attachment metadata or base64 content
           content:
@@ -3644,10 +3723,30 @@ paths:
                 $ref: '#/components/schemas/ErrorResponse'
         '401':
           description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '403':
           description: Attachment management permission required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
         '413':
           description: Attachment request or decoded binary exceeds the supported limit
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Linked entity not found in the authenticated account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected storage or attachment persistence failure
           content:
             application/json:
               schema:
@@ -3672,6 +3771,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AttachmentDownloadUrlResponse'
+        '401':
+          description: Authentication required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Attachment read permission required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Attachment not found in the authenticated account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Attachment is unavailable until security scanning completes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected attachment lookup failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /attachments/{attachmentId}/content:
     get:
@@ -3699,6 +3828,36 @@ paths:
               schema:
                 type: string
                 format: binary
+        '401':
+          description: Authentication required or signed token invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '403':
+          description: Attachment read permission required
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '404':
+          description: Attachment or binary content not found in the authenticated account
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Attachment is unavailable until security scanning completes
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Unexpected attachment storage failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /triage:
     get:
@@ -7782,6 +7941,17 @@ paths:
       tags: [Payments]
       security:
         - ApiKeyAuth: []
+      parameters:
+        - name: Idempotency-Key
+          in: header
+          required: false
+          description: >-
+            Required in production-like environments. Retries with the same key replay the
+            original intent and reuse the same provider charge (1-128 visible ASCII characters).
+          schema:
+            type: string
+            minLength: 1
+            maxLength: 128
       requestBody:
         required: true
         content:
@@ -10480,6 +10650,10 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Prescription'
+        '409':
+          description: >-
+            ALLERGY_ACKNOWLEDGEMENT_REQUIRED — the medication matches the patient's recorded
+            allergy; resend with allergyAcknowledgement. details carries allergy and matchedTerms.
 
   /prescriptions/{prescriptionId}:
     get:
@@ -18770,6 +18944,8 @@ components:
 
     Patient:
       type: object
+      additionalProperties: false
+      required: [id, accountId, name, species, sex, primaryOwnerId, status, createdAt, updatedAt]
       properties:
         id:
           type: string
@@ -18783,42 +18959,37 @@ components:
           type: string
         sex:
           type: string
+          enum: [male, female, unknown]
+        size:
+          type: string
+          enum: [small, medium, large]
         birthDateApproximate:
           type: string
         baseWeightKg:
           type: number
+          minimum: 0
         primaryOwnerId:
           type: string
         isNeutered:
           type: boolean
-          nullable: true
         microchip:
           type: string
-          nullable: true
         pedigreeNumber:
           type: string
-          nullable: true
         color:
           type: string
-          nullable: true
         chronicDisease:
           type: string
-          nullable: true
         allergy:
           type: string
-          nullable: true
         temperament:
           type: string
-          nullable: true
         generalNotes:
           type: string
-          nullable: true
         legacyVetusId:
           type: string
-          nullable: true
         originalCreatedAt:
           type: string
-          nullable: true
         status:
           type: string
           enum: [active, inactive, deceased]
@@ -22962,6 +23133,15 @@ components:
           type: string
           format: date-time
 
+    AttachmentListResponse:
+      type: object
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Attachment'
+
     AttachmentDownloadUrlResponse:
       type: object
       required: [url, expiresAt]
@@ -24281,6 +24461,11 @@ components:
           type: string
         notes:
           type: string
+        allergyAcknowledgement:
+          type: string
+          minLength: 10
+          maxLength: 500
+          description: Prescriber justification required when the medication matches a recorded allergy.
 
     UpdatePrescriptionRequest:
       type: object
@@ -24966,8 +25151,20 @@ components:
         total:
           type: integer
 
+    PatientList:
+      type: object
+      additionalProperties: false
+      required: [items]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Patient'
+
     PaginatedPatients:
       type: object
+      additionalProperties: false
+      required: [items, page, pageSize, total, totalPages]
       properties:
         items:
           type: array
@@ -24975,10 +25172,19 @@ components:
             $ref: '#/components/schemas/Patient'
         page:
           type: integer
+          minimum: 1
+          maximum: 9007199254740991
         pageSize:
           type: integer
+          minimum: 1
+          maximum: 200
         total:
           type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 1
+          maximum: 9007199254740991
 
     UpdateBillingStatusRequest:
       type: object

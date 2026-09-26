@@ -18,6 +18,29 @@ export interface WorkerHealthDeps {
   readonly deliveryGuaranteesReady: boolean;
   readonly durableConsumerGuardReady: boolean;
   readonly webhookDeliveryExecutorReady: boolean;
+  /** When set, a loop without a completed tick for this long is reported as stalled. */
+  readonly stalledAfterMs?: number;
+  /** Loop start, used as the progress reference until the first tick completes. */
+  readonly loopStartedAt?: string;
+}
+
+/**
+ * A hung tick never sets lastError, so progress must be judged by time: the
+ * last completed tick (or the loop start) must be recent enough.
+ */
+export function isWorkerLoopStalled(
+  progress: {
+    readonly lastTickAt: string | null;
+    readonly loopStartedAt?: string;
+    readonly stalledAfterMs?: number;
+  },
+  now: number = Date.now()
+): boolean {
+  if (!progress.stalledAfterMs || progress.stalledAfterMs <= 0) return false;
+  const reference = progress.lastTickAt ?? progress.loopStartedAt;
+  if (!reference) return false;
+  const referenceMs = new Date(reference).getTime();
+  return Number.isFinite(referenceMs) && now - referenceMs > progress.stalledAfterMs;
 }
 
 /**
@@ -26,15 +49,16 @@ export interface WorkerHealthDeps {
  * the correlation id is the safe hand-off to the worker logs.
  */
 export const WORKER_LOOP_DEGRADED_MESSAGE =
-  'Worker loop degraded; inspect worker logs using the response correlationId';
+  'Worker loop degraded; inspect worker logs for the underlying failure.';
 
 export function sanitizeWorkerDiagnostic(lastError: string | null): string | null {
   return lastError === null ? null : WORKER_LOOP_DEGRADED_MESSAGE;
 }
 
-function resolveCorrelationId(request: IncomingMessage): string {
-  const correlationId = request.headers['x-correlation-id'];
-  return typeof correlationId === 'string' ? correlationId : createCorrelationId('worker');
+function resolveCorrelationId(): string {
+  // Health endpoints are public; never echo a caller-selected value into a
+  // response body that operators may copy into diagnostics.
+  return createCorrelationId('worker');
 }
 
 function resolveDatabaseState(
@@ -56,7 +80,8 @@ export function createWorkerHealthResponse(
 ): HealthResponse {
   const databaseState = resolveDatabaseState(deps);
   const repositoriesReady = deps.persistenceMode === 'database' ? deps.databaseHealthy : true;
-  const loopHealthy = deps.lastError === null;
+  const loopStalled = isWorkerLoopStalled(deps);
+  const loopHealthy = deps.lastError === null && !loopStalled;
   const missingConsumers = deps.requiredEventBusConsumers.filter(
     (consumer) => !deps.registeredEventBusConsumers.includes(consumer)
   );
@@ -79,7 +104,7 @@ export function createWorkerHealthResponse(
     version,
     environment,
     timestamp: nowIso(),
-    correlationId: resolveCorrelationId(request),
+    correlationId: resolveCorrelationId(),
     liveness: {
       live: true,
       initialized: deps.initialized
@@ -118,9 +143,11 @@ export function createWorkerHealthResponse(
               ? 'Worker is not ready: durable webhook delivery executor is unavailable'
             : !consumersReady
               ? `Worker is not ready: missing event bus consumers: ${missingConsumers.join(', ') || 'manifest empty'}`
-              : loopHealthy
-                ? `Loop healthy; ticks=${deps.ticksCompleted}; lastTickAt=${deps.lastTickAt ?? 'never'}`
-                : WORKER_LOOP_DEGRADED_MESSAGE
+              : loopStalled
+                ? `Worker loop stalled: no completed tick within ${deps.stalledAfterMs}ms; lastTickAt=${deps.lastTickAt ?? 'never'}`
+                : loopHealthy
+                  ? `Loop healthy; ticks=${deps.ticksCompleted}; lastTickAt=${deps.lastTickAt ?? 'never'}`
+                  : WORKER_LOOP_DEGRADED_MESSAGE
       }
     },
     eventBus: {
@@ -147,17 +174,18 @@ export function createWorkerLivenessResponse(
   environment: string,
   version: string,
   request: IncomingMessage,
-  initialized: boolean
+  initialized: boolean,
+  stalled = false
 ): HealthResponse {
   return {
-    ok: true,
+    ok: !stalled,
     service: appName,
     version,
     environment,
     timestamp: nowIso(),
-    correlationId: resolveCorrelationId(request),
+    correlationId: resolveCorrelationId(),
     liveness: {
-      live: true,
+      live: !stalled,
       initialized
     },
     readiness: {
@@ -175,8 +203,12 @@ export function createWorkerLivenessResponse(
         detail: initialized ? 'Worker process initialized' : 'Worker process still initializing'
       },
       worker: {
-        state: initialized ? 'ready' : 'degraded',
-        detail: initialized ? 'Worker process loop initialized' : 'Worker process not initialized'
+        state: initialized && !stalled ? 'ready' : 'degraded',
+        detail: stalled
+          ? 'Worker loop stalled; restart required'
+          : initialized
+            ? 'Worker process loop initialized'
+            : 'Worker process not initialized'
       }
     }
   };

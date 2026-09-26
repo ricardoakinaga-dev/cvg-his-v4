@@ -1,0 +1,130 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND2-20260923",
+  "recorded_at": "2026-09-23T06:37:10.947Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PASS_WITH_CONDITIONS; four original-inventory API/worker paths reviewed; no global candidate approval",
+  "paths_reviewed": [
+    {
+      "path": "apps/api/src/server.ts",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "6b102f8ef01cc77c8acedef6ad2d429507c985ad00a78698457c94e5c39cb319",
+      "current_sha256": "6b102f8ef01cc77c8acedef6ad2d429507c985ad00a78698457c94e5c39cb319",
+      "sha_matches_inventory": true,
+      "scope_classification": "API_SOURCE_OR_TEST",
+      "content_review": "REVIEWED",
+      "review_notes": "The diff is limited to helper imports, closure construction after encounters/scheduling are composed, and removal of the corresponding inline helpers. The extracted encounter lookup, queue transitions, request header and validation statements preserve the prior server behavior; the existing auth helper sanitizer removes keyHash as the former local sanitizer did. API route behavior was not exercised end to end in this batch.",
+      "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition, independent critique and candidate-bound verification remain required"
+    },
+    {
+      "path": "apps/worker/src/runner.ts",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "baab4774dacdbecdd8bc20823c4c83d1c1a642f65594c5189bc440ea90d6ffb8",
+      "current_sha256": "baab4774dacdbecdd8bc20823c4c83d1c1a642f65594c5189bc440ea90d6ffb8",
+      "sha_matches_inventory": true,
+      "scope_classification": "WORKER_SOURCE_OR_TEST",
+      "content_review": "REVIEWED",
+      "review_notes": "Worker service constructors/ticks remain in this module. resolveScheduledReportRows and AdministrativeExecutiveReportSources are re-exported from the extracted module; runScheduledReportsTick still passes the resolver as its row callback. No other runner behavior changed in the inspected diff.",
+      "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition, independent critique and candidate-bound verification remain required"
+    },
+    {
+      "path": "apps/worker/src/scheduled-report-sources.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "8c24b2135c453c00cd40730006f8709aabc0cf349ac3381b723aff46528f0729",
+      "current_sha256": "8c24b2135c453c00cd40730006f8709aabc0cf349ac3381b723aff46528f0729",
+      "sha_matches_inventory": true,
+      "scope_classification": "WORKER_SOURCE_OR_TEST",
+      "content_review": "REVIEWED",
+      "review_notes": "The resolver and all private helper bodies (1,747 lines) compare byte-for-byte with the corresponding implementation from origin/main:apps/worker/src/runner.ts. WorkerTickContext/WorkerOptions and service factories stay in runner.ts. Imports are relocated with types preserved; no resolver algorithm change was found.",
+      "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition, independent critique and candidate-bound verification remain required"
+    },
+    {
+      "path": "apps/worker/src/scheduled-report-sources.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "d8826ecb604503e4cf1945450adb953b613e13aa04d789fbc2ca737a98fd5398",
+      "current_sha256": "d8826ecb604503e4cf1945450adb953b613e13aa04d789fbc2ca737a98fd5398",
+      "sha_matches_inventory": true,
+      "scope_classification": "WORKER_SOURCE_OR_TEST",
+      "content_review": "REVIEWED",
+      "review_notes": "Two focused node:test cases cover tenant/date forwarding and row mapping, inverted dates failing before source access, and rejecting a foreign-account row. Test dependencies are in-memory fakes.",
+      "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition, independent critique and candidate-bound verification remain required"
+    }
+  ],
+  "extraction_comparison": {
+    "baseline": "origin/main:apps/worker/src/runner.ts",
+    "current": "apps/worker/src/scheduled-report-sources.ts",
+    "compared_region": "resolveScheduledReportRows and following private resolver helpers, stopping before original default worker-service construction",
+    "compared_lines": 1747,
+    "result": "PASS; byte-for-byte match"
+  },
+  "findings_and_limits": [
+    "The API server extraction preserves the prior helper semantics; validateRequestBody remains behaviorally aligned to the former server-local version. A separate common.ts validator has a different error-message form, so unifying those copies would change an observable validation message and was not included in this review.",
+    "The worker resolver move is extraction-only in the compared region. Existing tests cover resolver cases through the runner re-export; the new source module adds two focused tenant/date boundary tests.",
+    "The API server composition/route integration was not exercised end to end. Tests verify the extracted helpers with fakes, not HTTP routing, DB-backed tenant isolation, or scheduling persistence.",
+    "No newly identified blocker in this bounded source review. No file was overlaid into a candidate and no path received global inclusion approval."
+  ],
+  "verification_results": [
+    {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec tsx --test apps/worker/src/scheduled-report-sources.test.ts",
+      "observed_start": "2026-09-23T06:31:31.186830254Z",
+      "observed_end": "2026-09-23T06:31:32.182108120Z",
+      "environment": {
+        "node": "v22.23.2",
+        "pnpm": "10.33.0"
+      },
+      "result": "PASS",
+      "exit_status": 0,
+      "tests": "2/2",
+      "scope": "Direct node:test runner; source passed a fake cheque repository; Vitest global setup, database adapters and provider calls were not invoked."
+    },
+    {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec tsx --test apps/worker/src/runner.test.ts",
+      "observed_start": "2026-09-23T06:32:23.138207793Z",
+      "observed_end": "2026-09-23T06:32:24.195364572Z",
+      "environment": {
+        "node": "v22.23.2",
+        "pnpm": "10.33.0"
+      },
+      "result": "PASS",
+      "exit_status": 0,
+      "tests": "65/65",
+      "scope": "Direct node:test runner; existing worker resolver/tick tests use in-memory fakes. No Vitest setup or DB-backed repository was invoked; no delivery provider request was made."
+    },
+    {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec tsx --test apps/api/src/helpers/api-server-boundaries.test.ts apps/api/src/helpers/response-buffer.test.ts",
+      "observed_start": "2026-09-23T06:34:11.277751293Z",
+      "observed_end": "2026-09-23T06:34:11.868469375Z",
+      "environment": {
+        "node": "v22.23.2",
+        "pnpm": "10.33.0"
+      },
+      "result": "PASS",
+      "exit_status": 0,
+      "tests": "7/7",
+      "scope": "Direct node:test runner; fake encounter/scheduling services and in-memory response objects. No Vitest global setup or database connection."
+    }
+  ],
+  "external_boundary_observation": {
+    "vitest_global_setup_invoked": false,
+    "database_target_contacted_by_these_commands": false,
+    "live_provider_called": false,
+    "basis": "All three commands use node:test through tsx rather than Vitest; inspected test bodies supply fakes and do not invoke database or provider operations."
+  },
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "global_candidate_status": "BLOCKED_PENDING_COMPLETE_PATH_REVIEW_AND_INDEPENDENT_CRITIQUE"
+  },
+  "limitations": [
+    "This is a bounded primary-operator review, not an independent critic.",
+    "The broad API, worker and root Vitest/package suites remain held because the configured Vitest global setup contacts the explicit local database; this batch used only isolated node:test commands.",
+    "No HTTP integration, SQL adapter, persistence/fencing, cross-tenant database, real worker process, external email/provider, or production target behavior was validated.",
+    "Four reviewed paths retain their initial inventory hashes, but the later evidence artifact itself is outside the original 386-path denominator and must enter refreshed candidate-bound inventory.",
+    "All remaining original-inventory paths and every global candidate disposition are pending."
+  ],
+  "review_followup_recorded_at": "2026-09-23T06:37:10.947Z"
+}

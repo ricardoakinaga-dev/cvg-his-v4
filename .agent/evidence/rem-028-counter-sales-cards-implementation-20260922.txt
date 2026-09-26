@@ -1,0 +1,57 @@
+REM-028 — quinto seam local: CounterSalesCardList / CounterSalesCard
+Data: 2026-09-22
+Escopo: extração presentation-bound dos cards/lista de comandas da CounterSalesPage
+Superfície: `apps/spa/src/pages/sales/CounterSalesPage.vue`
+Decisão: PASS_WITH_CONDITIONS; validação browser/visual segue aberta
+
+## Mudança
+
+`CounterSalesCardList.vue` recebeu o container de lista, loading, empty state e
+renderização dos cards. `CounterSalesCard.vue` recebeu o card operacional com
+status, valores, contexto do tutor, detalhes, links e ações; recebe um
+`CounterSalesCardModel` tipado e emite somente `select` com o id da comanda.
+
+`CounterSalesPage.vue` continua dono de `filteredSales`, filtros, seleção,
+`selectSale`, carregamento de detalhes, mapas de tutor/paciente, URLs e todas as
+mutações financeiras. O page apenas projeta cada `CounterSaleDetail` em labels,
+links e flags de apresentação. Os estilos e breakpoint existentes dos cards foram
+co-localizados nos componentes, sem novo token ou sistema de tema.
+
+Linhas observadas após a extração: page `3320`, card `260`, lista `45`, teste
+focal `58`.
+
+## Verificações executadas
+
+Runtime: Node v22.23.2, pnpm 10.33.0, worktree compartilhado dirty preservado.
+
+- teste focal de cards/lista + KPI + page: `3` arquivos, `15` testes, exit 0;
+- `pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit`: exit 0;
+- `pnpm --filter @cvg-his-v2/spa run lint`: exit 0, 0 erros e 32 avisos `any`
+  preexistentes fora dos módulos novos;
+- `pnpm --filter @cvg-his-v2/spa run build`: exit 0, Vite transformou 832 módulos e
+  gerou build/PWA;
+- `git diff --check`: exit 0.
+
+Hashes dos artefatos da extração no momento desta evidência:
+
+- `CounterSalesPage.vue`: `9c945199abfd3dab98e5340761bc79241625bdcbb6e9a478f11d7bcde855414f`;
+- `CounterSalesCard.vue`: `433e77ef1f3f3a169497856e377629ba5747e8b0c9811834325d481980feb4a9`;
+- `CounterSalesCardList.vue`: `a2177871e7e5188c709442a40be73181cb76b2c2d5a0cf848a8096694af9d5d7`;
+- `CounterSalesCardList.test.ts`: `aa16e1a611d1c6f68c1fbba87ddf169607163dd538805be84f2286f25017f5fc`.
+
+## Validação visual e limite
+
+Não houve nova tentativa de Playwright para este seam: o runtime visual local
+continua condicionado pela tentativa anterior bloqueada quando `/health` da API
+respondeu `unhealthy` após 30s. Nenhum snapshot foi atualizado.
+
+Esta verificação prova contrato presentation-bound, emissão de seleção, estados
+loading/empty, teste focal, types, lint, build e integração da page, mas não prova
+pixel diff, responsividade renderizada, foco real, dark/mobile, screen reader ou
+performance. O gate fica condicionado ao runtime E2E saudável e à reexecução
+visual/interativa antes de qualquer claim UX, a11y ou atualização de baseline.
+
+## Próxima ação
+
+Continuar pela separação do workbench de detalhes da comanda, mantendo a seleção,
+server state, catálogo, pagamentos e mutações no boundary da `CounterSalesPage`.

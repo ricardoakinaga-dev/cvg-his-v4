@@ -1,0 +1,39 @@
+REM-028 — implementação do composable candidate-bound de overview da agenda
+Data: 2026-09-22T05:52:00.000000Z
+Escopo: overview primário, caches/enriquecimento opcional, generation/stale-response, 403, unmount, filtros/query via getter e reconciliação da seleção
+Status: PASS_WITH_CONDITIONS
+
+## Implementação
+
+- `apps/spa/src/pages/appointments/useAppointmentsOverview.ts` concentra em 153 linhas o
+  server state candidate-bound (`overview`, `loading`, `services`, caches) e a geração de
+  request, com `loadOverview`/`invalidate` e enriquecimento opcional não bloqueante.
+- O composable recebe `getParams`, `canReadScheduling`, `isDisposed`, callbacks de erro,
+  403 e seleção, e loaders tipados de overview/services/owner/patient; não lê route/query,
+  sessão, router ou store global.
+- A resposta primária é publicada antes dos nomes/serviços; resposta antiga, cache antigo,
+  erro após unmount e falha de serviço opcional são descartados/fallback conforme o contrato.
+- `AppointmentsListPage.vue` mantém `agendaContext`, filtros e handlers, sessão/permission
+  source, `ApiError` fail-closed, action controller, router/openEncounter, drawer e
+  seleção; o wrapper page-bound decide quando carregar e invalida também as ações.
+- `AppointmentsOverview.test.ts` cobre publicação sem esperar enrichment, corrida old/current,
+  403, unmount e reconciliação do item selecionado; `AppointmentsListPage.test.ts` preserva
+  loading/error, filtros, permission, stale response e enriquecimento em integração.
+
+## Verificação executada
+
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/appointments/__tests__/AppointmentsOverview.test.ts src/pages/appointments/__tests__/AppointmentActionController.test.ts src/pages/appointments/__tests__/AppointmentsListPage.test.ts --config vitest.config.ts --no-file-parallelism` — 3 arquivos, 48 testes, PASS.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit` — PASS.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa run lint` — 0 erros, 32 warnings `no-explicit-any` preexistentes.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa run build` — Vite/PWA PASS, 859 módulos transformados.
+- `git diff --check` — PASS.
+- Auditoria estática de `useAppointmentsOverview.ts` para router/store — PASS.
+- Hashes observados: composable `206344537a344942afa20ea40c1554cdd6fbdf8b7c150a8bb651d16d94ec98a8`; teste `522ffaf44fed54b7104dce27a552cbad663fdc38ec8a3a179a70ae3cf4c39951`; page `67ce7dc039139d135b5bf475fc567e2df93988fe5cc55cebc0a6dd8336266f08`.
+
+## Limitações e próximo seam
+
+`curl http://127.0.0.1:3111/health` não conectou (`health_http=000`); browser/visual/a11y,
+foco real, dark/mobile, reduced-motion e snapshots permanecem não executados. A suíte SPA
+integral pós-seam, crítica E7 e owners continuam abertos. Nenhum target, UAT, release, push
+ou deploy foi executado. O próximo seam local é preparar o create flow da agenda, mantendo
+modal, seleção de cliente, preset de slot e mutation ownership page-bound.

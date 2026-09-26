@@ -1,0 +1,26 @@
+REM-028 — implementação candidate-bound do create flow da agenda
+Data: 2026-09-22T06:06:00.000000Z
+Escopo: seleção de cliente, preset de slot, quick-create, forwarding de created/close e integração page-bound
+Status: PASS_WITH_CONDITIONS
+
+## Implementação
+
+- `AppointmentCreateFlow.vue` concentra o workflow local de seleção do cliente e abertura do quick-create em 115 linhas, com props `open`, `slotPreset` e `professionals`, emits tipados `close`/`created` e preset de 30 minutos.
+- O wrapper não importa services, API, router ou store; a mutation, lookups, disponibilidade e recommendation continuam no `AppointmentQuickCreateForm`.
+- `AppointmentsListPage.vue` permanece owner de abrir/fechar o fluxo, `pendingSlotPreset`, overview/professionals, `loadOverview`, reconciliação de `selectedAppointment`, URL/query, permissões, actions e navegação.
+- `AppointmentCreateFlow.test.ts` cobre transição selector → quick-create preservando horário/profissional, forwarding de criação e cancelamento/close.
+
+## Verificação executada
+
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/appointments/__tests__/AppointmentCreateFlow.test.ts src/pages/appointments/__tests__/AppointmentsOverview.test.ts src/pages/appointments/__tests__/AppointmentActionController.test.ts src/pages/appointments/__tests__/AppointmentsListPage.test.ts src/components/appointments/__tests__/AppointmentClientSelectorModal.test.ts --config vitest.config.ts --no-file-parallelism` — 5 arquivos, 54 testes, PASS.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit` — PASS.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa run lint` — 0 erros, 32 warnings `no-explicit-any` preexistentes.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa run build` — Vite/PWA PASS, 861 módulos transformados.
+- `git diff --check` — PASS.
+- Auditoria estática de `AppointmentCreateFlow.vue` para services/API/router/store — PASS.
+- `curl -sS --max-time 2 http://127.0.0.1:3111/health` — `health_http=000`; browser/visual/a11y não promovido e snapshots não alterados.
+- Hashes observados: wrapper `a64ae8e2c39b44d0533cf0390656fcb3103c07b6577da59e5afb2f1ef6b5e261`; teste `31e0e42dd591e85f3fe8a8b08c8a2fc7648f6dc3f03b85ee0d141eccc506ae4e`; page `7d4fe6fb24afa0642011aedc9be950b7fdd49982fa2255d1a3edccd2485940c8`.
+
+## Limitações e próxima ação
+
+O gate prova a implementação local reversível e a regressão proporcional, não a UX visual real, a11y de browser, foco, dark/mobile, reduced-motion, E7, revisão de owners, suíte SPA integral, UAT, target, release ou autoridade humana. A API local permaneceu indisponível e nenhum snapshot foi atualizado. A próxima ação única é revisar o agregado local dos seams de appointments antes de selecionar a próxima tarefa do programa.

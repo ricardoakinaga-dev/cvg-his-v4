@@ -5,9 +5,10 @@ import {
   resolveTenantFromRequest
 } from '../../../packages/tenant-context/src/middleware.js';
 
-function createRequest(headers: Record<string, string | undefined>) {
+function createRequest(headers: Record<string, string | undefined>, correlationId?: string) {
   return {
-    headers
+    headers,
+    correlationId
   } as never;
 }
 
@@ -20,7 +21,7 @@ describe('tenant-context middleware', () => {
         'x-account-id': 'acc-123',
         'x-branch-id': 'branch-7',
         'x-user-id': 'usr-9'
-      }),
+      }, 'api_abc123_0123456789abcdef01'),
       { allowHeaderIdentity: true }
     );
 
@@ -29,7 +30,7 @@ describe('tenant-context middleware', () => {
       accountId: 'acc-123',
       branchId: 'branch-7',
       userId: 'usr-9',
-      correlationId: 'corr-123'
+      correlationId: 'api_abc123_0123456789abcdef01'
     });
   });
 
@@ -70,6 +71,19 @@ describe('tenant-context middleware', () => {
       userId: 'usr-default',
       correlationId: 'unknown'
     });
+  });
+
+  it('does not trust caller correlation headers when no canonical request ID exists', () => {
+    const context = resolveTenantFromRequest(
+      createRequest({
+        'x-correlation-id': 'patient@example.com',
+        'x-tenant-id': 'tenant-123',
+        'x-account-id': 'acc-123'
+      }),
+      { allowHeaderIdentity: true }
+    );
+
+    expect(context.correlationId).toBe('unknown');
   });
 
   it('throws explicit errors when tenant or account cannot be resolved', () => {
@@ -130,12 +144,12 @@ describe('tenant-context middleware', () => {
         'x-correlation-id': 'corr-fallback',
         'x-tenant-id': 'tenant-fallback',
         'x-account-id': 'acc-fallback'
-      }),
+      }, 'api_abc123_0123456789abcdef02'),
       { allowHeaderIdentity: true }
     );
 
     expect(context.tenantId).toBe('tenant-fallback');
     expect(context.accountId).toBe('acc-fallback');
-    expect(context.correlationId).toBe('corr-fallback');
+    expect(context.correlationId).toBe('api_abc123_0123456789abcdef02');
   });
 });

@@ -1,0 +1,27 @@
+REM-029 — VERIFY DA FATIA DE PERSISTÊNCIA
+Observado em: 2026-09-22T08:29:32Z
+HEAD observado: ad2f0373f68635f2579253b013a4382219906921
+Ambiente: Linux local; Node v22.23.2/pnpm 10.33.0 para as suítes; agente primário único em modo Direct; worktree compartilhado dirty preservado
+
+RECONCILIAÇÃO EXECUTADA
+- Import/export runtime do build confirmou `DatabaseReportRepository`, `ReportsService` e catálogo públicos como funções.
+- Auditoria de boundary confirmou que `report-database-repository.ts` não importa `ReportsService`, renderer, router, store, API ou worker; `index.ts` não importa mais `shared-database` nem `tenant-context`.
+- Medição confirmou `packages/modules/reports/src/index.ts` com 1.750 linhas e o manifesto `docs/engineering/complexity-hotspots.json` com `current_lines: 1750`.
+- JSON dos gates/estado/backlog e JSONL de verificação/execution-log passaram parse; `state.active_action_id`, `backlog.REM-029.next_action.id` e marker do plano estão alinhados.
+- Hashes permaneceram estáveis:
+  - gate implementation: `f434fdeddccc374360e1d96a601c4b3f576de0205b214ebd8c84ba0fde53eac6`
+  - evidence implementation: `b895ef076af62a45fea049cea23fc08edb868bfc4373afdcfdef0ef95360d892`
+  - gate preparation: `7de152b811640aae6013ceb4eb03a88c87622191d0541098bfeef9c86e9f8052`
+  - evidence preparation: `72db2046eb0b66d8a46cff9bc200adfb233dc728573fb4fd96bc484fa5d299d5`
+- `git diff --check` passou.
+
+EVIDÊNCIA REUTILIZADA E VEREDITO
+- Reports: 5 arquivos/40 testes, typecheck, build e lint passaram.
+- Worker: runner 65/65, fontes 2/2, scheduled-report-job 11/11 e demais suítes declaradas passaram; typecheck/lint passaram.
+- Processo: `worker-run-once-reports` passou 28/28 em PostgreSQL efêmero explícito, com criação, migrations/seed/integridade e teardown do banco.
+- `pnpm complexity:check` permanece fora de PASS integral somente por quatro divergências SPA: `AppointmentsListPage.vue`, `PatientDetailPage.vue`, `ReportWorkbenchPage.vue` e `CounterSalesPage.vue`.
+- O resultado da fatia é `PASS_WITH_CONDITIONS`: a implementação local e a integração processual estão verdes; E7, owners REPORTS/RUNTIME, CI/OCI, target, UAT, visual/a11y, release e go/no-go seguem abertos.
+
+LIMITES E PRÓXIMA AÇÃO
+- Esta verificação não simula crítica independente nem promove condições externas/humanas a aceite.
+- Próxima ação única: `REM-029:AGGREGATE-VERIFY`, para reconciliar sources, rendering e persistence em um gate agregado antes de decidir se o cartão fica DONE apenas no escopo local ou reabre uma fatia.

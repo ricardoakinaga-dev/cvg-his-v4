@@ -1,0 +1,124 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-028-COUNTER-SALES-CARDS-20260922",
+  "timestamp": "2026-09-22T03:19:00.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "quinto seam presentation-bound dos cards/lista de comandas da CounterSalesPage, com loading/empty/selection; sem aceite visual",
+  "scope_ref": "REM-028",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-013",
+      "description": "CounterSalesCard e CounterSalesCardList possuem contratos tipados, o filho emite apenas seleção e a CounterSalesPage mantém filtros, server state, URL e mutações financeiras.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-CARDS-20260922",
+        ".agent/evidence/rem-028-counter-sales-cards-implementation-20260922.txt",
+        "apps/spa/src/pages/sales/CounterSalesCard.vue",
+        "apps/spa/src/pages/sales/CounterSalesCardList.vue",
+        "apps/spa/src/pages/sales/CounterSalesPage.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A preservação visual necessita execução E2E atual; fonte e component test não substituem observação renderizada."
+    },
+    {
+      "id": "V-014",
+      "description": "Cards/lista, KPI e CounterSalesPage passaram testes focais, vue-tsc, lint semântico, build Vite/PWA e diff check.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-CARDS-20260922",
+        ".agent/evidence/rem-028-counter-sales-cards-implementation-20260922.txt",
+        "apps/spa/src/pages/sales/__tests__/CounterSalesCardList.test.ts",
+        "apps/spa/src/pages/sales/__tests__/CounterSalesKpiSummary.test.ts",
+        "apps/spa/src/pages/sales/__tests__/CounterSalesPage.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A suíte SPA integral não foi repetida após este seam; a regressão proporcional passou e a prova visual continua separada."
+    },
+    {
+      "id": "V-015",
+      "description": "A fronteira visual dos cards/lista foi preservada com os valores e breakpoint existentes, sem atualização de snapshots.",
+      "required": true,
+      "status": "CONDITION",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-CARDS-20260922",
+        ".agent/evidence/rem-028-counter-sales-cards-implementation-20260922.txt",
+        "playwright-spa.config.ts",
+        "e2e/spa/visual/visual-regression.spec.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "O runtime visual local continua sem API saudável; pixel diff, foco real e dark/mobile não foram observados."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-028-counter-sales-cards-implementation-20260922.txt",
+    ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-CARDS-20260922",
+    "apps/spa/src/pages/sales/CounterSalesCard.vue",
+    "apps/spa/src/pages/sales/CounterSalesCardList.vue",
+    "apps/spa/src/pages/sales/CounterSalesPage.vue",
+    "apps/spa/src/pages/sales/__tests__/CounterSalesCardList.test.ts",
+    "apps/spa/src/pages/sales/__tests__/CounterSalesKpiSummary.test.ts",
+    "apps/spa/src/pages/sales/__tests__/CounterSalesPage.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Browser/visual atual não executado por API local unhealthy.",
+    "Workbench de detalhes, catálogo, pagamentos, reports, agenda, dashboard e layout ainda estão abertos.",
+    "Nenhuma crítica adversarial independente E7 ou aprovação de owner foi obtida."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-028-COUNTER-SALES-CARDS-BROWSER",
+      "description": "Reexecutar a superfície de vendas em browser com cards, seleção, links, loading/empty/error, mobile/dark e foco quando o runtime E2E estiver saudável, sem atualizar snapshots automaticamente.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a continuidade local de implementação; bloqueia claim visual/a11y e fechamento integral de REM-028.",
+      "owner": "frontend/design",
+      "due_or_trigger": "Antes do VERIFIED integral de REM-028 ou de atualizar baseline visual.",
+      "verification_method": "Executar Playwright focal, inspeção de foco/teclado e diff atual com artefatos vinculados.",
+      "due_at": "2026-09-23T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-counter-sales-cards-implementation-20260922.txt",
+        "playwright-spa.config.ts"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-028-REMAINING-SURFACES-5",
+      "description": "Este é o quinto seam; workbench, catálogo, pagamentos e as demais superfícies REM-028 permanecem pendentes.",
+      "non_blocking": true,
+      "impact": "Impede marcar REM-028 como DONE; não invalida cards/lista localmente verificados.",
+      "owner": "lead",
+      "due_or_trigger": "Até concluir a matriz de superfícies e o gate integral.",
+      "verification_method": "Repetir evidence/gate por seam e consolidar regressão focal/full/browser antes do fechamento.",
+      "due_at": "2026-09-26T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "quinto seam reversível de apresentação de REM-028",
+    "decision": "A instrução autoriza implementação e verificação local; não autoriza aprovação visual humana, UAT, target, release ou atualização de snapshots como baseline aceita.",
+    "evidence_ref": ".agent/evidence/rem-028-counter-sales-cards-implementation-20260922.txt",
+    "expires_or_revalidates": "Revalidar quando o runtime E2E ficar saudável, o seam mudar ou a implementação cruzar workflow financeiro."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-028:IMPLEMENT-SALES-WORKBENCH",
+  "revalidation_triggers": [
+    "Mover seleção, filtros, server state, URL, links de domínio ou mutações para os cards/lista.",
+    "Alterar tokens, breakpoint, semântica loading/empty ou contrato emitido sem teste focal e browser atual.",
+    "Tentar atualizar snapshots enquanto a API/health E2E estiver unhealthy.",
+    "Promover o seam a aceite integral de REM-028 sem concluir as demais superfícies."
+  ],
+  "supersedes": null
+}

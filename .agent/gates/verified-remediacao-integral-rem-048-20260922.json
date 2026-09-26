@@ -1,0 +1,56 @@
+{
+  "gate_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-048-20260922",
+  "task": "REM-048",
+  "timestamp": "2026-09-22T10:52:57.000000Z",
+  "gate_type": "VERIFIED",
+  "decision": "PASS_WITH_CONDITIONS",
+  "criteria": [
+    {
+      "id": "V-REM048-001",
+      "criterion": "A fatia financeira/externa priorizada não usa any executável e mantém narrowing runtime explícito",
+      "status": "PASS",
+      "observed": "payment-gateway.ts sem any/as any/Record<string, any>; typecheck e payment-gateway 11/11 verdes"
+    },
+    {
+      "id": "V-REM048-002",
+      "criterion": "A resposta clínica integrada não usa z.any e mantém aceitação permissiva documentada por teste",
+      "status": "PASS",
+      "observed": "integration.ts usa z.unknown; contracts 3 files/48 tests verdes"
+    },
+    {
+      "id": "V-REM048-003",
+      "criterion": "Build/typecheck/lint e regressões API candidate-bound passam sem reduzir a régua",
+      "status": "PASS_WITH_CONDITIONS",
+      "observed": "API typecheck e prepared test exit 0; contracts typecheck/build; lint exit 0 com 17 warnings legados fora da fatia"
+    },
+    {
+      "id": "V-REM048-004",
+      "criterion": "Guards adjacentes continuam verdes",
+      "status": "PASS",
+      "observed": "skip policy 36 allowlisted; dependency policy 69 manifests; diff check"
+    },
+    {
+      "id": "V-REM048-005",
+      "criterion": "O gate não promove redução parcial a eliminação total da dívida nem infere aceite externo",
+      "status": "PASS_WITH_CONDITIONS",
+      "observed": "Limites e residual inventory registrados na evidência"
+    }
+  ],
+  "evidence": ".agent/evidence/rem-048-any-boundaries-20260922.txt",
+  "artifacts": [
+    "apps/api/src/payment-gateway.ts",
+    "apps/api/src/payment-gateway.test.ts",
+    "packages/contracts/src/integration.ts",
+    "packages/contracts/src/__tests__/integration.test.ts",
+    "packages/contracts/package.json",
+    "apps/api/package.json"
+  ],
+  "limitations": [
+    "Apenas a fatia payment-gateway/integration foi reduzida; o inventário residual de any/equivalentes permanece aberto.",
+    "Warnings históricos de lint permanecem em outras superfícies; não são promovidos a erro nem ocultados.",
+    "Sem provider/target real, CI/OCI, UAT, browser/a11y, release, go/no-go ou crítica independente fresca.",
+    "Drift dos contratos ou dos testes exige gate superseding."
+  ],
+  "next_action": "REM-048:REOPEN-IF-DRIFT",
+  "status": "DONE_LOCAL"
+}

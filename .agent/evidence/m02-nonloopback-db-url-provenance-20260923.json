@@ -1,0 +1,135 @@
+{
+  "title": "M-02 non-loopback database URL provenance audit",
+  "date": "2026-09-23",
+  "scope": "Current dirty readable text files and git diff context only. Excluded .env* files and .gauntlet/state.json. URL, host, username, password, email, CPF, and nearby person strings are suppressed.",
+  "method": "Scanned dirty readable text files for postgres/postgresql/redis URL-shaped strings; classified host syntax and userinfo/password presence in memory; compared tracked lines with zero-context git diff additions. No network, database, tests, or installs were run.",
+  "created_after_scan": true,
+  "candidate_approval": "not granted",
+  "summary": {
+    "nonloopback_occurrences": 9,
+    "host_class_counts": {
+      "unparsed": 9
+    },
+    "provenance_counts": {
+      "internal evidence": 2,
+      "reserved/test/template": 7
+    },
+    "userinfo_counts": {
+      "absent": 9
+    },
+    "password_class_counts": {
+      "absent": 9
+    },
+    "public_like_or_unparsed_count": 9,
+    "unknown_password_count": 0,
+    "all_db_url_occurrences_scanned": 65,
+    "loopback_occurrences": 56,
+    "distinct_nonloopback_host_patterns": 5,
+    "opaque_test_host_occurrences": 7,
+    "opaque_test_host_distinct_patterns": 4,
+    "empty_authority_internal_evidence_occurrences": 2
+  },
+  "conclusion": "The scan found seven opaque, nonloopback-looking URL occurrences in an existing test file and two hostless URL-shaped entries in internal evidence; all nine remain unparsed and unresolved. No occurrence was on a changed-added line, and the test fixtures contain no userinfo or password. Public-like or private/redacted use cannot be established from the suppressed tokens. Candidate approval is not granted.",
+  "occurrences": [
+    {
+      "path": ".agent/verification.jsonl",
+      "line": 96,
+      "scheme_class": "postgresql",
+      "provenance": "internal evidence",
+      "line_is_added": false,
+      "host_class": "unparsed",
+      "userinfo": "absent",
+      "password": "absent",
+      "password_class": "absent"
+    },
+    {
+      "path": ".agent/verification.jsonl",
+      "line": 96,
+      "scheme_class": "redis",
+      "provenance": "internal evidence",
+      "line_is_added": false,
+      "host_class": "unparsed",
+      "userinfo": "absent",
+      "password": "absent",
+      "password_class": "absent"
+    },
+    {
+      "path": "tests/unit/api/startup-secrets-runtime.test.ts",
+      "line": 136,
+      "scheme_class": "postgresql",
+      "provenance": "reserved/test/template",
+      "line_is_added": false,
+      "host_class": "unparsed",
+      "userinfo": "absent",
+      "password": "absent",
+      "password_class": "absent"
+    },
+    {
+      "path": "tests/unit/api/startup-secrets-runtime.test.ts",
+      "line": 169,
+      "scheme_class": "postgresql",
+      "provenance": "reserved/test/template",
+      "line_is_added": false,
+      "host_class": "unparsed",
+      "userinfo": "absent",
+      "password": "absent",
+      "password_class": "absent"
+    },
+    {
+      "path": "tests/unit/api/startup-secrets-runtime.test.ts",
+      "line": 189,
+      "scheme_class": "postgresql",
+      "provenance": "reserved/test/template",
+      "line_is_added": false,
+      "host_class": "unparsed",
+      "userinfo": "absent",
+      "password": "absent",
+      "password_class": "absent"
+    },
+    {
+      "path": "tests/unit/api/startup-secrets-runtime.test.ts",
+      "line": 190,
+      "scheme_class": "redis",
+      "provenance": "reserved/test/template",
+      "line_is_added": false,
+      "host_class": "unparsed",
+      "userinfo": "absent",
+      "password": "absent",
+      "password_class": "absent"
+    },
+    {
+      "path": "tests/unit/api/startup-secrets-runtime.test.ts",
+      "line": 221,
+      "scheme_class": "postgresql",
+      "provenance": "reserved/test/template",
+      "line_is_added": false,
+      "host_class": "unparsed",
+      "userinfo": "absent",
+      "password": "absent",
+      "password_class": "absent"
+    },
+    {
+      "path": "tests/unit/api/startup-secrets-runtime.test.ts",
+      "line": 253,
+      "scheme_class": "postgresql",
+      "provenance": "reserved/test/template",
+      "line_is_added": false,
+      "host_class": "unparsed",
+      "userinfo": "absent",
+      "password": "absent",
+      "password_class": "absent"
+    },
+    {
+      "path": "tests/unit/api/startup-secrets-runtime.test.ts",
+      "line": 341,
+      "scheme_class": "postgresql",
+      "provenance": "reserved/test/template",
+      "line_is_added": false,
+      "host_class": "unparsed",
+      "userinfo": "absent",
+      "password": "absent",
+      "password_class": "absent"
+    }
+  ],
+  "cross_audit_reconciliation": "The earlier sensitivity scan grouped seven nonlocal host occurrences as redacted-nonlocal and two as template/unparsed. This focused pass found seven test-file occurrences with opaque single-label host syntax (four distinct patterns) and two internal-evidence URL-shaped entries with empty authority. Because the actual tokens are suppressed and the test hosts cannot be lexically assigned to private/redacted versus public-like classes, this report conservatively labels all nine nonloopback occurrences unparsed. The difference is a classification limit, not evidence that the earlier hosts were validated."
+}

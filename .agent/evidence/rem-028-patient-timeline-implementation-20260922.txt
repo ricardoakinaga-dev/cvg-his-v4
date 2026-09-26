@@ -1,0 +1,61 @@
+REM-028 — primeira extração local: PatientTimeline360
+Data: 2026-09-22
+Escopo: implementação e verificação candidate-bound do primeiro seam de REM-028
+Superfície: `apps/spa/src/pages/patients/PatientDetailPage.vue`
+Decisão: PASS_WITH_CONDITIONS; browser visual ficou BLOCKED por API local unhealthy
+
+## Mudança
+
+`PatientTimeline360.vue` tornou-se um componente de apresentação sem service, store,
+route watcher ou mutação. Seu contrato público é `items: readonly
+PatientTimelineFeedItem[]`; o page continua dono da composição `combinedTimeline`,
+normalização dos eventos, links contextualizados, carregamento, geração, URL e
+workflows clínicos. A semântica pública foi preservada: section com aria-label,
+`DsCard`, lista, link `Abrir` e empty state textual.
+
+O CSS mínimo da fronteira foi co-localizado, mantendo layout desktop/mobile de 720px,
+estados light/dark e os valores visuais da timeline. Nenhum token global, rota,
+service, Pinia store, idempotency guard ou mutação clínica foi movido. O page passou
+de 4.075 para 4.051 linhas; o novo módulo tem 99 linhas e o teste focal 51 linhas.
+
+## Verificações executadas
+
+Runtime: Node v22.23.2, pnpm 10.33.0, worktree compartilhado dirty preservado.
+
+- teste focal do page + módulo: `2` arquivos, `12` testes, exit 0;
+- suíte completa da SPA: `218` arquivos, `1.893` testes, exit 0;
+- `pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit`: exit 0;
+- `pnpm --filter @cvg-his-v2/spa lint`: exit 0, 0 erros e 32 avisos `any` já
+  existentes em outros testes/`env.d.ts`;
+- `pnpm --filter @cvg-his-v2/spa build`: exit 0, Vite transformou 817 módulos e
+  gerou o build/PWA;
+- `git diff --check`: exit 0.
+
+O teste novo cobre evento com link/data e o empty state. A suíte existente do
+paciente continuou verde, incluindo carregamento parcial, acordeão/teclado,
+save/re-read, idempotência e corrida de rota.
+
+## Validação visual e limite
+
+Foi tentado o cenário atual de Playwright sem `--update-snapshots`:
+
+`pnpm exec playwright test e2e/spa/visual/visual-regression.spec.ts --config playwright-spa.config.ts --grep 'Detail Pages.*patient detail page'`
+
+O runtime iniciou API/SPA locais em 3111/3112, conectou ao PostgreSQL local mas
+ficou em modo in-memory com `API_DISABLE_INCOMPATIBLE_DB_REPOS`; o global setup
+terminou `BLOCKED` após 30s porque `/health` respondeu `unhealthy`. Nenhuma conta,
+fixture ou snapshot foi aceito como evidência; nenhum snapshot foi atualizado.
+Os avisos de secrets ausentes eram do ambiente local de teste e não foram
+convertidos em credenciais nem registrados no control plane.
+
+Consequentemente, esta verificação prova código, tipos, testes e build, mas não
+prova renderização atual, pixel diff, foco real, teclado em browser, dark/mobile ou
+performance. O gate VERIFIED permanece condicionado a um runtime E2E saudável e à
+reexecução visual/interativa sem alterar snapshots automaticamente.
+
+## Próxima ação
+
+Depois deste seam, a próxima extração local é a menor fronteira semântica do
+prontuário clínico (`ClinicalRecordHeaderContext`/navigator read-only), preservando
+`useUnsavedChanges`, geração, attachments, idempotência, read-only e tab keyboard.
+As superfícies financeira/reports continuam depois da prova desse padrão.

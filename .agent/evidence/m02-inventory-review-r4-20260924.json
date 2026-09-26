@@ -1,0 +1,60 @@
+{
+  "evidence_id": "M02-INVENTORY-REVIEW-R4-20260924",
+  "recorded_at_utc": "2026-09-24T07:13:05Z",
+  "scope": "Independent read-only audit of the r4 dirty-worktree inventory and its report binding.",
+  "reviewed_inventory": ".agent/evidence/m02-current-worktree-inventory-20260924-r4.json",
+  "reviewed_report": ".agent/evidence/m01-m50-disposition-20260924.md",
+  "result": "PASS",
+  "reviewed_hash_bindings": {
+    "inventory_size_bytes": 774314,
+    "inventory_sha256": "ed2aab4e3ee5a4f92333fa3dd374c398d2e9ed257af88f4d3e7f9f4afe6cd109",
+    "report_size_bytes": 40765,
+    "report_sha256": "fda76a6e7643962d8d60f7ea7ccf3918e1092933ca43d60e737f5cac1a8e160d",
+    "report_manifest_row_and_refresh_binding_match": true
+  },
+  "reconciliation": {
+    "previous_path_count": 537,
+    "current_path_count": 541,
+    "new_paths": 4,
+    "removed_paths": 0,
+    "exact_hash_matches": 513,
+    "changed_hashes": 4,
+    "prior_hash_unavailable_current_hash_withheld": 20,
+    "new_hashed_paths": 3,
+    "current_self_manifest_hash_withheld": true,
+    "overlay_dispositions": {
+      "EXCLUDE": 272,
+      "HOLD": 194,
+      "INCLUDE": 75
+    },
+    "full_status": {
+      "tracked_modified": 169,
+      "untracked": 372,
+      "staged": 0,
+      "deleted": 0,
+      "porcelain_bytes": 32033,
+      "porcelain_sha256": "29e7737326ed2ef3d8f7f73a9ee4daf8a89f0bc0e5e8a8c52e24233a3bdd2068"
+    }
+  },
+  "protected_state_handling": {
+    "protected_rows": 15,
+    "status_metadata_only": true,
+    "current_and_prior_hashes_absent_or_withheld": true,
+    "sizes_absent_or_withheld": true,
+    "protected_paths_printed_or_accessed": false
+  },
+  "ordinary_file_checks": {
+    "regular_file_hash_and_size_matches": 517,
+    "git_status_excluded_gauntlet_explicitly": true,
+    "remaining_status_entries_matched_manifest": 526,
+    "remaining_tracked_modified": 168,
+    "remaining_untracked": 354,
+    "remaining_staged_or_deleted": 0
+  },
+  "decision_boundary": "Inventory audit only. This does not approve a candidate, an overlay, or a release.",
+  "work_performed": {
+    "files_edited": false,
+    "tests_run": false,
+    "services_used": false
+  }
+}

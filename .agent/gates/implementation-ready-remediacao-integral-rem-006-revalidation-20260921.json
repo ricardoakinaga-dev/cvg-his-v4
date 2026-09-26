@@ -1,0 +1,21 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-REM-006-REVALIDATION-20260921",
+  "timestamp": "2026-09-21T20:39:05.000000+00:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "REM-006 aggregate coverage rerun after REM-004/REM-005 contract-test synchronization; local evidence only",
+  "scope_ref": "REM-006",
+  "version": 1,
+  "criteria":[
+    {"id":"IR-001","description":"O plano, a barra de coverage e o runtime oficial permanecem current para a reconciliação de REM-006.","required":true,"status":"PASS","evidence_refs":[".agent/plans/remediacao-integral-20260921.md",".agent/evidence/rem-006-branch-threshold-20260921.txt",".agent/evidence/rem-003-runtime-baseline-20260921.txt"],"confidence":"HIGH","limitations":"A evidência é local e não prova CI ou target."},
+    {"id":"IR-002","description":"O rerun atual mantém threshold/excludes congelados e a cobertura de branches está acima de 82%.","required":true,"status":"PASS","evidence_refs":[".agent/verification.jsonl#VER-REM-006-COVERAGE-RERUN-CURRENT-20260921",".agent/evidence/rem-006-007-current-rerun-20260921.txt","vitest.config.ts"],"confidence":"HIGH","limitations":"A dívida de crítica independente e fronteiras externas permanece separada."},
+    {"id":"IR-003","description":"O rerun composto e a resolução de REM-026 oferecem uma fronteira observável para o slice de coverage.","required":true,"status":"PASS","evidence_refs":[".agent/verification.jsonl#VER-REM-006-COMPOSITE-20260921",".agent/verification.jsonl#VER-REM-026-CANONICAL-20260921",".agent/evidence/rem-026-server-composition-20260921.txt"],"confidence":"HIGH","limitations":"Não é gate de release."}
+  ],
+  "evidence":[".agent/verification.jsonl#VER-REM-006-COVERAGE-RERUN-CURRENT-20260921",".agent/evidence/rem-006-007-current-rerun-20260921.txt",".agent/evidence/rem-026-server-composition-20260921.txt","vitest.config.ts"],
+  "confidence":"HIGH","gaps":[],
+  "conditions":[
+    {"id":"COND-REM-006-THRESHOLD","description":"O rerun usou o threshold global e a lista de excludes existentes sem redução ou exclusão nova; a obrigação permanece aberta para revalidação futura.","non_blocking":true,"impact":"A condição de threshold local foi observada; alteração futura exige nova verificação.","owner":"lead","due_or_trigger":"Quando threshold, excludes ou instrumentação mudarem","due_at":"2026-09-22T12:00:00.000000+00:00","verification_method":"Revisar config, comando e relatório current de coverage.","evidence_refs":[".agent/verification.jsonl#VER-REM-006-COVERAGE-RERUN-CURRENT-20260921",".agent/evidence/rem-006-007-current-rerun-20260921.txt","vitest.config.ts"],"status":"OPEN","residual_risk":"MEDIUM","authority_state":"NOT_REQUIRED"},
+    {"id":"COND-REM-006-RESIDUALS","description":"Complexity foi reconciliada localmente; crítica independente, CI, target, UAT e autoridade humana continuam obrigações separadas.","non_blocking":true,"impact":"O gate não pode ser interpretado como release readiness.","owner":"lead","due_or_trigger":"Antes do gate integrado REM-009 e da reauditoria final","due_at":"2026-09-22T12:00:00.000000+00:00","verification_method":"Reconciliar a crítica independente e as fronteiras externas em gates posteriores.","evidence_refs":[".agent/evidence/rem-026-server-composition-20260921.txt",".agent/plans/remediacao-integral-20260921.md"],"status":"OPEN","residual_risk":"MEDIUM","authority_state":"NOT_REQUIRED"}
+  ],
+  "authority":{"required":false,"state":"NOT_REQUIRED","actor":"local remediation executor","scope":"REM-006 aggregate coverage rerun after REM-004/REM-005 contract-test synchronization; local evidence only","decision":"A instrução autoriza reconciliação local reversível; nenhuma fronteira externa foi cruzada.","evidence_ref":".agent/plans/remediacao-integral-20260921.md","expires_or_revalidates":"Revalidar antes de CI, target, UAT, credentials, deployment ou release."},
+  "residual_risk":"MEDIUM","decision":"PASS_WITH_CONDITIONS","next_action":"REM-006:REOPEN","revalidation_triggers":["Mudança em threshold/excludes/instrumentação.","Rerun de coverage ou complexity regressar.","Escopo avançar para CI, target, UAT ou release."],"supersedes":"GATE-IR-REMEDIACAO-INTEGRAL-COVERAGE-VITEST-20260921"
+}

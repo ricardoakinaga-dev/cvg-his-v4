@@ -1,5 +1,9 @@
 <template>
-  <a href="#main-content" class="skip-link">Pular para o conteudo principal</a>
+  <a
+    href="#main-content"
+    class="skip-link"
+    :inert="isCompactSidebarOpen ? true : undefined"
+  >Pular para o conteudo principal</a>
 
   <div
     class="app-layout"
@@ -8,7 +12,11 @@
       'app-layout--dark': themeStore.theme === 'dark'
     }"
   >
-    <header class="topbar" aria-label="Cabeçalho do sistema">
+    <header
+      class="topbar"
+      aria-label="Cabeçalho do sistema"
+      :inert="isCompactSidebarOpen ? true : undefined"
+    >
       <div class="topbar__brand-pill">
         <span class="topbar__brand-logo">
           <img
@@ -109,10 +117,14 @@
     </header>
 
     <aside
+      ref="sidebarEl"
       class="sidebar"
       aria-label="Navegação lateral"
+      :role="isCompactSidebarOpen ? 'dialog' : undefined"
+      :aria-modal="isCompactSidebarOpen ? 'true' : undefined"
+      :tabindex="isCompactSidebarOpen ? '-1' : undefined"
       :aria-hidden="isCompactViewport && appStore.sidebarCollapsed ? 'true' : undefined"
-      :inert="isCompactViewport && appStore.sidebarCollapsed"
+      :inert="isCompactViewport && appStore.sidebarCollapsed ? true : undefined"
     >
       <div class="sidebar__search">
         <label class="sr-only" for="sidebar-module-search">Buscar módulo</label>
@@ -340,6 +352,8 @@
       class="sidebar__backdrop"
       type="button"
       aria-label="Fechar menu lateral"
+      :tabindex="isCompactSidebarOpen ? '-1' : undefined"
+      :aria-hidden="isCompactSidebarOpen ? 'true' : undefined"
       @click="toggleSidebar"
     />
 
@@ -352,6 +366,7 @@
       }"
       aria-label="Conteúdo principal"
       tabindex="-1"
+      :inert="isCompactSidebarOpen ? true : undefined"
     >
       <div class="workspace__utility-bar">
         <div v-if="route.meta.pageOwnsHeader !== true" class="workspace__context">
@@ -582,6 +597,7 @@ const selectedIndex = ref(0);
 const historyPosition = ref(readHistoryPosition());
 const maxHistoryPosition = ref(readHistoryPosition());
 const sidebarToggleEl = ref<HTMLButtonElement | null>(null);
+const sidebarEl = ref<HTMLElement | null>(null);
 const sidebarSearchInputEl = ref<HTMLInputElement | null>(null);
 const sidebarFocusReturnTarget = ref<HTMLElement | null>(null);
 const sidebarNavEl = ref<HTMLElement | null>(null);
@@ -597,6 +613,9 @@ const isSidebarNearBottom = ref(false);
 const compactViewportQuery = window.matchMedia?.('(max-width: 860px)');
 const reducedMotionQuery = window.matchMedia?.('(prefers-reduced-motion: reduce)');
 const isCompactViewport = ref(compactViewportQuery?.matches ?? false);
+const isCompactSidebarOpen = computed(
+  () => isCompactViewport.value && !appStore.sidebarCollapsed
+);
 
 function motionDuration(value: string, fallback: number) {
   const normalized = value.trim().toLowerCase();
@@ -1006,6 +1025,65 @@ function toggleSidebar() {
   });
 }
 
+function isInClosedDetailsContent(element: HTMLElement): boolean {
+  for (let parent = element.parentElement; parent; parent = parent.parentElement) {
+    if (parent.tagName !== 'DETAILS' || parent.hasAttribute('open')) continue;
+    const summary = [...parent.children].find((child) => child.tagName === 'SUMMARY');
+    if (!summary?.contains(element)) return true;
+  }
+  return false;
+}
+
+function isHiddenByLayout(element: HTMLElement, sidebar: HTMLElement): boolean {
+  for (let current: HTMLElement | null = element; current && current !== sidebar; current = current.parentElement) {
+    if (current.hidden || current.hasAttribute('inert') || current.getAttribute('aria-hidden') === 'true') {
+      return true;
+    }
+    const style = window.getComputedStyle(current);
+    if (style.display === 'none' || style.contentVisibility === 'hidden') return true;
+  }
+  return false;
+}
+
+function containCompactSidebarFocus(event: KeyboardEvent) {
+  if (!isCompactSidebarOpen.value || event.defaultPrevented) return;
+
+  const sidebar = sidebarEl.value;
+  if (!sidebar) return;
+
+  const target = event.target instanceof Element ? event.target : document.activeElement;
+  const activeDialog = target?.closest('[role="dialog"], [role="alertdialog"], dialog');
+  if (activeDialog && activeDialog !== sidebar) return;
+
+  const focusable = [...sidebar.querySelectorAll<HTMLElement>(
+    'button, a[href], input:not([type="hidden"]), select, textarea, summary, [tabindex], [contenteditable="true"]'
+  )].filter((element) => {
+    const style = window.getComputedStyle(element);
+    return element.tabIndex >= 0 &&
+      !element.matches(':disabled, [aria-disabled="true"]') &&
+      !isHiddenByLayout(element, sidebar) &&
+      !isInClosedDetailsContent(element) &&
+      style.visibility !== 'hidden' &&
+      style.visibility !== 'collapse';
+  });
+
+  const first = focusable[0];
+  const last = focusable.at(-1);
+  const active = document.activeElement;
+  if (!first || !last) {
+    event.preventDefault();
+    sidebar.focus({ preventScroll: true });
+  } else if (
+    !sidebar.contains(active) ||
+    active === sidebar ||
+    (event.shiftKey && active === first) ||
+    (!event.shiftKey && active === last)
+  ) {
+    event.preventDefault();
+    (event.shiftKey ? last : first).focus({ preventScroll: true });
+  }
+}
+
 function navigateTo(path: string) {
   closePalette();
   if (!canAccessNavigationPath(path, sessionPermissionCodes.value)) return;
@@ -1072,6 +1150,14 @@ function openSupportCenter() {
 }
 
 function onKeydown(event: KeyboardEvent) {
+  if (event.defaultPrevented) return;
+
+  const target = event.target instanceof Element ? event.target : document.activeElement;
+  const activeDialog = target?.closest('[role="dialog"], [role="alertdialog"], dialog');
+  if (isCompactSidebarOpen.value && activeDialog && activeDialog !== sidebarEl.value) return;
+
+  if (event.key === 'Tab') containCompactSidebarFocus(event);
+
   const isCommand = event.metaKey || event.ctrlKey;
 
   if (isCommand && event.key.toLowerCase() === 'k') {

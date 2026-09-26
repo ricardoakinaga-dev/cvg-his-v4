@@ -58,25 +58,11 @@
 
       <section class="clinical-record-layout" aria-label="Prontuário clínico estruturado">
         <div class="clinical-record-main">
-          <nav class="clinical-step-tabs" role="tablist" aria-label="Etapas do prontuário">
-            <button
-              v-for="step in clinicalSteps"
-              :key="step.key"
-              :id="clinicalStepTabId(step.key)"
-              type="button"
-              :class="{ 'clinical-step-tab--active': activeClinicalStep === step.key }"
-              role="tab"
-              :aria-selected="activeClinicalStep === step.key"
-              :aria-controls="activeClinicalStep === step.key ? clinicalStepPanelId(step.key) : undefined"
-              :tabindex="activeClinicalStep === step.key ? 0 : -1"
-              :data-testid="`clinical-step-${step.key}`"
-              @keydown="handleClinicalStepKey($event, step.key)"
-              @click="selectClinicalStep(step.key)"
-            >
-              <span aria-hidden="true">{{ step.number }}</span>
-              {{ step.label }}
-            </button>
-          </nav>
+          <ClinicalStepNavigator
+            :steps="clinicalSteps"
+            :active-key="activeClinicalStep"
+            @select="selectClinicalStep"
+          />
 
           <section class="clinical-section clinical-section--chief">
             <div class="section-heading">
@@ -105,338 +91,321 @@
             role="tabpanel"
             :aria-labelledby="clinicalStepTabId(activeClinicalStep)"
           >
-          <section
-            v-if="activeClinicalStep === 'anamnesis'"
-            class="clinical-section"
-            data-clinical-panel="anamnesis"
-          >
-            <div class="section-heading">
-              <div>
-                <span class="section-heading__eyebrow">2. Relato do tutor</span>
-                <h2>Anamnese</h2>
-              </div>
-              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('anamnesis')"
-                >Adicionar anamnese</DsButton
-              >
-            </div>
-            <article v-if="latestEntry('anamnesis')" class="clinical-entry">
-              <h3>{{ latestEntry('anamnesis')?.title }}</h3>
-              <p>{{ latestEntry('anamnesis')?.content }}</p>
-              <span>{{ formatDateTime(latestEntry('anamnesis')?.updatedAt ?? '') }}</span>
-            </article>
-            <p v-else class="empty-clinical-state">
-              Nenhuma anamnese registrada neste atendimento.
-            </p>
-          </section>
-
-          <section
-            v-if="activeClinicalStep === 'exam'"
-            class="clinical-section"
-            data-clinical-panel="exam"
-          >
-            <div class="section-heading">
-              <div>
-                <span class="section-heading__eyebrow">3. Achados objetivos</span>
-                <h2>Exame físico</h2>
-              </div>
-              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('physical_exam')"
-                >Registrar exame</DsButton
-              >
-            </div>
-            <article v-if="latestEntry('physical_exam')" class="clinical-entry">
-              <h3>{{ latestEntry('physical_exam')?.title }}</h3>
-              <p>{{ latestEntry('physical_exam')?.content }}</p>
-              <span>{{ formatDateTime(latestEntry('physical_exam')?.updatedAt ?? '') }}</span>
-            </article>
-            <p v-else class="empty-clinical-state">
-              Nenhum exame físico registrado neste atendimento.
-            </p>
-          </section>
-
-          <section v-if="activeClinicalStep === 'exam'" class="clinical-section">
-            <div class="section-heading">
-              <div>
-                <span class="section-heading__eyebrow">4. Sinais vitais</span>
-                <h2>Parâmetros vitais</h2>
-              </div>
-              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('physical_exam')"
-                >Registrar parâmetros</DsButton
-              >
-            </div>
-            <div v-if="hasVitalContext" class="vitals-grid">
-              <div v-for="item in vitalSigns" :key="item.label" class="vital-item">
-                <span>{{ item.label }}</span>
-                <strong>{{ item.value }}</strong>
-                <small v-if="item.hint">{{ item.hint }}</small>
-              </div>
-            </div>
-            <p v-else class="empty-clinical-state">
-              Parâmetros vitais ainda não registrados neste atendimento.
-            </p>
-          </section>
-
-          <section v-if="activeClinicalStep === 'assessment'" class="clinical-section">
-            <div class="section-heading">
-              <div>
-                <span class="section-heading__eyebrow">5. Apoio diagnóstico</span>
-                <h2>Exames solicitados / recomendados</h2>
-              </div>
-              <DsButton
-                variant="secondary"
-                size="sm"
-                :disabled="!canWriteClinicalRecord"
-                tag="a"
-                :to="clinicalWorkflowPath('/diagnostics')"
-              >
-                Abrir exames
-              </DsButton>
-            </div>
-            <div v-if="diagnosticEntries.length" class="clinical-list">
-              <article
-                v-for="entry in diagnosticEntries.slice(0, 4)"
-                :key="entry.id"
-                class="clinical-entry"
-              >
-                <h3>{{ entry.title }}</h3>
-                <p>{{ entry.content || entryTypeLabel(entry.entryType) }}</p>
-                <span>{{ formatDateTime(entry.updatedAt) }}</span>
-              </article>
-            </div>
-            <p v-else class="empty-clinical-state">
-              Nenhum exame solicitado ou recomendado neste atendimento.
-            </p>
-          </section>
-
-          <section
-            v-if="activeClinicalStep === 'assessment'"
-            class="clinical-section"
-            data-clinical-panel="assessment"
-          >
-            <div class="section-heading">
-              <div>
-                <span class="section-heading__eyebrow">6. Raciocínio clínico</span>
-                <h2>Suspeita diagnóstica / avaliação clínica</h2>
-              </div>
-              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('assessment')"
-                >Registrar avaliação</DsButton
-              >
-            </div>
-            <article v-if="latestEntry('assessment')" class="clinical-entry">
-              <h3>{{ latestEntry('assessment')?.title }}</h3>
-              <p>{{ latestEntry('assessment')?.content }}</p>
-              <span>{{ formatDateTime(latestEntry('assessment')?.updatedAt ?? '') }}</span>
-            </article>
-            <p v-else class="empty-clinical-state">
-              Nenhuma suspeita diagnóstica ou avaliação registrada.
-            </p>
-          </section>
-
-          <section
-            v-if="activeClinicalStep === 'plan'"
-            class="clinical-section"
-            data-clinical-panel="plan"
-          >
-            <div class="section-heading">
-              <div>
-                <span class="section-heading__eyebrow">7. Tratamento</span>
-                <h2>Terapêutica / plano de tratamento</h2>
-              </div>
-              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('plan')"
-                >Registrar plano</DsButton
-              >
-            </div>
-            <article v-if="latestEntry('plan')" class="clinical-entry">
-              <h3>{{ latestEntry('plan')?.title }}</h3>
-              <p>{{ latestEntry('plan')?.content }}</p>
-              <span>{{ formatDateTime(latestEntry('plan')?.updatedAt ?? '') }}</span>
-            </article>
-            <p v-else class="empty-clinical-state">
-              Nenhuma terapêutica ou plano de tratamento registrado.
-            </p>
-          </section>
-
-          <section v-if="activeClinicalStep === 'plan'" class="clinical-section">
-            <div class="section-heading">
-              <div>
-                <span class="section-heading__eyebrow">8. Medicações</span>
-                <h2>Prescrição / receituário</h2>
-              </div>
-              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('prescription')"
-                >Registrar prescrição</DsButton
-              >
-            </div>
-            <div v-if="prescriptionEntries.length" class="clinical-list">
-              <article
-                v-for="entry in prescriptionEntries.slice(0, 3)"
-                :key="entry.id"
-                class="clinical-entry"
-              >
-                <h3>{{ entry.title }}</h3>
-                <p>{{ entry.content }}</p>
-                <span>{{ formatDateTime(entry.updatedAt) }}</span>
-              </article>
-            </div>
-            <p v-else class="empty-clinical-state">
-              Nenhuma prescrição registrada para este atendimento.
-            </p>
-          </section>
-
-          <section v-if="activeClinicalStep === 'plan'" class="clinical-section">
-            <div class="section-heading">
-              <div>
-                <span class="section-heading__eyebrow">9. Continuidade do cuidado</span>
-                <h2>Conduta e próximos passos</h2>
-              </div>
-              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('conduct')"
-                >Registrar conduta</DsButton
-              >
-            </div>
-            <article v-if="latestEntry('conduct')" class="clinical-entry">
-              <h3>{{ latestEntry('conduct')?.title }}</h3>
-              <p>{{ latestEntry('conduct')?.content }}</p>
-              <span>{{ formatDateTime(latestEntry('conduct')?.updatedAt ?? '') }}</span>
-            </article>
-            <p v-else class="empty-clinical-state">
-              Nenhum retorno, orientação ao tutor ou próximo passo registrado.
-            </p>
-          </section>
-
-          <section v-if="activeClinicalStep === 'plan'" class="clinical-section">
-            <div class="section-heading">
-              <div>
-                <span class="section-heading__eyebrow">10. Complementos</span>
-                <h2>Observações</h2>
-              </div>
-              <DsButton variant="secondary" size="sm" :disabled="!canWriteClinicalRecord" @click="startEntry('progress_note')"
-                >Registrar observação</DsButton
-              >
-            </div>
-            <article v-if="latestEntry('progress_note')" class="clinical-entry">
-              <h3>{{ latestEntry('progress_note')?.title }}</h3>
-              <p>{{ latestEntry('progress_note')?.content }}</p>
-              <span>{{ formatDateTime(latestEntry('progress_note')?.updatedAt ?? '') }}</span>
-            </article>
-            <p v-else class="empty-clinical-state">Nenhuma observação complementar registrada.</p>
-          </section>
-
-          <section class="clinical-sheet" aria-label="Registrar informação clínica">
-            <div class="section-heading">
-              <div>
-                <span class="section-heading__eyebrow">Registro</span>
-                <h2>Adicionar informações ao prontuário</h2>
-              </div>
-              <div class="section-heading__actions">
+            <section
+              v-if="activeClinicalStep === 'anamnesis'"
+              class="clinical-section"
+              data-clinical-panel="anamnesis"
+            >
+              <div class="section-heading">
+                <div>
+                  <span class="section-heading__eyebrow">2. Relato do tutor</span>
+                  <h2>Anamnese</h2>
+                </div>
                 <DsButton
                   variant="secondary"
+                  size="sm"
                   :disabled="!canWriteClinicalRecord"
-                  @click="clearClinicalSheet"
+                  @click="startEntry('anamnesis')"
+                  >Adicionar anamnese</DsButton
                 >
-                  Limpar
-                </DsButton>
+              </div>
+              <article v-if="latestEntry('anamnesis')" class="clinical-entry">
+                <h3>{{ latestEntry('anamnesis')?.title }}</h3>
+                <p>{{ latestEntry('anamnesis')?.content }}</p>
+                <span>{{ formatDateTime(latestEntry('anamnesis')?.updatedAt ?? '') }}</span>
+              </article>
+              <p v-else class="empty-clinical-state">
+                Nenhuma anamnese registrada neste atendimento.
+              </p>
+            </section>
+
+            <section
+              v-if="activeClinicalStep === 'exam'"
+              class="clinical-section"
+              data-clinical-panel="exam"
+            >
+              <div class="section-heading">
+                <div>
+                  <span class="section-heading__eyebrow">3. Achados objetivos</span>
+                  <h2>Exame físico</h2>
+                </div>
                 <DsButton
-                  variant="primary"
-                  :loading="submittingClinicalSheet"
-                  :disabled="!canWriteClinicalRecord || !hasClinicalSheetContent || submittingClinicalSheet"
-                  @click="saveClinicalSheet"
+                  variant="secondary"
+                  size="sm"
+                  :disabled="!canWriteClinicalRecord"
+                  @click="startEntry('physical_exam')"
+                  >Registrar exame</DsButton
                 >
-                  Salvar ficha de atendimento
+              </div>
+              <article v-if="latestEntry('physical_exam')" class="clinical-entry">
+                <h3>{{ latestEntry('physical_exam')?.title }}</h3>
+                <p>{{ latestEntry('physical_exam')?.content }}</p>
+                <span>{{ formatDateTime(latestEntry('physical_exam')?.updatedAt ?? '') }}</span>
+              </article>
+              <p v-else class="empty-clinical-state">
+                Nenhum exame físico registrado neste atendimento.
+              </p>
+            </section>
+
+            <section v-if="activeClinicalStep === 'exam'" class="clinical-section">
+              <div class="section-heading">
+                <div>
+                  <span class="section-heading__eyebrow">4. Sinais vitais</span>
+                  <h2>Parâmetros vitais</h2>
+                </div>
+                <DsButton
+                  variant="secondary"
+                  size="sm"
+                  :disabled="!canWriteClinicalRecord"
+                  @click="startEntry('physical_exam')"
+                  >Registrar parâmetros</DsButton
+                >
+              </div>
+              <div v-if="hasVitalContext" class="vitals-grid">
+                <div v-for="item in vitalSigns" :key="item.label" class="vital-item">
+                  <span>{{ item.label }}</span>
+                  <strong>{{ item.value }}</strong>
+                  <small v-if="item.hint">{{ item.hint }}</small>
+                </div>
+              </div>
+              <p v-else class="empty-clinical-state">
+                Parâmetros vitais ainda não registrados neste atendimento.
+              </p>
+            </section>
+
+            <section v-if="activeClinicalStep === 'assessment'" class="clinical-section">
+              <div class="section-heading">
+                <div>
+                  <span class="section-heading__eyebrow">5. Apoio diagnóstico</span>
+                  <h2>Exames solicitados / recomendados</h2>
+                </div>
+                <DsButton
+                  variant="secondary"
+                  size="sm"
+                  :disabled="!canWriteClinicalRecord"
+                  tag="a"
+                  :to="clinicalWorkflowPath('/diagnostics')"
+                >
+                  Abrir exames
                 </DsButton>
               </div>
-            </div>
+              <div v-if="diagnosticEntries.length" class="clinical-list">
+                <article
+                  v-for="entry in diagnosticEntries.slice(0, 4)"
+                  :key="entry.id"
+                  class="clinical-entry"
+                >
+                  <h3>{{ entry.title }}</h3>
+                  <p>{{ entry.content || entryTypeLabel(entry.entryType) }}</p>
+                  <span>{{ formatDateTime(entry.updatedAt) }}</span>
+                </article>
+              </div>
+              <p v-else class="empty-clinical-state">
+                Nenhum exame solicitado ou recomendado neste atendimento.
+              </p>
+            </section>
 
-            <p
-              class="clinical-sheet__status"
-              :class="`clinical-sheet__status--${clinicalSheetStatus.tone}`"
-              data-testid="clinical-draft-state"
-              role="status"
-              aria-live="polite"
+            <section
+              v-if="activeClinicalStep === 'assessment'"
+              class="clinical-section"
+              data-clinical-panel="assessment"
             >
-              {{ clinicalSheetStatus.label }}
-            </p>
-
-            <div class="clinical-form-grid">
-              <label
-                v-for="section in visibleClinicalSheetSections"
-                :key="section.key"
-                class="clinical-field"
-              >
-                <span>{{ section.label }}</span>
-                <small>{{ section.hint }}</small>
-                <textarea
-                  v-model="clinicalSheet[section.key]"
-                  :placeholder="section.placeholder"
-                  :data-testid="`clinical-${section.key}`"
+              <div class="section-heading">
+                <div>
+                  <span class="section-heading__eyebrow">6. Raciocínio clínico</span>
+                  <h2>Suspeita diagnóstica / avaliação clínica</h2>
+                </div>
+                <DsButton
+                  variant="secondary"
+                  size="sm"
                   :disabled="!canWriteClinicalRecord"
-                  rows="5"
-                ></textarea>
-              </label>
-            </div>
-          </section>
+                  @click="startEntry('assessment')"
+                  >Registrar avaliação</DsButton
+                >
+              </div>
+              <article v-if="latestEntry('assessment')" class="clinical-entry">
+                <h3>{{ latestEntry('assessment')?.title }}</h3>
+                <p>{{ latestEntry('assessment')?.content }}</p>
+                <span>{{ formatDateTime(latestEntry('assessment')?.updatedAt ?? '') }}</span>
+              </article>
+              <p v-else class="empty-clinical-state">
+                Nenhuma suspeita diagnóstica ou avaliação registrada.
+              </p>
+            </section>
+
+            <section
+              v-if="activeClinicalStep === 'plan'"
+              class="clinical-section"
+              data-clinical-panel="plan"
+            >
+              <div class="section-heading">
+                <div>
+                  <span class="section-heading__eyebrow">7. Tratamento</span>
+                  <h2>Terapêutica / plano de tratamento</h2>
+                </div>
+                <DsButton
+                  variant="secondary"
+                  size="sm"
+                  :disabled="!canWriteClinicalRecord"
+                  @click="startEntry('plan')"
+                  >Registrar plano</DsButton
+                >
+              </div>
+              <article v-if="latestEntry('plan')" class="clinical-entry">
+                <h3>{{ latestEntry('plan')?.title }}</h3>
+                <p>{{ latestEntry('plan')?.content }}</p>
+                <span>{{ formatDateTime(latestEntry('plan')?.updatedAt ?? '') }}</span>
+              </article>
+              <p v-else class="empty-clinical-state">
+                Nenhuma terapêutica ou plano de tratamento registrado.
+              </p>
+            </section>
+
+            <section v-if="activeClinicalStep === 'plan'" class="clinical-section">
+              <div class="section-heading">
+                <div>
+                  <span class="section-heading__eyebrow">8. Medicações</span>
+                  <h2>Prescrição / receituário</h2>
+                </div>
+                <DsButton
+                  variant="secondary"
+                  size="sm"
+                  :disabled="!canWriteClinicalRecord"
+                  @click="startEntry('prescription')"
+                  >Registrar prescrição</DsButton
+                >
+              </div>
+              <div v-if="prescriptionEntries.length" class="clinical-list">
+                <article
+                  v-for="entry in prescriptionEntries.slice(0, 3)"
+                  :key="entry.id"
+                  class="clinical-entry"
+                >
+                  <h3>{{ entry.title }}</h3>
+                  <p>{{ entry.content }}</p>
+                  <span>{{ formatDateTime(entry.updatedAt) }}</span>
+                </article>
+              </div>
+              <p v-else class="empty-clinical-state">
+                Nenhuma prescrição registrada para este atendimento.
+              </p>
+            </section>
+
+            <section v-if="activeClinicalStep === 'plan'" class="clinical-section">
+              <div class="section-heading">
+                <div>
+                  <span class="section-heading__eyebrow">9. Continuidade do cuidado</span>
+                  <h2>Conduta e próximos passos</h2>
+                </div>
+                <DsButton
+                  variant="secondary"
+                  size="sm"
+                  :disabled="!canWriteClinicalRecord"
+                  @click="startEntry('conduct')"
+                  >Registrar conduta</DsButton
+                >
+              </div>
+              <article v-if="latestEntry('conduct')" class="clinical-entry">
+                <h3>{{ latestEntry('conduct')?.title }}</h3>
+                <p>{{ latestEntry('conduct')?.content }}</p>
+                <span>{{ formatDateTime(latestEntry('conduct')?.updatedAt ?? '') }}</span>
+              </article>
+              <p v-else class="empty-clinical-state">
+                Nenhum retorno, orientação ao tutor ou próximo passo registrado.
+              </p>
+            </section>
+
+            <section v-if="activeClinicalStep === 'plan'" class="clinical-section">
+              <div class="section-heading">
+                <div>
+                  <span class="section-heading__eyebrow">10. Complementos</span>
+                  <h2>Observações</h2>
+                </div>
+                <DsButton
+                  variant="secondary"
+                  size="sm"
+                  :disabled="!canWriteClinicalRecord"
+                  @click="startEntry('progress_note')"
+                  >Registrar observação</DsButton
+                >
+              </div>
+              <article v-if="latestEntry('progress_note')" class="clinical-entry">
+                <h3>{{ latestEntry('progress_note')?.title }}</h3>
+                <p>{{ latestEntry('progress_note')?.content }}</p>
+                <span>{{ formatDateTime(latestEntry('progress_note')?.updatedAt ?? '') }}</span>
+              </article>
+              <p v-else class="empty-clinical-state">Nenhuma observação complementar registrada.</p>
+            </section>
+
+            <section class="clinical-sheet" aria-label="Registrar informação clínica">
+              <div class="section-heading">
+                <div>
+                  <span class="section-heading__eyebrow">Registro</span>
+                  <h2>Adicionar informações ao prontuário</h2>
+                </div>
+                <div class="section-heading__actions">
+                  <DsButton
+                    variant="secondary"
+                    :disabled="!canWriteClinicalRecord"
+                    @click="clearClinicalSheet"
+                  >
+                    Limpar
+                  </DsButton>
+                  <DsButton
+                    variant="primary"
+                    :loading="submittingClinicalSheet"
+                    :disabled="
+                      !canWriteClinicalRecord || !hasClinicalSheetContent || submittingClinicalSheet
+                    "
+                    @click="saveClinicalSheet"
+                  >
+                    Salvar ficha de atendimento
+                  </DsButton>
+                </div>
+              </div>
+
+              <p
+                class="clinical-sheet__status"
+                :class="`clinical-sheet__status--${clinicalSheetStatus.tone}`"
+                data-testid="clinical-draft-state"
+                role="status"
+                aria-live="polite"
+              >
+                {{ clinicalSheetStatus.label }}
+              </p>
+
+              <div class="clinical-form-grid">
+                <label
+                  v-for="section in visibleClinicalSheetSections"
+                  :key="section.key"
+                  class="clinical-field"
+                >
+                  <span>{{ section.label }}</span>
+                  <small>{{ section.hint }}</small>
+                  <textarea
+                    v-model="clinicalSheet[section.key]"
+                    :placeholder="section.placeholder"
+                    :data-testid="`clinical-${section.key}`"
+                    :disabled="!canWriteClinicalRecord"
+                    rows="5"
+                  ></textarea>
+                </label>
+              </div>
+            </section>
           </div>
         </div>
 
-        <aside class="clinical-record-aside" aria-label="Resumo do paciente e tutor">
-          <section class="patient-summary-card">
-            <span class="patient-rail__avatar" aria-hidden="true">🐾</span>
-            <div>
-              <span class="patient-rail__eyebrow">Paciente</span>
-              <strong>{{ displayPatientName }}</strong>
-              <p>{{ patientClinicalSummary }}</p>
-            </div>
-          </section>
-
-          <section class="clinical-side-card">
-            <h2>Tutor</h2>
-            <dl class="detail-list">
-              <div>
-                <dt>Nome</dt>
-                <dd>{{ ownerName || 'Não informado' }}</dd>
-              </div>
-              <div>
-                <dt>Contato</dt>
-                <dd>{{ ownerPrimaryContact }}</dd>
-              </div>
-            </dl>
-            <div class="rail-actions">
-              <DsButton
-                v-if="owner"
-                size="sm"
-                variant="secondary"
-                tag="a"
-                :to="`/owners/${owner.id}`"
-              >
-                Ver tutor
-              </DsButton>
-              <DsButton
-                v-if="patient"
-                size="sm"
-                variant="secondary"
-                tag="a"
-                :to="`/patients/${patient.id}`"
-              >
-                Ver paciente
-              </DsButton>
-            </div>
-          </section>
-
-          <section class="clinical-side-card">
-            <h2>Resumo</h2>
-            <dl class="detail-list">
-              <div>
-                <dt>Status</dt>
-                <dd>{{ record.status === 'open' ? 'Aberto' : 'Concluído' }}</dd>
-              </div>
-              <div>
-                <dt>Entradas ativas</dt>
-                <dd>{{ activeEntries.length }}</dd>
-              </div>
-              <div>
-                <dt>Prescrições</dt>
-                <dd>{{ prescriptionEntries.length }}</dd>
-              </div>
-            </dl>
-          </section>
-        </aside>
+        <ClinicalRecordContextAside
+          :patient-name="displayPatientName"
+          :patient-summary="patientClinicalSummary"
+          :owner-name="ownerName"
+          :owner-primary-contact="ownerPrimaryContact"
+          :record-status-label="record.status === 'open' ? 'Aberto' : 'Concluído'"
+          :active-entry-count="activeEntries.length"
+          :prescription-count="prescriptionEntries.length"
+          :owner-href="owner ? `/owners/${owner.id}` : undefined"
+          :patient-href="patient ? `/patients/${patient.id}` : undefined"
+        />
       </section>
 
       <section class="secondary-record-area" aria-label="Blocos secundários do prontuário">
@@ -470,7 +439,12 @@
             <article class="vetus-card">
               <div class="vetus-card__header">
                 <h3>Anamneses</h3>
-                <DsButton size="sm" variant="secondary" :disabled="!canWriteClinicalRecord" @click="startEntry('anamnesis')">
+                <DsButton
+                  size="sm"
+                  variant="secondary"
+                  :disabled="!canWriteClinicalRecord"
+                  @click="startEntry('anamnesis')"
+                >
                   Incluir Nova Anamnese
                 </DsButton>
               </div>
@@ -594,7 +568,12 @@
             <article class="vetus-card">
               <div class="vetus-card__header">
                 <h3>Receituário</h3>
-                <DsButton size="sm" variant="secondary" :disabled="!canWriteClinicalRecord" @click="startEntry('prescription')">
+                <DsButton
+                  size="sm"
+                  variant="secondary"
+                  :disabled="!canWriteClinicalRecord"
+                  @click="startEntry('prescription')"
+                >
                   Incluir Nova Receita
                 </DsButton>
               </div>
@@ -628,7 +607,8 @@
               </div>
               <div class="weight-card">
                 <p class="muted">
-                  Histórico longitudinal de peso não está disponível neste prontuário; o valor abaixo representa apenas o cadastro atual.
+                  Histórico longitudinal de peso não está disponível neste prontuário; o valor
+                  abaixo representa apenas o cadastro atual.
                 </p>
                 <dl class="detail-list">
                   <div>
@@ -643,101 +623,15 @@
               </div>
             </article>
 
-            <article class="vetus-card" data-testid="clinical-attachments">
-              <div class="vetus-card__header">
-                <h3>Imagens e anexos</h3>
-                <DsButton
-                  size="sm"
-                  variant="secondary"
-                  tag="a"
-                  :to="clinicalWorkflowPath('/diagnostics')"
-                >
-                  Incluir Imagem
-                </DsButton>
-              </div>
-              <div
-                v-if="attachmentsLoading"
-                class="muted"
-                data-testid="clinical-attachments-loading"
-                role="status"
-                aria-live="polite"
-                aria-busy="true"
-              >
-                Carregando anexos do prontuário…
-              </div>
-              <div v-else>
-                <div
-                  v-if="attachmentsError"
-                  class="clinical-inline-error"
-                  data-testid="clinical-attachments-error"
-                  role="alert"
-                >
-                  {{ attachmentsError }}
-                </div>
-                <div
-                  v-if="attachments.length"
-                  class="record-list attachment-list"
-                  role="list"
-                  aria-label="Anexos vinculados ao prontuário"
-                >
-                  <div
-                    v-for="attachment in attachments"
-                    :key="attachment.id"
-                    class="record-list__item attachment-item"
-                    role="listitem"
-                    :data-testid="`clinical-attachment-${String(attachment.id)}`"
-                  >
-                    <div class="attachment-item__details">
-                      <strong>{{ attachment.fileName }}</strong>
-                      <p>Tipo: {{ attachment.mimeType }}</p>
-                      <p>Tamanho: {{ formatAttachmentSize(attachment.sizeBytes) }}</p>
-                      <span class="attachment-item__category">
-                        {{ attachmentCategoryLabel(attachment.category) }}
-                      </span>
-                    </div>
-                    <div class="attachment-item__actions">
-                      <DsButton
-                        v-if="attachment.scanStatus === 'available'"
-                        size="sm"
-                        variant="secondary"
-                        :loading="attachmentOpeningId === String(attachment.id)"
-                        :disabled="Boolean(attachmentOpeningId)"
-                        :aria-label="`Abrir ou baixar ${attachment.fileName}`"
-                        :data-testid="`clinical-attachment-open-${String(attachment.id)}`"
-                        @click="openAttachment(attachment)"
-                      >
-                        {{
-                          attachmentOpeningId === String(attachment.id)
-                            ? 'Preparando…'
-                            : 'Abrir / baixar'
-                        }}
-                      </DsButton>
-                      <span v-else class="attachment-item__availability" role="status">
-                        {{ attachmentAvailabilityLabel(attachment.scanStatus) }}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <p
-                  v-else-if="!attachmentsError"
-                  class="muted"
-                  data-testid="clinical-attachments-empty"
-                >
-                  Nenhum anexo vinculado a este prontuário ou atendimento.
-                </p>
-                <p v-else class="muted" data-testid="clinical-attachments-unconfirmed">
-                  A existência de anexos não pôde ser confirmada porque a leitura falhou.
-                </p>
-                <p
-                  v-if="attachmentActionError"
-                  class="clinical-inline-error"
-                  data-testid="clinical-attachment-action-error"
-                  role="alert"
-                >
-                  {{ attachmentActionError }}
-                </p>
-              </div>
-            </article>
+            <ClinicalAttachmentsPanel
+              :attachments="attachments"
+              :loading="attachmentsLoading"
+              :error="attachmentsError"
+              :action-error="attachmentActionError"
+              :opening-id="attachmentOpeningId"
+              :diagnostics-href="clinicalWorkflowPath('/diagnostics')"
+              @open="openAttachment"
+            />
 
             <article class="vetus-card">
               <div class="vetus-card__header">
@@ -807,7 +701,12 @@
             <article class="vetus-card">
               <div class="vetus-card__header">
                 <h3>Histórico Clinico</h3>
-                <DsButton size="sm" variant="secondary" :disabled="!canWriteClinicalRecord" @click="startEntry('progress_note')">
+                <DsButton
+                  size="sm"
+                  variant="secondary"
+                  :disabled="!canWriteClinicalRecord"
+                  @click="startEntry('progress_note')"
+                >
                   Nova Evolução
                 </DsButton>
               </div>
@@ -1067,12 +966,9 @@
 </template>
 
 <script setup lang="ts">
-import { computed, nextTick, onBeforeUnmount, reactive, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { attachmentService } from '@/services/attachments';
-import { apiRequest } from '@/services/api';
 import { billingService } from '@/services/billing';
-import { spaRuntimeConfig } from '@/config/runtime';
 import { diagnosticsService } from '@/services/diagnostics';
 import { encounterService } from '@/services/encounter';
 import { medicalRecordsService } from '@/services/medicalRecords';
@@ -1108,6 +1004,10 @@ import AppPageHeader, {
   type PageNextStep
 } from '@/components/AppPageHeader.vue';
 import AppDetailSection from '@/components/AppDetailSection.vue';
+import ClinicalStepNavigator, { type ClinicalStepNavigatorItem } from './ClinicalStepNavigator.vue';
+import ClinicalRecordContextAside from './ClinicalRecordContextAside.vue';
+import ClinicalAttachmentsPanel from './ClinicalAttachmentsPanel.vue';
+import { useClinicalRecordAttachments } from './useClinicalRecordAttachments';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
@@ -1136,11 +1036,6 @@ interface ClinicalAlert {
   message: string;
 }
 
-interface AttachmentDownloadUrlResponse {
-  readonly url?: unknown;
-  readonly expiresAt?: unknown;
-}
-
 const route = useRoute();
 const routeRecordId = computed(() => String(route.params.id ?? ''));
 const entityCache = useEntityCache();
@@ -1155,17 +1050,20 @@ const billingRecord = ref<BillingRecordSummary | null>(null);
 const billingItems = ref<BillingItemSummary[]>([]);
 const patientPrescriptions = ref<ClinicalEntrySummary[]>([]);
 const diagnosticEntries = ref<ClinicalEntrySummary[]>([]);
-const attachments = ref<AttachmentSummary[]>([]);
+const clinicalAttachments = useClinicalRecordAttachments();
+const {
+  attachments,
+  loading: attachmentsLoading,
+  error: attachmentsError,
+  actionError: attachmentActionError,
+  openingId: attachmentOpeningId
+} = clinicalAttachments;
 const contextWarnings = ref<string[]>([]);
 const resolvedEncounterId = ref('');
 const loading = ref(true);
 const timelineLoading = ref(false);
 const timelineError = ref('');
-const attachmentsLoading = ref(false);
 const error = ref('');
-const attachmentsError = ref('');
-const attachmentActionError = ref('');
-const attachmentOpeningId = ref<string | null>(null);
 const patientName = ref('');
 const ownerName = ref('');
 const successMessage = ref('');
@@ -1194,14 +1092,13 @@ const clinicalEntryArchiveAttempts = new Map<string, StableClinicalCreateAttempt
 let newEntryCreateAttempt: StableClinicalCreateAttempt | null = null;
 let active = true;
 let pageGeneration = 0;
-let attachmentsLoadSequence = 0;
 
 function isCurrentLoad(generation: number, id: string) {
   return active && generation === pageGeneration && routeRecordId.value === id;
 }
 
 function resetPageState() {
-  attachmentsLoadSequence += 1;
+  clinicalAttachments.reset();
   record.value = null;
   entries.value = [];
   timeline.value = [];
@@ -1214,14 +1111,9 @@ function resetPageState() {
   billingItems.value = [];
   patientPrescriptions.value = [];
   diagnosticEntries.value = [];
-  attachments.value = [];
   contextWarnings.value = [];
   resolvedEncounterId.value = '';
   error.value = '';
-  attachmentsError.value = '';
-  attachmentActionError.value = '';
-  attachmentsLoading.value = false;
-  attachmentOpeningId.value = null;
   patientName.value = '';
   ownerName.value = '';
   successMessage.value = '';
@@ -1247,7 +1139,7 @@ const entryForm = ref({
 
 type ClinicalStepKey = 'anamnesis' | 'exam' | 'assessment' | 'plan';
 const activeClinicalStep = ref<ClinicalStepKey>('anamnesis');
-const clinicalSteps: ReadonlyArray<{ key: ClinicalStepKey; number: number; label: string }> = [
+const clinicalSteps: ReadonlyArray<ClinicalStepNavigatorItem & { key: ClinicalStepKey }> = [
   { key: 'anamnesis', number: 1, label: 'Anamnese' },
   { key: 'exam', number: 2, label: 'Exame' },
   { key: 'assessment', number: 3, label: 'Avaliação' },
@@ -1262,32 +1154,9 @@ function clinicalStepPanelId(step: ClinicalStepKey): string {
   return `medical-record-step-panel-${step}`;
 }
 
-function selectClinicalStep(step: ClinicalStepKey): void {
-  activeClinicalStep.value = step;
-}
-
-function handleClinicalStepKey(event: KeyboardEvent, step: ClinicalStepKey): void {
-  const index = clinicalSteps.findIndex((item) => item.key === step);
-  if (
-    index < 0 ||
-    !['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)
-  ) {
-    return;
-  }
-  event.preventDefault();
-  const nextIndex =
-    event.key === 'Home'
-      ? 0
-      : event.key === 'End'
-        ? clinicalSteps.length - 1
-        : (index +
-            (event.key === 'ArrowRight' || event.key === 'ArrowDown' ? 1 : -1) +
-            clinicalSteps.length) %
-          clinicalSteps.length;
-  const nextStep = clinicalSteps[nextIndex]?.key;
-  if (!nextStep) return;
-  selectClinicalStep(nextStep);
-  void nextTick(() => document.getElementById(clinicalStepTabId(nextStep))?.focus());
+function selectClinicalStep(step: string): void {
+  if (!clinicalSteps.some((item) => item.key === step)) return;
+  activeClinicalStep.value = step as ClinicalStepKey;
 }
 
 const clinicalSheet = reactive<Record<ClinicalSheetKey, string>>({
@@ -1436,14 +1305,13 @@ const displayPatientName = computed(
   () => patientName.value || patient.value?.name || 'Paciente não identificado'
 );
 
-const canWriteClinicalRecord = computed(
-  () =>
-    Boolean(
-      record.value &&
-        encounter.value &&
-        record.value.status === 'open' &&
-        encounter.value.status !== 'closed'
-    )
+const canWriteClinicalRecord = computed(() =>
+  Boolean(
+    record.value &&
+    encounter.value &&
+    record.value.status === 'open' &&
+    encounter.value.status !== 'closed'
+  )
 );
 const clinicalReadOnlyMessage = computed(() =>
   record.value && encounter.value
@@ -1727,20 +1595,6 @@ const timelineEventTypeMap: Record<string, string> = {
   diagnostic_resulted: 'Resultado liberado'
 };
 
-const attachmentCategoryMap: Record<AttachmentSummary['category'], string> = {
-  image: 'Imagem',
-  lab: 'Laudo',
-  document: 'Documento',
-  prescription: 'Prescrição',
-  other: 'Outro'
-};
-
-const attachmentAvailabilityMap: Record<AttachmentSummary['scanStatus'], string> = {
-  quarantined: 'Aguardando verificação de segurança',
-  available: 'Disponível para abrir ou baixar',
-  rejected: 'Indisponível após rejeição de segurança'
-};
-
 function entryTypeLabel(type: ClinicalEntryType) {
   return entryTypeMap[type] || type;
 }
@@ -1878,10 +1732,7 @@ function isClinicalEntryConfirmed(
   }
   if (expected?.content !== undefined && currentEntry.content !== expected.content) return false;
   if (expected?.title !== undefined && currentEntry.title !== expected.title) return false;
-  if (
-    expected?.previousVersion !== undefined &&
-    currentEntry.version <= expected.previousVersion
-  ) {
+  if (expected?.previousVersion !== undefined && currentEntry.version <= expected.previousVersion) {
     return false;
   }
   if (expected?.requireArchived === true && !currentEntry.deletedAt) return false;
@@ -1892,96 +1743,10 @@ function isClinicalEntryConfirmed(
   return true;
 }
 
-function attachmentCategoryLabel(category: AttachmentSummary['category']) {
-  return attachmentCategoryMap[category] || category;
-}
-
-function attachmentAvailabilityLabel(scanStatus: AttachmentSummary['scanStatus']) {
-  return attachmentAvailabilityMap[scanStatus] || 'Anexo indisponível para abrir ou baixar';
-}
-
-function formatAttachmentSize(sizeBytes?: number) {
-  if (typeof sizeBytes !== 'number' || !Number.isFinite(sizeBytes) || sizeBytes < 0) {
-    return 'Tamanho não informado';
-  }
-
-  if (sizeBytes < 1024) return `${sizeBytes} B`;
-
-  const units = ['KB', 'MB', 'GB', 'TB'];
-  let value = sizeBytes / 1024;
-  let unitIndex = 0;
-  while (value >= 1024 && unitIndex < units.length - 1) {
-    value /= 1024;
-    unitIndex += 1;
-  }
-
-  return `${new Intl.NumberFormat('pt-BR', { maximumFractionDigits: 1 }).format(value)} ${units[unitIndex]}`;
-}
-
-function resolveAttachmentDownloadUrl(
-  attachmentId: string,
-  response: AttachmentDownloadUrlResponse
-) {
-  const rawUrl = response.url;
-  const rawExpiresAt = response.expiresAt;
-  const expectedPath = `/attachments/${encodeURIComponent(attachmentId)}/content`;
-
-  if (typeof rawUrl !== 'string' || !rawUrl.startsWith('/')) {
-    throw new Error('A API não confirmou uma URL válida para este anexo.');
-  }
-
-  let parsedUrl: URL;
-  try {
-    parsedUrl = new URL(rawUrl, 'https://cvg-his.invalid');
-  } catch {
-    throw new Error('A API não confirmou uma URL válida para este anexo.');
-  }
-
-  const expiresAt = typeof rawExpiresAt === 'string' ? Date.parse(rawExpiresAt) : Number.NaN;
-  if (
-    parsedUrl.origin !== 'https://cvg-his.invalid' ||
-    parsedUrl.pathname !== expectedPath ||
-    !parsedUrl.searchParams.get('token') ||
-    !Number.isFinite(expiresAt) ||
-    expiresAt <= Date.now()
-  ) {
-    throw new Error('A API não confirmou uma URL válida e vigente para este anexo.');
-  }
-
-  return `${spaRuntimeConfig.apiBaseUrl}/api${rawUrl}`;
-}
-
-async function openAttachment(attachment: AttachmentSummary) {
-  if (attachment.scanStatus !== 'available' || attachmentOpeningId.value) return;
-
-  const attachmentId = String(attachment.id);
-  const routeId = routeRecordId.value;
+function openAttachment(attachment: AttachmentSummary): void {
   const generation = pageGeneration;
-  attachmentOpeningId.value = attachmentId;
-  attachmentActionError.value = '';
-
-  try {
-    const response = await apiRequest<AttachmentDownloadUrlResponse>(
-      `/attachments/${encodeURIComponent(attachmentId)}/download-url`,
-      { method: 'POST' }
-    );
-    if (!isCurrentLoad(generation, routeId)) return;
-
-    const downloadUrl = resolveAttachmentDownloadUrl(attachmentId, response);
-    const openedWindow = window.open(downloadUrl, '_blank', 'noopener,noreferrer');
-    if (!openedWindow) {
-      throw new Error(
-        'O navegador bloqueou a abertura do anexo. Permita novas abas e tente novamente.'
-      );
-    }
-  } catch (err: unknown) {
-    if (isCurrentLoad(generation, routeId)) {
-      attachmentActionError.value =
-        err instanceof Error ? err.message : 'Não foi possível abrir ou baixar este anexo.';
-    }
-  } finally {
-    if (isCurrentLoad(generation, routeId)) attachmentOpeningId.value = null;
-  }
+  const routeId = routeRecordId.value;
+  void clinicalAttachments.open(attachment, () => isCurrentLoad(generation, routeId));
 }
 
 function sexLabel(sex: PatientSex) {
@@ -2157,65 +1922,12 @@ async function loadRecordByRouteId(id: string) {
   }
 }
 
-async function loadClinicalAttachments(
+function loadClinicalAttachments(
   currentRecord: MedicalRecordSummary,
   generation: number,
   routeId: string
 ) {
-  if (!isCurrentLoad(generation, routeId)) return;
-
-  const sequence = ++attachmentsLoadSequence;
-  attachmentsLoading.value = true;
-  attachmentsError.value = '';
-  attachmentActionError.value = '';
-
-  try {
-    const [recordResult, encounterResult] = await Promise.allSettled([
-      diagnosticsService.listAttachments(currentRecord.encounterId),
-      attachmentService.list('encounter', currentRecord.encounterId)
-    ]);
-    if (!isCurrentLoad(generation, routeId) || sequence !== attachmentsLoadSequence) return;
-
-    const byId = new Map<string, AttachmentSummary>();
-    let failedSources = 0;
-
-    const collect = (
-      result: PromiseSettledResult<AttachmentSummary[]>,
-      linkedEntityType: AttachmentSummary['linkedEntityType'],
-      linkedEntityId: string
-    ) => {
-      if (result.status === 'rejected') {
-        failedSources += 1;
-        return;
-      }
-
-      for (const attachment of result.value) {
-        if (
-          attachment.linkedEntityType !== linkedEntityType ||
-          attachment.linkedEntityId !== linkedEntityId
-        ) {
-          continue;
-        }
-        byId.set(String(attachment.id), attachment);
-      }
-    };
-
-    collect(recordResult, 'medical_record', currentRecord.id);
-    collect(encounterResult, 'encounter', currentRecord.encounterId);
-    attachments.value = Array.from(byId.values()).sort((a, b) =>
-      b.createdAt.localeCompare(a.createdAt)
-    );
-    attachmentsError.value =
-      failedSources === 0
-        ? ''
-        : attachments.value.length > 0
-          ? 'Alguns anexos não puderam ser carregados. Os itens exibidos foram confirmados pelo prontuário.'
-          : 'Não foi possível carregar os anexos deste prontuário ou atendimento.';
-  } finally {
-    if (isCurrentLoad(generation, routeId) && sequence === attachmentsLoadSequence) {
-      attachmentsLoading.value = false;
-    }
-  }
+  void clinicalAttachments.load(currentRecord, () => isCurrentLoad(generation, routeId));
 }
 
 async function loadClinicalContext(
@@ -2535,12 +2247,12 @@ async function handleArchiveEntry() {
     };
     const archivedEntry = requireClinicalEntryResponse(
       await medicalRecordsService.archiveEntry(currentArchiveTarget.id, payload, {
-      idempotencyKey: getStableMutationKey(
-        clinicalEntryArchiveAttempts,
-        currentArchiveTarget.id,
-        `archive-${currentArchiveTarget.id}`,
-        payload
-      )
+        idempotencyKey: getStableMutationKey(
+          clinicalEntryArchiveAttempts,
+          currentArchiveTarget.id,
+          `archive-${currentArchiveTarget.id}`,
+          payload
+        )
       }),
       'arquivar a entrada clínica'
     );
@@ -2673,62 +2385,13 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
-.clinical-step-tabs {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  border: 1px solid var(--color-border, #cbd5e1);
-  border-radius: 6px;
-  overflow: hidden;
-  background: var(--color-surface, #ffffff);
-}
-
-.clinical-step-tabs button {
-  min-height: 44px;
-  border: 0;
-  border-right: 1px solid var(--color-border, #cbd5e1);
-  background: transparent;
-  color: var(--color-text-secondary, #475569);
-  font: inherit;
-  font-weight: 700;
-  cursor: pointer;
-}
-
-.clinical-step-tabs button:last-child {
-  border-right: 0;
-}
-
-.clinical-step-tabs button span {
-  margin-right: 6px;
-  color: var(--color-text-muted, #64748b);
-}
-
-.clinical-step-tabs .clinical-step-tab--active {
-  background: #196647;
-  color: #ffffff;
-}
-
-.clinical-step-tabs .clinical-step-tab--active span {
-  color: #ffffff;
-}
-
-.clinical-record-aside {
-  display: grid;
-  gap: 14px;
-  position: sticky;
-  top: 84px;
-}
-
 .clinical-section,
-.patient-summary-card,
-.clinical-side-card,
 .secondary-disclosure,
 .record-cockpit {
   min-width: 0;
 }
 
 .clinical-section,
-.patient-summary-card,
-.clinical-side-card,
 .secondary-disclosure {
   border: 1px solid var(--color-border, #dbe3ef);
   border-radius: 8px;
@@ -2821,37 +2484,6 @@ onBeforeUnmount(() => {
   overflow-wrap: anywhere;
 }
 
-.patient-summary-card,
-.clinical-side-card {
-  display: grid;
-  gap: 10px;
-  padding: 14px;
-}
-
-.patient-summary-card {
-  grid-template-columns: auto minmax(0, 1fr);
-  align-items: center;
-}
-
-.patient-summary-card strong {
-  display: block;
-  color: var(--color-text, #0f172a);
-  font-size: 18px;
-}
-
-.patient-summary-card p {
-  margin: 4px 0 0;
-  color: var(--color-text-secondary, #475569);
-  font-size: 13px;
-  line-height: 1.4;
-}
-
-.clinical-side-card h2 {
-  margin: 0;
-  color: var(--color-text, #0f172a);
-  font-size: 16px;
-}
-
 .secondary-record-area {
   display: grid;
   gap: 12px;
@@ -2905,18 +2537,6 @@ onBeforeUnmount(() => {
   border-bottom: 1px solid var(--color-border, #e2e8f0);
 }
 
-.patient-rail__avatar {
-  display: grid;
-  width: 46px;
-  height: 46px;
-  place-items: center;
-  border-radius: 50%;
-  background: var(--color-primary-50, #eff6ff);
-  color: var(--color-primary-700, #1d4ed8);
-  font-size: 22px;
-}
-
-.patient-rail__eyebrow,
 .section-heading__eyebrow,
 .summary-card__label,
 .detail-list dt {
@@ -2956,12 +2576,6 @@ onBeforeUnmount(() => {
   padding: 10px;
   border-radius: 8px;
   background: var(--color-warning-50, #fffbeb);
-}
-
-.rail-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
 }
 
 .detail-list {
@@ -3345,17 +2959,12 @@ onBeforeUnmount(() => {
     grid-template-columns: 1fr;
   }
 
-  .patient-rail,
-  .clinical-record-aside {
+  .patient-rail {
     position: static;
   }
 }
 
 @media (max-width: 820px) {
-  .clinical-step-tabs {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
   .anamnesis-command,
   .section-heading {
     align-items: stretch;

@@ -1,0 +1,30 @@
+REM-029 — IMPLEMENTAÇÃO E VERIFICAÇÃO DO BOUNDARY DE RENDERIZAÇÃO DE REPORTS
+Observado em: 2026-09-22T07:45:08Z
+HEAD observado: ad2f0373f68635f2579253b013a4382219906921
+Ambiente: Linux local; Node v22.23.2; pnpm 10.33.0; PostgreSQL local descartável; agente primário único em modo Direct; worktree compartilhado dirty preservado
+
+IMPLEMENTAÇÃO
+- `packages/modules/reports/src/report-renderers.ts` recebeu `renderReportExport` e os helpers puros de CSV/JSON/XLSX/PDF/ZIP/CRC, com 263 linhas físicas.
+- `packages/modules/reports/src/report-renderers.test.ts` adiciona 2 testes focais para os quatro formatos, determinismo, BOM, formula-safe CSV, quoting, assinatura XLSX e PDF escaping/bounds.
+- `packages/modules/reports/src/index.ts` removeu 249 linhas de rendering, passou a delegar para o boundary e ficou com 2.381 linhas físicas; `ReportsService` reteve `stableReportId`, cache, filename, usuário, persistência, claims e fencing.
+- `docs/engineering/complexity-hotspots.json` foi reconciliado para o hotspot reports (`current_lines: 2381`), sem alterar as quatro medições SPA divergentes fora desta ação.
+- O renderer não importa database, tenant-context, repository, provider, router, store ou serviços globais; o único runtime import é `node:zlib` para o ZIP XLSX. Os contratos públicos permanecem exportados pelo `index.ts`.
+
+VERIFICAÇÕES SOB NODE 22.23.2
+1. `pnpm --filter @cvg-his-v2/module-reports test` — PASS, 4 arquivos/38 testes.
+2. `pnpm --filter @cvg-his-v2/module-reports build` — PASS.
+3. `pnpm --filter @cvg-his-v2/module-reports typecheck` — PASS.
+4. `pnpm --filter @cvg-his-v2/module-reports lint` — PASS.
+5. `pnpm --filter @cvg-his-v2/worker test` — PASS, incluindo runner 65/65, sources 2/2, scheduled-report-job 11/11 e demais suítes do pacote.
+6. `pnpm --filter @cvg-his-v2/worker typecheck` — PASS.
+7. Process test explícito em `cvg_his_v2_test_rem029_reports_rendering_20260922` — PASS, 1 arquivo/28 testes; migrations, seed, integridade e teardown passaram, cobrindo run-once, claims, tenant/account isolation, concorrência, retry, SIGKILL, delivery identity e fencing.
+8. `git diff --check` e auditoria estática do renderer — PASS.
+
+CONDIÇÕES
+- `pnpm complexity:check` continua com exit 1 somente por quatro medições SPA divergentes já existentes: AppointmentsListPage 3.082/2.379, PatientDetailPage 4.075/4.051, ReportWorkbenchPage 3.142/2.750 e CounterSalesPage 3.468/2.779. Reports (2.381) e worker runner (231) estão reconciliados.
+- Crítica E7 e revisão formal dos owners REPORTS/RUNTIME não foram executadas; a restrição de agente único foi mantida.
+- CI/OCI, target, provider real, UAT, browser visual/a11y, release e go/no-go humano não são inferidos.
+
+DECISÃO LOCAL
+- O renderer puro está implementado e verificado localmente como `PASS_WITH_CONDITIONS`.
+- A próxima fatia deve preparar a separação do adapter SQL/mapeadores do `DatabaseReportRepository`, sem mover claims/fencing ou alterar `ReportRepository`.

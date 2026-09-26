@@ -6,7 +6,7 @@ owner: Engenharia e Liderança técnica CVG-HIS
 review_cycle: on-candidate-change-or-material-evidence
 candidate_sha: a9ff1b1aeec393084cea2405eafc0c4bbe403437
 verdict: FAIL_BLOCKED
-superseded_by: docs/2026-09-20-auditoria-scorecard-db07cd02.md
+superseded_by: docs/2026-09-26-auditoria-completa-sistema.md
 ---
 
 # Reauditoria do candidato `a9ff1b1a` — 20/09/2026
@@ -226,9 +226,10 @@ não substitui os itens externos.
 
 As referências canônicas da rodada atual são [estado `.agent`](../.agent/state.json),
 [backlog operacional](../.agent/backlog.json), [ledger de verificação](../.agent/verification.jsonl),
-[evidência NR-013](../.agent/evidence/nr013-release-mutation-20260920.json),
-[gate local NR-013](../.agent/gates/nr013-local-blocked-20260920.json),
-[estado Gauntlet](../.gauntlet/state.json) e [histórico Gauntlet](../.gauntlet/history.jsonl).
+[evidência NR-013](../.agent/evidence/nr013-release-mutation-20260920.json) e
+[gate local NR-013](../.agent/gates/nr013-local-blocked-20260920.json). Os artefatos
+Gauntlet locais (`.gauntlet/state.json` e `.gauntlet/history.jsonl`) são opcionais e
+podem não estar presentes em um checkout limpo.
 O pacote e a sentinela são escopados à worktree corrente; não representam uma
 identidade candidate-bound até que fonte e controle sejam congelados. Ledgers
 históricos ainda retêm caminhos locais absolutos/`file://`; isso é uma limitação

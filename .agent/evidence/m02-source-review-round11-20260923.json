@@ -1,0 +1,127 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND11-20260923",
+  "recorded_at": "2026-09-23T07:49:56Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PARTIAL; six extracted appointment calendar/create/action paths reviewed; browser/accessibility, no-show domain semantics, runtime authorization/idempotency, remaining paths, fixture provenance, and independent critique remain open",
+  "paths_reviewed": [
+    {
+      "path": "apps/spa/src/pages/appointments/AgendaCalendarOrList.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "317316931b9707125bb1535bdf68d42e440bce584282ef32e35674bef395ad0c",
+      "current_sha256": "317316931b9707125bb1535bdf68d42e440bce584282ef32e35674bef395ad0c",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_KEYBOARD_AND_VISUAL_ACCESSIBILITY_HOLD",
+      "review_notes": "Presentational child reads typed props and emits appointment, date, view, slot and workflow intent; no service/API call or local domain state was found. Responsive/dark-theme CSS and native focus styles exist, but browser/viewport proof is absent.",
+      "candidate_overlay_decision": "HOLD_PENDING_GRID_ACCESSIBILITY_REVIEW_AND_COMPLETE_INVENTORY_CRITIQUE"
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/AppointmentCreateFlow.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "a64ae8e2c39b44d0533cf0390656fcb3103c07b6577da59e5afb2f1ef6b5e261",
+      "current_sha256": "a64ae8e2c39b44d0533cf0390656fcb3103c07b6577da59e5afb2f1ef6b5e261",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BACKEND_WORKFLOW_HOLD",
+      "review_notes": "The component owns only local selector/quick-create modal state, resets it when the controlled open prop changes, maps an optional slot preset, and emits close/created. Service persistence remains in the parent quick-create form and caller.",
+      "candidate_overlay_decision": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE"
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/appointmentActionController.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "4f61e1da3c7d23ba0e6869a6fb641e4be02a3208ee443c827967d9b5e23dee04",
+      "current_sha256": "4f61e1da3c7d23ba0e6869a6fb641e4be02a3208ee443c827967d9b5e23dee04",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_DOMAIN_AUTHORIZATION_AND_IDEMPOTENCY_HOLDS",
+      "review_notes": "Actions fail closed on the client for permission/status, serialize concurrent UI actions, clear stale local work by generation on invalidation, and refresh overview after successful mutations. The controller has no client request cancellation or idempotency key; server authorization/retry semantics were not established by its fake-service tests.",
+      "candidate_overlay_decision": "HOLD_PENDING_NO_SHOW_DOMAIN_CONTRACT_AND_BACKEND_AUTHORIZATION_REVIEW"
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/__tests__/AgendaCalendarOrList.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "027b6e3743e02439afa0a130abf1bee15293829b9e4b73687fbcfc4c447897425",
+      "current_sha256": "027b6e3743e02439afa0a130abf1bee15293829b9e4b73687fbcfc4c447897425",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_KEYBOARD_AND_FIXTURE_PROVENANCE_HOLDS",
+      "review_notes": "Three component tests cover list rendering, a slot event and a dense-slot view-change event using props and stubs. They do not assert actual keyboard navigation, focus order, screen-reader semantics, responsive layout or visual output.",
+      "candidate_overlay_decision": "HOLD_PENDING_GRID_ACCESSIBILITY_REVIEW_AND_FIXTURE_PROVENANCE"
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/__tests__/AppointmentCreateFlow.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "31e0e42dd591e85f3fe8a8b08c8a2fc7648f6dc3f03b85ee0d141eccc506ae4e",
+      "current_sha256": "31e0e42dd591e85f3fe8a8b08c8a2fc7648f6dc3f03b85ee0d141eccc506ae4e",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_FIXTURE_PROVENANCE_HOLD",
+      "review_notes": "Three tests stub modal, client selector and quick-create form; they cover slot preset propagation, event forwarding, and local state reset without service/network calls.",
+      "candidate_overlay_decision": "HOLD_PENDING_FIXTURE_PROVENANCE_AND_COMPLETE_INVENTORY_CRITIQUE"
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/__tests__/AppointmentActionController.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "40a9b145aec878c34070bb1cdf75f63154b63fcf32b4a5c83caa633918c0651e",
+      "current_sha256": "40a9b145aec878c34070bb1cdf75f63154b63fcf32b4a5c83caa633918c0651e",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_DOMAIN_AND_BACKEND_HOLDS",
+      "review_notes": "Five controller tests cover client permission/status eligibility, check-in contract, queue no-show versus appointment-cancel fallback, serialized actions/invalidation, and appointment cancellation using fake services.",
+      "candidate_overlay_decision": "HOLD_PENDING_NO_SHOW_DOMAIN_CONTRACT_AND_BACKEND_AUTHORIZATION_REVIEW"
+    }
+  ],
+  "source_diff_and_contracts": {
+    "parent_wiring": "AppointmentsListPage.vue supplies child props and handles emitted intents; source review round 10 covers parent ownership and overview loading.",
+    "action_service_contract": "checkInQueue sends appointment/patient/owner/reason/priority; queue no-show is selected only when operational.queueEntryId exists; otherwise markNoShow calls cancelAppointment with reason 'No-show registrado pela agenda'.",
+    "targeted_backend_semantics": "Targeted static inspection found /queue/:id/no-show requires scheduling.manage and records an audit action no_show, while /appointments/:id/cancel transitions appointment status to cancelled and records cancel_appointment. No dedicated appointment no-show endpoint was found in the inspected routes.",
+    "accessibility_contract": "AgendaCalendarOrList applies role=grid and labels the week/day containers, but the inspected component contains no role=row/role=gridcell and no keydown/arrow navigation handler. It has native buttons and visible focus styles, but the full interactive grid pattern is not demonstrated.",
+    "assessment": "The components preserve explicit parent ownership, but grid semantics and the no-show-versus-cancel domain behavior need confirmed product/QA decisions before candidate acceptance; neither is treated as an established runtime defect in this source-only round."
+  },
+  "test_execution": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config vitest.config.ts src/pages/appointments/__tests__/AgendaCalendarOrList.test.ts src/pages/appointments/__tests__/AppointmentCreateFlow.test.ts src/pages/appointments/__tests__/AppointmentActionController.test.ts",
+    "working_directory": "apps/spa",
+    "started_at_utc": "2026-09-23T07:49:21Z",
+    "finished_at_utc": "2026-09-23T07:49:22Z",
+    "test_files_passed": 3,
+    "tests_passed": 11,
+    "tests_failed": 0,
+    "environment": "Standalone SPA Vitest/JSDOM config. Component tests use Vue Test Utils stubs; action-controller services are in-memory fakes. No database global setup, provider, or live network call was observed."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-APPOINTMENT-NO-SHOW-SEMANTICS",
+      "classification": "HOLD_DOMAIN_CONTRACT",
+      "observation": "For an appointment without a queueEntryId, the UI action labeled no-show calls appointment cancellation. The inspected backend returns status cancelled and an audit action cancel_appointment; queue-backed no-show uses a separate endpoint and audit action no_show.",
+      "required_followup": "Product/QA must confirm that a cancelled appointment with this reason is the intended no-show record/reporting contract, or identify the required appointment no-show transition. This review does not infer intent."
+    },
+    {
+      "id": "M02-APPOINTMENT-GRID-KEYBOARD-SEMANTICS",
+      "classification": "HOLD_ACCESSIBILITY",
+      "observation": "The component marks week/day containers role=grid but does not expose rows/gridcells or implement grid arrow-key navigation in the inspected source. The component tests do not cover screen-reader or keyboard interaction.",
+      "required_followup": "Validate with keyboard and assistive technology and choose a complete grid interaction model or a semantic layout that does not promise unsupported grid behavior."
+    },
+    {
+      "id": "M02-APPOINTMENT-CLIENT-AUTHORIZATION",
+      "classification": "HOLD_RUNTIME_EVIDENCE",
+      "observation": "Client permission checks and action generation protect UI state, but mocked tests do not establish server authorization, tenant isolation, mutation idempotency, or behavior after a request is already sent.",
+      "required_followup": "Verify the API boundary under an approved disposable/no-connection test setup before claiming mutation authorization or retry safety."
+    }
+  ],
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "hold_reason": "The six paths are hash-stable and focused tests pass, but Product/QA must resolve no-show semantics, calendar grid accessibility remains unverified, backend authorization/retry semantics and fixture provenance remain open, other appointment paths and the full inventory are pending, and no independent critique has occurred."
+  },
+  "limitations": [
+    "The 11 tests run in JSDOM with component stubs and fake services; they do not prove browser keyboard/focus, screen-reader behavior, viewport/visual QA, API persistence, authorization, tenant isolation, or idempotency.",
+    "The current code maps no-show without a queue entry to cancellation; business acceptance of that mapping is unresolved, not presumed wrong or right.",
+    "The reviewed test fixtures include person/patient-shaped names that appear synthetic; their provenance was not confirmed, and no full privacy review was performed.",
+    "This round covers only the two extracted Vue components, the action controller and their three tests. It does not cover the other original-inventory paths or independently approve candidate inclusion."
+  ]
+}

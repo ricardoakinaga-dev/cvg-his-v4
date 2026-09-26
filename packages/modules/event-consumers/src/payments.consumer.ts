@@ -127,6 +127,14 @@ export class PaymentsEventHandlers {
   readonly #encounterFinancial: EncounterFinancialService;
   readonly #pixTransactions: PixTransactionRepository;
   readonly #cardTransactions: CardTransactionRepository;
+  /**
+   * Per-intent serialization for PIX confirmations. The settlement guard is a
+   * read-modify-write over the transaction record; without in-process
+   * serialization, concurrent duplicate deliveries of the same confirmation
+   * can both observe `pending_billing` and settle twice. Cross-instance
+   * duplicates remain serialized by the outbox lease claim.
+   */
+  readonly #pixConfirmChains = new Map<string, Promise<void>>();
 
   constructor(options: PaymentsConsumerOptions) {
     this.#billing = options.billing;
@@ -207,6 +215,28 @@ export class PaymentsEventHandlers {
 
   async #handlePixConfirmed(event: OutboxEvent): Promise<void> {
     const payload = event.payload as unknown as PixConfirmedPayload;
+    const chainKey = `pix-confirmed:${String(payload.intentId)}`;
+    const prior = this.#pixConfirmChains.get(chainKey);
+    let release!: () => void;
+    const current = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    this.#pixConfirmChains.set(chainKey, current);
+    if (prior) await prior;
+    try {
+      await this.#handlePixConfirmedSerialized(event, payload);
+    } finally {
+      release();
+      if (this.#pixConfirmChains.get(chainKey) === current) {
+        this.#pixConfirmChains.delete(chainKey);
+      }
+    }
+  }
+
+  async #handlePixConfirmedSerialized(
+    event: OutboxEvent,
+    payload: PixConfirmedPayload
+  ): Promise<void> {
     const completedAt = payload.completedAt ?? payload.confirmedAt ?? nowIso();
     const transaction = await this.#pixTransactions.findByTransactionId(payload.intentId);
 
@@ -252,6 +282,7 @@ export class PaymentsEventHandlers {
       }
     }
 
+    const wasBillingSettlementApplied = transaction.billingSettlementStatus === 'applied';
     const updatedTransaction = await this.#pixTransactions.updateStatus({
       transactionId: payload.intentId,
       status: 'completed',
@@ -260,7 +291,11 @@ export class PaymentsEventHandlers {
       providerConfirmationId: payload.providerConfirmationId ?? payload.providerTransactionId,
       completedAt,
       lastProviderSyncAt: completedAt,
-      billingSettlementStatus: payload.billingRecordId ? 'pending_billing' : 'not_applicable'
+      billingSettlementStatus: !payload.billingRecordId
+        ? 'not_applicable'
+        : wasBillingSettlementApplied
+          ? undefined
+          : 'pending_billing'
     });
     if (!updatedTransaction) {
       throw new Error(
@@ -282,13 +317,15 @@ export class PaymentsEventHandlers {
       return;
     }
 
-    if (effectiveTransaction.billingSettlementStatus === 'applied') {
-      await this.#pixTransactions.updateCashReconciliation({
-        transactionId: payload.intentId,
-        cashReconciliationStatus: 'skipped_no_open_register',
-        cashReconciledAt: completedAt,
-        updatedAt: completedAt
-      });
+    if (wasBillingSettlementApplied) {
+      if (transaction.cashReconciliationStatus !== 'applied') {
+        await this.#pixTransactions.updateCashReconciliation({
+          transactionId: payload.intentId,
+          cashReconciliationStatus: 'skipped_no_open_register',
+          cashReconciledAt: completedAt,
+          updatedAt: completedAt
+        });
+      }
       return;
     }
 

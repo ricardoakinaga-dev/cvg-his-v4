@@ -228,6 +228,10 @@ export const DEFAULT_OPERATIONAL_AUDIT_REQUIREMENTS: readonly OperationalAuditRe
 
 const UNSCOPED_AUDIT_PERSISTENCE_CONCURRENCY = 8;
 
+const AUDIT_HOT_CACHE_MAX_EVENTS = 50_000;
+// Trim in batches so the amortized cost of each write stays constant.
+const AUDIT_HOT_CACHE_TRIM_SLACK = 1_000;
+
 export class AuditService {
   #events: AuditEventSummary[] = [];
   readonly #auditRepository?: AuditRepository;
@@ -270,6 +274,7 @@ export class AuditService {
     // Append in constant amortized time; readers materialize newest-first
     // snapshots without moving the growing cache on every audited request.
     this.#events.push(event);
+    this.#trimHotCache();
 
     // Persist to database if repository is available
     if (this.#auditRepository) {
@@ -401,6 +406,20 @@ export class AuditService {
         (left, right) => new Date(right.occurredAt).getTime() - new Date(left.occurredAt).getTime()
       )
       .reverse();
+    this.#trimHotCache();
+  }
+
+  /**
+   * With a durable repository the in-process list is only a hot cache of the
+   * newest events; bound it so a long-running API does not grow without limit.
+   * Without a repository the list is the store itself and is never trimmed.
+   */
+  #trimHotCache(): void {
+    if (!this.#auditRepository) return;
+    const overflow = this.#events.length - AUDIT_HOT_CACHE_MAX_EVENTS;
+    if (overflow > AUDIT_HOT_CACHE_TRIM_SLACK) {
+      this.#events = this.#events.slice(overflow);
+    }
   }
 
   public async getOperationalCoverageReport(

@@ -1,0 +1,110 @@
+{
+  "evidence_id": "M21-TRIAGE-UPDATE-ROUTE-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T08:56:04Z",
+  "scope": "M-21/M-23 extraction of the PATCH /triage/:id handler coordinating triage, encounter, and queue state.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to this dirty worktree at the recorded HEAD; it is not candidate or release evidence."
+  },
+  "extraction": {
+    "source_path": "apps/api/src/server.ts",
+    "server_lines_before": 4137,
+    "server_lines_after": 4096,
+    "server_line_delta": -41,
+    "dispatch_placement": "The injected handler is called at the previous inline PATCH branch location, following triage read dispatch and the triage POST route.",
+    "path_behavior_preserved": [
+      "pathname.startsWith('/triage/')",
+      "PATCH method requirement",
+      "triage ID parsed from pathname.split('/')[2]"
+    ],
+    "call_order_preserved": [
+      "requirePrincipal(request, 'triage.manage')",
+      "requireNonEmptyString(triageId)",
+      "read and cast UpdateTriageRequest body",
+      "load prior account-scoped triage record",
+      "update triage record",
+      "append timeline event using prior and updated values",
+      "load encounter and conditionally transition/sync queue",
+      "await encounter persistence",
+      "append medium-risk update audit",
+      "HTTP 200 with updated record"
+    ],
+    "dependency_boundary": "Triage and encounter service methods, principal authorization, queue synchronizer, and audit callback are injected."
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/routes/triage-update-routes.ts",
+      "sha256": "fcc9e77f5ae5adbb228d545e39c7c86cdb15ecd2a805c6de781259f2923b4eef",
+      "physical_lines": 91
+    },
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "dcc71268a3233d48f380adb0c63476ecc5abe133f334c514383c211d997b2982",
+      "physical_lines": 4096
+    },
+    {
+      "path": "apps/api/src/server.test.ts",
+      "sha256": "8367deeaca3556ffe1dff6a6267513504b81b647c07d101a9f4addfab943ae9e",
+      "physical_lines": 6448
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "d4c0d8af80eeea26b77b78ee91eaec74c107cb9d52d992244ca72248783b943c",
+      "server_budget": {
+        "current_lines": 4096,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test pnpm exec tsx --test --test-reporter=spec --test-name-pattern='triage patch updates the record and transitions encounter status over HTTP semantics|triage HTTP collections and history remain isolated across authenticated accounts' apps/api/src/server.test.ts",
+      "result": "PASS, two selected in-process HTTP tests; update/encounter transition and cross-account isolation assertions passed locally and in independent I1.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsc -p apps/api/tsconfig.json --noEmit",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; server.ts=4,096, cap=8,323, previous maximum=8,335.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/routes/triage-update-routes.ts apps/api/src/server.ts docs/engineering/complexity-hotspots.json && git diff --check -- apps/api/src/routes/triage-update-routes.ts apps/api/src/server.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    }
+  ],
+  "independent_review": {
+    "result": "PASS",
+    "critic_id": "critic_m21_triage_update_i1",
+    "independence": "Fresh I1 context fork; read-only comparison with HEAD/index and two focused in-process HTTP tests.",
+    "reviewed_sha256": [
+      {
+        "path": "apps/api/src/routes/triage-update-routes.ts",
+        "sha256": "fcc9e77f5ae5adbb228d545e39c7c86cdb15ecd2a805c6de781259f2923b4eef"
+      },
+      {
+        "path": "apps/api/src/server.ts",
+        "sha256": "dcc71268a3233d48f380adb0c63476ecc5abe133f334c514383c211d997b2982"
+      },
+      {
+        "path": "docs/engineering/complexity-hotspots.json",
+        "sha256": "d4c0d8af80eeea26b77b78ee91eaec74c107cb9d52d992244ca72248783b943c"
+      }
+    ],
+    "findings": "No behavior delta found. Broad route matcher, dispatch position, cross-service effect order, and complexity line count were confirmed."
+  },
+  "limitations": [
+    "The selected fixtures exercise in-memory services and do not prove persistent queue/encounter consistency or rollback behavior.",
+    "PostgreSQL/RLS behavior, explicit role-denial behavior, and persisted audit records remain unproven.",
+    "The worktree remains dirty and no candidate SHA, CI, target, UAT, or release acceptance is asserted.",
+    "No database, listener, service, container, or port was started."
+  ]
+}

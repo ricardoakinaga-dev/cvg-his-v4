@@ -1,0 +1,190 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND20-20260923",
+  "recorded_at": "2026-09-23T09:04:35Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "scripts/artifact-retention-dry-run.mjs",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "06916c62a1a0a8e1718b67da868339aa99bc1a5265149d16a31590c85a58f0fa",
+      "current_sha256": "06916c62a1a0a8e1718b67da868339aa99bc1a5265149d16a31590c85a58f0fa",
+      "sha_matches_inventory": true,
+      "scope_classification": "TOOLING_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Static review: the scan walks the configured roots and reports files by relative path, size, timestamp, class, protection and expiry/quota. It contains no delete/apply operation; the only writeFileSync is optional report output. Policy root paths are resolved without a relative-path containment check; a symlink in a managed-root position can be traversed. Scan errors are recorded on the report, but runCli has no nonzero-on-errors behavior. --policy may select a custom policy, while report.policy.path is always the default policy path."
+    },
+    {
+      "path": "scripts/artifact-retention-dry-run.test.mjs",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "f6bdabfd1e4639cc2e84df5d9c849556c22277e52744a7d8feb57ab4878e0a63",
+      "current_sha256": "f6bdabfd1e4639cc2e84df5d9c849556c22277e52744a7d8feb57ab4878e0a63",
+      "sha_matches_inventory": true,
+      "scope_classification": "TOOLING_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Three Node test cases cover policy schema/default classes, expired unprotected candidate selection with active/unknown preservation, and refusal to run without --dry-run plus bounded JSON report output. Fixture creation and report writes are under mkdtemp in /tmp and t.after removes the directory. They do not cover overwrite refusal, symlink/root escape, custom-policy report provenance, or exit behavior when scanning errors occur."
+    },
+    {
+      "path": "docs/engineering/artifact-retention-policy.json",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "eb65e2225a027f0f57dd6144513eb44875478da4959509337b26c7662613f8ad",
+      "current_sha256": "eb65e2225a027f0f57dd6144513eb44875478da4959509337b26c7662613f8ad",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "The policy protects legal-hold, active-evidence and unknown classes; generated-run uses 14 days/8 GiB, coverage-run 30 days/12 GiB, and active-evidence has a 64 GiB consultive quota. All seven managed roots are relative, and current lstat observations show each exists as a directory (none is a symlink). ACL profiles are expectations, not applied permissions."
+    },
+    {
+      "path": "docs/operations/ARTIFACT_RETENTION_POLICY.md",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "75af2b0f86c9f615fcbbd2afd4793098794e6dfe5b60b2afae71644a955deee1",
+      "current_sha256": "75af2b0f86c9f615fcbbd2afd4793098794e6dfe5b60b2afae71644a955deee1",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "The runbook says candidates are suggestions only, requires owner review and exact authority/recoverability before removal, and expressly leaves external provider retention and destination authorization unproven. It says ACL policy is recorded, not changed by the dry-run."
+    }
+  ],
+  "verification": {
+    "inventory_hash_recheck": {
+      "result": "PASS",
+      "paths_checked": 4,
+      "all_match": true
+    },
+    "test": {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" node --test scripts/artifact-retention-dry-run.test.mjs",
+      "result": "PASS",
+      "exit_status": 0,
+      "tests": 3,
+      "passed": 3,
+      "failed": 0,
+      "skipped": 0,
+      "scope": "Synthetic /tmp fixtures; no repository data scan or deletion."
+    },
+    "temporary_cleanup_and_worktree": {
+      "result": "PASS",
+      "fixture_root": "/tmp/artifact-retention-d3mJbK",
+      "fixture_root_removed": true,
+      "git_status_hash_unchanged_from_round19": true,
+      "dirty_path_count": 408
+    },
+    "managed_roots_current_lstat": [
+      {
+        "path": "artifacts",
+        "exists": true,
+        "current_type": "directory",
+        "symlink": false
+      },
+      {
+        "path": "coverage",
+        "exists": true,
+        "current_type": "directory",
+        "symlink": false
+      },
+      {
+        "path": "test-results",
+        "exists": true,
+        "current_type": "directory",
+        "symlink": false
+      },
+      {
+        "path": "playwright-report",
+        "exists": true,
+        "current_type": "directory",
+        "symlink": false
+      },
+      {
+        "path": ".agent/evidence",
+        "exists": true,
+        "current_type": "directory",
+        "symlink": false
+      },
+      {
+        "path": ".agent/gates",
+        "exists": true,
+        "current_type": "directory",
+        "symlink": false
+      },
+      {
+        "path": ".agent/archive",
+        "exists": true,
+        "current_type": "directory",
+        "symlink": false
+      }
+    ],
+    "previous_dry_run_evidence": {
+      "reference": ".agent/evidence/rem-045-artifact-retention-20260922.txt",
+      "interpretation": "Prior 2026-09-22 local scan reported zero candidates/errors; not repeated and not treated as a current count."
+    },
+    "checkpoint_validation": {
+      "recorded_at": "2026-09-23T09:06:09Z",
+      "docs_validate": {
+        "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+        "result": "PASS",
+        "exit_status": 0
+      },
+      "json_jsonl_parse": {
+        "result": "PASS",
+        "exit_status": 0,
+        "scope": "State, cumulative M-02 review, round-20 review, policy JSON, execution log and inventory JSONL parsed after the checkpoint correction."
+      },
+      "git_diff_check": {
+        "command": "git diff --check",
+        "result": "PASS",
+        "exit_status": 0
+      },
+      "read_only_controller": {
+        "command": "python3 /home/ricardo/.agents/skills/engineering-framework/scripts/check_state.py --quiet .",
+        "result": "FAIL_PRESERVED_BASELINE",
+        "exit_status": 1,
+        "summary": "RESULT FAIL (pass=6 warn=0 fail=788); no active-plan, REM-010 or gate-v2 finding; the same four preserved REM-056 v1 findings remain. The global controller does not approve a candidate/release."
+      }
+    }
+  },
+  "boundary_review": {
+    "mutation_boundary": "No delete/unlink/rmdir/apply operation exists in the runner. It can write JSON when an explicit --output is given; the current test creates a new file in a temporary fixture only.",
+    "policy_alignment": "Current policy keeps active evidence, legal-hold and unknown files protected; TTL/quota only selects unprotected candidate records. The Markdown runbook correctly requires owner authorization and recoverability before a separate removal action.",
+    "acl_and_external_storage": "The program reports ACL profiles but does not inspect or apply actual modes/ACLs, and local execution does not prove provider retention or access control.",
+    "no_external_boundary": "No database, provider, network, external target, cleanup or report write in the shared repository was exercised."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-RETENTION-REPORT-OUTPUT-CLOBBER",
+      "classification": "HOLD_OUTPUT_BOUNDARY",
+      "observation": "With explicit --output, runCli calls writeFileSync on the resolved caller path without exclusive-create, existence, symlink, containment or protected-evidence checks. It can replace an existing file, including an evidence file; mode 0600 applies only when creating a new file. Current tests write only a new /tmp fixture path."
+    },
+    {
+      "id": "M02-RETENTION-ROOT-CONFINEMENT",
+      "classification": "HOLD_SCAN_SCOPE",
+      "observation": "validatePolicy checks managed_roots is a non-empty array but does not validate each path as relative/canonical or contain it under scanRoot. A symlink used as a managed root is followed by readdirSync. Current shipped roots are relative and all current roots were ordinary directories; a changed policy or explicit root can still scan outside the intended tree and report path metadata."
+    },
+    {
+      "id": "M02-RETENTION-CUSTOM-POLICY-PROVENANCE",
+      "classification": "HOLD_EVIDENCE_PROVENANCE",
+      "observation": "The CLI supports --policy, but buildDryRunReport always serializes defaultPolicyPath as policy.path, so a report generated from a custom policy can name the wrong policy source."
+    },
+    {
+      "id": "M02-RETENTION-SCAN-ERROR-EXIT",
+      "classification": "HOLD_AUTOMATION_COMPLETENESS",
+      "observation": "Unreadable roots/files are summarized in roots.errors and totals.errors, but the CLI does not fail or set a nonzero exit status for an incomplete scan. Automation must inspect the report rather than trust exit status."
+    },
+    {
+      "id": "M02-RETENTION-ACL-AND-PROVIDER-LIMIT",
+      "classification": "HOLD_OPERATIONAL",
+      "observation": "ACL profiles are descriptive only; actual filesystem ACLs, workflow retention and provider storage policy are not verified. The runbook states this limitation and requires external owner action."
+    }
+  ],
+  "candidate_actions": [
+    "Keep this artifact as a static tooling review; do not invoke a cleanup operation or write a report into shared evidence.",
+    "Harden policy root containment and symlink-root handling, bind the actual policy path into output, make scan errors fail clearly for automation, and protect existing report targets before using this as release evidence.",
+    "Keep external provider retention and any future deletion under owner authority and a separately reviewed recovery plan."
+  ],
+  "limitations": [
+    "The full workspace artifact scan was not rerun in round 20; an older 2026-09-22 result exists but is not current evidence.",
+    "This round does not perform ACL audits, provider retention checks, deletion, candidate overlay or release certification.",
+    "Self-review only; independent critique and candidate-bound scope remain open."
+  ]
+}

@@ -1,0 +1,98 @@
+{
+  "evidence_id": "M21-NOTIFICATION-WRITE-ROUTES-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T12:33:16Z",
+  "scope": "Bounded extraction of POST /notifications and POST /notifications/process into an injected API route module.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is for the dirty working tree based on the recorded HEAD; it is not candidate or release evidence."
+  },
+  "environment": {
+    "node": "v22.23.2",
+    "pnpm": "10.33.0",
+    "node_env": "test",
+    "database_url_variables_unset": true,
+    "database_or_service_started": false,
+    "listener_or_port_opened": false
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "e0e53c4adbe89a184fa0883d5cfd7b363ce3a89269a4c613e97b2950d451bdf3",
+      "physical_lines_after": 3635,
+      "physical_lines_before_this_slice": 3673
+    },
+    {
+      "path": "apps/api/src/routes/notification-write-routes.ts",
+      "sha256": "e586abb68c377236e192bcded0d2b0e9772c39cc3d1eb9e8611f62a860da71a7",
+      "physical_lines": 90
+    },
+    {
+      "path": "apps/api/src/routes/notification-write-routes.test.ts",
+      "sha256": "ac1fff2a9640c8b4327bc615ef8d6fb84b1b74566578babfa6f320c309205eae",
+      "physical_lines": 208
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "f2eed1592217b1e8a23cc6430bc1ab960cab40a3b281c071020868d160fa02fe",
+      "server_ts_budget": {
+        "current_lines": 3635,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      },
+      "server_test_budget": {
+        "current_lines": 6447,
+        "max_lines": 6481
+      }
+    }
+  ],
+  "behavior_preserved": [
+    "Both exact POST path/method branches are dispatched at their former position inside the tenant command and idempotency wrapper.",
+    "Notification creation retains notifications.manage authorization, JSON body parsing, service arguments, audit fields and order, 201 status, and the returned notification JSON.",
+    "Notification processing retains notifications.manage authorization, malformed-body fallback to an empty payload, account-scoped persistence call, job-count audit fields and order, 200 status, and the { items } response.",
+    "Unmatched paths and methods remain unhandled by the extracted module."
+  ],
+  "checks": [
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx --test apps/api/src/routes/notification-write-routes.test.ts apps/api/src/routes/notification-read-routes.test.ts",
+      "result": "PASS; 7/7 notification read/write route tests",
+      "exit_code": 0
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/api exec tsc -p tsconfig.json --noEmit",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; measured 3,635 server.ts lines with the existing 8,323-line ceiling",
+      "exit_code": 0
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/server.ts apps/api/src/routes/notification-write-routes.ts apps/api/src/routes/notification-write-routes.test.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check -- apps/api/src/server.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS; both new route files also passed a separate trailing-whitespace scan",
+      "exit_code": 0
+    }
+  ],
+  "attempt_notes": [
+    "The first complexity check caught the stale recorded server.ts line count after extraction. Updated only current_lines to the measured 3,635; the existing line ceiling was unchanged and the next complexity check passed.",
+    "The first Prettier check found formatting differences in the server and extracted route files; Prettier was run and the final check passed."
+  ],
+  "independent_review": {
+    "status": "PASS",
+    "reviewer": "critic_m02_inventory_r6_refresh_i2",
+    "frozen_source_hashes_provided": true,
+    "result": "Compared both extracted POST branches with HEAD and confirmed route matching, permission, body handling, service or persistence call, audit order, response contract, dispatch position, and tenant-command wrapper. Independently reran the 7 focused route tests, API typecheck, and complexity check. No files edited."
+  },
+  "limitations": [
+    "Route unit tests use in-process streams and injected in-memory stubs; PostgreSQL/RLS, durable notification persistence, worker processing, persisted audit behavior, and full HTTP cross-account behavior were not exercised by this slice.",
+    "M-21 remains partial; remaining API composition and full PROD-041 acceptance remain open.",
+    "M-02 candidate freeze, complete source review, overlay approval, and external CI remain open."
+  ]
+}

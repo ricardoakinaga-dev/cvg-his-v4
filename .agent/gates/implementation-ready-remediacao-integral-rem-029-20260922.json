@@ -1,0 +1,165 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-REM-029-20260922",
+  "timestamp": "2026-09-22T06:39:00.000000Z",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "preparação candidate-bound para separar fontes agendadas do worker e, em fases posteriores, renderização/persistência do módulo reports",
+  "scope_ref": "REM-029",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-REM029-001",
+      "description": "Superfície, callers, dependências e ownership de runner.ts, scheduled-report-job.ts, run-once.ts, index.ts e module-reports foram inspecionados com linhas e boundaries observáveis.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-preparation-20260922.txt",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "apps/worker/src/run-once.ts",
+        "apps/worker/src/index.ts",
+        "packages/modules/reports/src/index.ts",
+        "docs/engineering/complexity-hotspots.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Inspeção local não substitui revisão dos owners nem execução em target."
+    },
+    {
+      "id": "IR-REM029-002",
+      "description": "Concorrência por conta, isolamento tenant, leases/fencing, retries, idempotência de delivery, falha por schedule e contratos públicos foram explicitamente congelados como invariantes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-preparation-20260922.txt",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/run-once.ts",
+        "packages/modules/reports/src/index.ts",
+        "apps/worker/src/jobs/scheduled-report-job.test.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Os invariantes foram observados em código/testes locais; a integração PostgreSQL/run-once ficará para VERIFY."
+    },
+    {
+      "id": "IR-REM029-003",
+      "description": "Foi selecionada uma fatia implementável e reversível: adapter dedicado de fontes agendadas, com runner.ts como fachada/re-export compatível; renderização e persistência ficaram separadas em fases posteriores.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-preparation-20260922.txt",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/jobs/scheduled-report-job.ts",
+        "apps/worker/src/runner.test.ts",
+        "docs/2026-09-21-backlog-remediacao-integral.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "O adapter e o teste focal ainda não foram implementados."
+    },
+    {
+      "id": "IR-REM029-004",
+      "description": "Baseline focal e regressões proporcionais foram executados no runtime oficial: module-reports 36/36, worker package com runner/job e demais suítes, worker typecheck e diff check passaram.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-preparation-20260922.txt",
+        "packages/modules/reports/package.json",
+        "apps/worker/package.json",
+        "apps/worker/src/runner.test.ts",
+        "apps/worker/src/jobs/scheduled-report-job.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A integração PostgreSQL/run-once não faz parte desta preparação; seu comando e known-bads estão registrados para VERIFY."
+    },
+    {
+      "id": "IR-REM029-005",
+      "description": "Limites de autoridade e crítica foram registrados: execução local reversível autorizada; sem subagentes, push, deploy, target, provider real, UAT, aceite de owners ou release.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-preparation-20260922.txt",
+        ".agent/plans/remediacao-integral-20260921.md",
+        ".agent/execution-log.jsonl#EVT-REM-029-RECOVERY-20260922"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A ausência de crítica independente mantém o gate condicionado."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-029-preparation-20260922.txt",
+    ".agent/execution-log.jsonl#EVT-REM-029-RECOVERY-20260922",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/jobs/scheduled-report-job.ts",
+    "apps/worker/src/runner.test.ts",
+    "apps/worker/src/jobs/scheduled-report-job.test.ts",
+    "apps/worker/src/run-once.ts",
+    "apps/worker/src/index.ts",
+    "packages/modules/reports/src/index.ts",
+    "tests/integration/process/worker-run-once-reports.test.ts",
+    "docs/engineering/complexity-hotspots.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "A primeira implementação do adapter de fontes e seu teste focal ainda não foram executados.",
+    "A integração PostgreSQL/run-once de concorrência, SIGKILL, retry e fencing está registrada para VERIFY e não é inferida.",
+    "Crítica adversarial E7 e revisão formal dos owners REPORTS/RUNTIME permanecem abertas.",
+    "CI/OCI, target, provider real, UAT, browser visual e release não fazem parte deste gate."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-029-IMPLEMENTATION-FOCAL",
+      "description": "Implementar o adapter candidate-bound sem mover claims, retries, métricas, contexto tenant ou composição one-shot, preservando o re-export público de runner.ts.",
+      "non_blocking": false,
+      "impact": "Qualquer violação reabre a preparação e invalida o gate antes do VERIFY.",
+      "owner": "RUNTIME/REPORTS",
+      "due_or_trigger": "Durante REM-029:IMPLEMENT-WORKER-REPORT-SOURCES.",
+      "verification_method": "Teste focal, typecheck/build, lint, boundary audit e regressão do worker runner/job.",
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-029-INTEGRATION",
+      "description": "Executar worker-run-once-reports em PostgreSQL descartável/local autorizado para provar tenant isolation, concurrency, retry, SIGKILL e lease fencing após a implementação.",
+      "non_blocking": true,
+      "impact": "Bloqueia VERIFIED integral do cartão, mas não impede a próxima edição local reversível.",
+      "owner": "RUNTIME/QA",
+      "due_or_trigger": "Antes de REM-029:VERIFY.",
+      "verification_method": "Vitest process integration com banco descartável, sem provider real.",
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-029-OWNER-E7",
+      "description": "Owners REPORTS/RUNTIME e crítica adversarial independente ainda não revisaram o boundary e os invariantes.",
+      "non_blocking": true,
+      "impact": "Não bloqueia implementação local; bloqueia aceite organizacional e veredito final de produção.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de promover o contrato a compromisso de roadmap ou fechar REM-029.",
+      "verification_method": "Revisão identificada e crítica em contexto fresco, com gate superseding.",
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "inspeção e implementação local reversível do adapter de fontes agendadas",
+    "decision": "A instrução autoriza preparação e implementação local; não autoriza aceite de owners, integração em target, provider real, UAT, release ou go/no-go.",
+    "evidence_ref": ".agent/evidence/rem-029-preparation-20260922.txt",
+    "expires_or_revalidates": "Revalidar se o boundary tocar claims/retries/tenant context, alterar exports públicos, cruzar SPA ou avançar para integração/target."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-029:IMPLEMENT-WORKER-REPORT-SOURCES",
+  "revalidation_triggers": [
+    "Mover claim/lease, retry, delivery idempotency, métricas ou tenant context para o adapter.",
+    "Remover ou alterar o re-export de resolveScheduledReportRows e AdministrativeExecutiveReportSources em runner.ts.",
+    "Alterar caps, filtros, account guards ou validações fail-closed sem novos known-bads.",
+    "Executar integração com provider real, target compartilhado, credenciais, UAT ou release.",
+    "Alterar a superfície visual do SPA sem browser/visual/a11y real."
+  ],
+  "supersedes": ".agent/gates/verified-remediacao-integral-rem-028-appointments-aggregate-20260922.json"
+}

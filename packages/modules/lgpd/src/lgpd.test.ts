@@ -553,7 +553,7 @@ describe('LgpdService', () => {
       expect(requests[0].accountId).toBe('acc_cvg_demo');
     });
 
-    it('completes deletion requests with retention-aware elimination evidence', async () => {
+    it('refuses to complete an erasure request without an erasure executor', async () => {
       const created = await service.createDsrRequest({
         accountId: 'acc_cvg_demo',
         subjectId: 'patient_luna',
@@ -562,23 +562,97 @@ describe('LgpdService', () => {
         requestedBy: 'patient_luna'
       });
 
-      const completed = await service.completeDsrRequest('acc_cvg_demo', created.id, 'dr_silva');
+      await expect(
+        service.completeDsrRequest('acc_cvg_demo', created.id, 'dr_silva', { erased: true })
+      ).rejects.toMatchObject({ code: 'DSR_ERASURE_EXECUTOR_UNAVAILABLE' });
+      expect((await service.getDsrRequest('acc_cvg_demo', created.id))?.status).toBe('pending');
+    });
 
+    it('completes erasure requests only with executor evidence and retention context', async () => {
+      const calls: unknown[] = [];
+      const withExecutor = new LgpdService({
+        consentRepository: consentRepo,
+        dsrRepository: dsrRepo,
+        erasureExecutor: async (context) => {
+          calls.push(context);
+          return {
+            executedAt: '2026-09-26T12:00:00.000Z',
+            erasedDataTypes: ['patient_profile'],
+            retainedDataTypes: [{ dataType: 'financial_records', reason: 'obrigacao fiscal' }]
+          };
+        }
+      });
+      const created = await withExecutor.createDsrRequest({
+        accountId: 'acc_cvg_demo',
+        subjectId: 'patient_luna',
+        subjectType: 'patient',
+        requestType: 'data_anonymization',
+        requestedBy: 'patient_luna'
+      });
+
+      const completed = await withExecutor.completeDsrRequest('acc_cvg_demo', created.id, 'dr_silva', {
+        forged: true
+      });
+
+      expect(calls).toEqual([
+        expect.objectContaining({
+          accountId: 'acc_cvg_demo',
+          subjectId: 'patient_luna',
+          requestId: created.id,
+          requestType: 'data_anonymization',
+          retentionEvidence: expect.arrayContaining([
+            expect.objectContaining({ dataType: 'patient_profile' })
+          ])
+        })
+      ]);
       expect(completed.status).toBe('completed');
-      expect(completed.resultJson?.disposition).toBe('retention_window_enforced');
-      expect(completed.resultJson?.anonymizationRequired).toBe(true);
-      expect(completed.resultJson?.retentionEvidence).toEqual(
-        expect.arrayContaining([
-          expect.objectContaining({
-            dataType: 'patient_profile',
-            disposition: 'anonymize_after_window'
-          }),
-          expect.objectContaining({
-            dataType: 'financial_records',
-            disposition: 'purge_after_window'
-          })
-        ])
-      );
+      expect(completed.resultJson?.forged).toBeUndefined();
+      expect(completed.resultJson?.erasureExecuted).toBe(true);
+      expect(completed.resultJson?.erasedDataTypes).toEqual(['patient_profile']);
+    });
+
+    it('does not allow a closed request to change state again', async () => {
+      const created = await service.createDsrRequest({
+        accountId: 'acc_cvg_demo',
+        subjectId: 'patient_luna',
+        subjectType: 'patient',
+        requestType: 'data_export',
+        requestedBy: 'patient_luna'
+      });
+      await service.rejectDsrRequest('acc_cvg_demo', created.id, 'dr_silva', 'duplicada');
+
+      await expect(
+        service.completeDsrRequest('acc_cvg_demo', created.id, 'dr_silva')
+      ).rejects.toMatchObject({ code: 'DSR_NOT_OPEN' });
+      await expect(
+        service.rejectDsrRequest('acc_cvg_demo', created.id, 'dr_silva', 'de novo')
+      ).rejects.toMatchObject({ code: 'DSR_NOT_OPEN' });
+    });
+
+    it('consent revocation requests revoke every active consent of the subject', async () => {
+      for (const purpose of ['clinical', 'marketing'] as const) {
+        await service.grantConsent({
+          accountId: 'acc_cvg_demo',
+          subjectId: 'owner_ana',
+          subjectType: 'owner',
+          purpose,
+          grantedBy: 'owner_ana'
+        } as ConsentGrantRequest);
+      }
+      const created = await service.createDsrRequest({
+        accountId: 'acc_cvg_demo',
+        subjectId: 'owner_ana',
+        subjectType: 'owner',
+        requestType: 'consent_revocation',
+        requestedBy: 'owner_ana'
+      });
+
+      const completed = await service.completeDsrRequest('acc_cvg_demo', created.id, 'dpo');
+
+      expect(completed.resultJson?.revokedConsentIds).toHaveLength(2);
+      expect(
+        await consentRepo.findActiveBySubject('acc_cvg_demo', 'owner_ana', 'owner')
+      ).toHaveLength(0);
     });
 
     it('throws when DSR repository is not configured', async () => {

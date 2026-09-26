@@ -12,7 +12,7 @@ import {
 import { isProductionLikeEnvironment } from '@cvg-his-v2/shared-config';
 import { extractBearerToken } from '@cvg-his-v2/shared-auth-sdk';
 import { isSecureRequest } from './http/security-headers.js';
-import { requireApiKey as requireApiKeyHelper } from './helpers/auth-helpers.js';
+import { requireApiKey as requireApiKeyHelper, sanitizeApiKey } from './helpers/auth-helpers.js';
 import { createAuthRateLimiter } from './http/auth-rate-limiter.js';
 import {
   assertPixProviderWebhookReadiness,
@@ -27,43 +27,29 @@ import {
   type LaboratoryProviderKey
 } from './laboratory-provider-ingress.js';
 import type { SecretsManager } from '@cvg-his-v2/secrets';
-import {
-  MAX_ATTACHMENT_BASE64_LENGTH,
-  MAX_ATTACHMENT_FILE_SIZE_BYTES,
-  MAX_ATTACHMENT_JSON_BODY_BYTES
-} from '@cvg-his-v2/shared-contracts';
+import { MAX_ATTACHMENT_JSON_BODY_BYTES } from '@cvg-his-v2/shared-contracts';
 import type {
   AddInpatientProgressRequest,
   ArchiveClinicalEntryRequest,
   AssignBedRequest,
   CloseEncounterRequest,
-  CreateAttachmentRequest,
-  AcknowledgeClinicalHandoffRequest,
   CreateBillingEstimateRequest,
   CreateBillingItemRequest,
   CreateClinicalEntryRequest,
   CreateDischargeRequest,
   CreateEncounterRequest,
-  MarkClinicalHandoffPendingRequest,
   CreateInpatientAdmissionRequest,
   CreateInventoryConsumptionRequest,
   CreateInventoryItemRequest,
   UpdateInventoryItemRequest,
-  CreateNotificationRequest,
   CreatePrescriptionExecutionRequest,
   CreateSectorRequest,
   CreateBedRequest,
   CreateSurgeryCaseRequest,
-  CreateTriageRequest,
-  UpdateTriageRequest,
   ExecutePrescriptionRequest,
   LogAdministrationEventRequest,
   ProcessNotificationsRequest,
   SuspendPrescriptionRequest,
-  ResolveClinicalHandoffPendingRequest,
-  ReturnClinicalHandoffToClinicRequest,
-  SendClinicalHandoffRequest,
-  SendClinicalHandoffToFinanceRequest,
   TransitionEncounterRequest,
   UpdateBillingStatusRequest,
   UpdateClinicalEntryRequest,
@@ -79,7 +65,6 @@ import {
   AuthenticationError,
   ConflictError,
   NotFoundError,
-  PayloadTooLargeError,
   ValidationError,
   toErrorResponse
 } from '@cvg-his-v2/shared-errors';
@@ -93,7 +78,6 @@ import {
   withTenantQuery
 } from '@cvg-his-v2/tenant-context';
 import type {
-  ApiKeySummary,
   AuthenticatedPrincipal,
   ClinicalHandoffPriority,
   ClinicalHandoffStatus,
@@ -163,10 +147,27 @@ import { handleMarketingRoutes } from './routes/marketing-routes.js';
 import { handleSurgeryRoutes } from './routes/surgery-routes.js';
 import { handleWhatsAppRoutes } from './routes/whatsapp-routes.js';
 import { handleAccessControlRoutes } from './routes/access-control-routes.js';
-import { handleInpatientRoutes } from './routes/inpatient-routes.js';
+import { handleInpatientListRoute, handleInpatientRoutes } from './routes/inpatient-routes.js';
+import { handleNotificationReadRoutes } from './routes/notification-read-routes.js';
+import { handleNotificationWriteRoutes } from './routes/notification-write-routes.js';
+import { handleChaosExperimentListRoute } from './routes/chaos-experiment-list-route.js';
+import {
+  handleClinicalHandoffDetailReadRoute,
+  handleClinicalHandoffsReadRoute
+} from './routes/clinical-handoffs-read-routes.js';
+import { handleClinicalHandoffSendRoute } from './routes/clinical-handoff-send-route.js';
+import { handleClinicalHandoffAcknowledgeRoute } from './routes/clinical-handoff-acknowledge-route.js';
+import { handleClinicalHandoffWorkflowRoutes } from './routes/clinical-handoff-workflow-routes.js';
+import { handleEncounterListRoute } from './routes/encounter-list-route.js';
+import { handleCepLookupRoute } from './routes/cep-lookup-route.js';
+import { handleMetricsReadRoute } from './routes/metrics-read-route.js';
 import { handleApiKeysRoutes } from './routes/api-keys-routes.js';
 import { handleInternalEventsRoutes } from './routes/internal-events-routes.js';
-import { isCashDrawerMutationPath, paginateList, parseIncludeArchived } from './request-boundaries.js';
+import {
+  isCashDrawerMutationPath,
+  paginateList,
+  parseIncludeArchived
+} from './request-boundaries.js';
 import {
   handlePixProviderSettlementRoutes,
   type PixProviderSettlementDlqRepository
@@ -176,6 +177,28 @@ import { handleOwnersRoutes } from './routes/owners-routes.js';
 import { handlePatientsRoutes } from './routes/patients-routes.js';
 import { handleVetusImportRoutes } from './routes/vetus-import-routes.js';
 import { handleUsersStaffQuotesRoutes } from './routes/users-staff-quotes-routes.js';
+import { handleProductServiceCatalogRoutes } from './routes/product-service-catalog-routes.js';
+import { handleAnimalCatalogRoutes } from './routes/animal-catalog-routes.js';
+import { handleCustomerGroupRoutes } from './routes/customer-group-routes.js';
+import { handleResponsibilityTermRoutes } from './routes/responsibility-term-routes.js';
+import { handlePreventiveEventRoutes } from './routes/preventive-event-routes.js';
+import { handleTriageReadRoutes } from './routes/triage-read-routes.js';
+import { handleTriageCreateRoute } from './routes/triage-create-routes.js';
+import { handleTriageUpdateRoute } from './routes/triage-update-routes.js';
+import {
+  handleEncounterReadRoutes,
+  handleEncounterTimelineRoute
+} from './routes/encounter-read-routes.js';
+import {
+  handleMedicalRecordReadRoutes,
+  handleMedicalRecordTimelineRoute
+} from './routes/medical-record-read-routes.js';
+import { handleAttachmentReadRoutes } from './routes/attachment-read-routes.js';
+import { handleAttachmentContentReadRoute } from './routes/attachment-content-read-route.js';
+import { handleAttachmentUploadRoute } from './routes/attachment-upload-route.js';
+export { decodeAttachmentContent } from './helpers/attachment-upload-content.js';
+import { handleEncounterDeleteRoutes } from './routes/encounter-delete-routes.js';
+import { handleAttachmentDownloadUrlRoutes } from './routes/attachment-download-url-routes.js';
 import {
   isDatabaseFailureMutationPath,
   isDatabaseFailurePublicMutationPath
@@ -220,14 +243,27 @@ import {
   resolveReportCommandReportId
 } from './helpers/idempotency-authorization.js';
 import { createVetusCacheRefresher } from './helpers/vetus-cache-recovery.js';
+import { createResponsibilityTermStore } from './repositories/responsibility-term-store.js';
+import {
+  createAnimalSpeciesStore,
+  createBreedStore,
+  createCoatColorStore
+} from './repositories/animal-catalog-stores.js';
+import { createCustomerGroupStore } from './repositories/customer-group-store.js';
+import { createPreventiveEventStore } from './repositories/preventive-event-store.js';
 import { readJsonBody, readJsonBodyOrEmpty } from './helpers/request-body.js';
+import {
+  createEncounterAccountGuard,
+  createEncounterQueueSynchronizer,
+  readHeader,
+  validateRequestBody
+} from './helpers/api-server-boundaries.js';
 import {
   applyBufferedResponse,
   createBufferedResponse,
   type BufferedResponseSnapshot
 } from './helpers/response-buffer.js';
 import {
-  createAttachmentDownloadToken,
   verifyAttachmentDownloadToken,
   type AttachmentDownloadClaims
 } from './helpers/attachment-download-token.js';
@@ -239,8 +275,7 @@ import {
   updateDatabasePoolMetrics,
   refreshClinicalOperationalMetrics,
   type ClinicalOperationalMetricsSnapshot,
-  createFeatureFlagMetricsCollector,
-  isMetricsRequestAuthorized
+  createFeatureFlagMetricsCollector
 } from './metrics.js';
 import {
   describeChaosExperiment,
@@ -457,23 +492,16 @@ const DEFAULT_CORS_EXPOSE_HEADERS =
   'x-correlation-id, x-request-id, x-trace-id, traceparent, tracestate';
 const WEBAUTHN_CHALLENGE_TTL_MS = 5 * 60 * 1000;
 const OIDC_STATE_TTL_MS = 10 * 60 * 1000;
-const METRICS_PATHS = new Set(['/metrics', '/internal/metrics']);
-
 function configuredMetricsAuthToken(
   options: Pick<ApiServerOptions, 'metricsAuthToken'>
 ): string | undefined {
   return options.metricsAuthToken?.trim() || process.env['METRICS_AUTH_TOKEN']?.trim() || undefined;
 }
 
-function sendMetricsAuthorizationRequired(response: ServerResponse): void {
-  response.setHeader('www-authenticate', 'Bearer realm="metrics"');
-  response.statusCode = 401;
-  response.end(
-    JSON.stringify({
-      code: 'METRICS_AUTH_REQUIRED',
-      message: 'Metrics are available only to an authorized collector.'
-    })
-  );
+function resolveRequestCorrelationId(): string {
+  // Never trust caller-selected values here: correlation IDs are copied into
+  // logs and durable event metadata, so even well-shaped input can contain PII.
+  return createCorrelationId('api');
 }
 
 function registerChaosExperimentOnce(chaos: ChaosEngine, experiment: { id: string }): void {
@@ -552,11 +580,13 @@ export function assertProductionProviderReadiness(
     !options.nfseProvider ||
     !options.nfseApiUrl ||
     !options.nfseMunicipalityCode ||
-    (!options.nfseApiKey && !options.nfseCertificate) ||
+    // The emitter has no PFX/XML signing path yet: a certificate alone cannot
+    // issue documents, so only an API credential makes the provider usable.
+    !options.nfseApiKey?.trim() ||
     !options.nfseIssuer
   ) {
     missingProviders.push(
-      'NFS-e municipal provider (NFSE_API_URL/NFSE_MUNICIPALITY_CODE/NFSE_API_KEY or NFSE_CERTIFICATE/NFSE_ISSUER_JSON)'
+      'NFS-e municipal provider (NFSE_PROVIDER/NFSE_API_URL/NFSE_MUNICIPALITY_CODE/NFSE_API_KEY/NFSE_ISSUER_JSON; certificate-only signing is not supported)'
     );
   }
   if (options.emailMockMode === true || !options.resendApiKey) {
@@ -587,40 +617,6 @@ export function assertProductionProviderReadiness(
   }
 }
 
-export function decodeAttachmentContent(contentBase64: unknown): Buffer | undefined {
-  if (contentBase64 === undefined) return undefined;
-  if (typeof contentBase64 !== 'string') {
-    throw new ValidationError('contentBase64 must be a base64 string', { field: 'contentBase64' });
-  }
-  const normalized = contentBase64.trim();
-  if (
-    normalized.length === 0 ||
-    normalized.length > MAX_ATTACHMENT_BASE64_LENGTH ||
-    normalized.length % 4 !== 0 ||
-    !/^[A-Za-z0-9+/]+={0,2}$/.test(normalized)
-  ) {
-    if (normalized.length > MAX_ATTACHMENT_BASE64_LENGTH) {
-      throw new PayloadTooLargeError('Attachment content exceeds the maximum allowed size', {
-        maxBase64Length: MAX_ATTACHMENT_BASE64_LENGTH,
-        maxFileSizeBytes: MAX_ATTACHMENT_FILE_SIZE_BYTES
-      });
-    }
-    throw new ValidationError('contentBase64 is invalid', { field: 'contentBase64' });
-  }
-  const content = Buffer.from(normalized, 'base64');
-  if (content.length > MAX_ATTACHMENT_FILE_SIZE_BYTES) {
-    throw new PayloadTooLargeError('Attachment content exceeds the maximum allowed size', {
-      maxBase64Length: MAX_ATTACHMENT_BASE64_LENGTH,
-      maxFileSizeBytes: MAX_ATTACHMENT_FILE_SIZE_BYTES
-    });
-  }
-  if (content.toString('base64') !== normalized) {
-    throw new ValidationError('contentBase64 is invalid', {
-      field: 'contentBase64'
-    });
-  }
-  return content;
-}
 function appendVaryHeader(response: ServerResponse, headerName: string): void {
   const current = response.getHeader('vary');
   const values = new Set<string>();
@@ -722,2928 +718,6 @@ function applyCorsPolicy(
   response.setHeader('access-control-allow-origin', normalizedOrigin);
   response.setHeader('access-control-allow-credentials', 'true');
   return { allowed: true };
-}
-
-type ResponsibilityTermUsageContext =
-  | 'atendimento'
-  | 'internacao'
-  | 'procedimento'
-  | 'autorizacao'
-  | 'outro';
-
-interface ResponsibilityTermSummary {
-  readonly id: string;
-  readonly accountId: string;
-  readonly title: string;
-  readonly code: string | null;
-  readonly usageContext: ResponsibilityTermUsageContext;
-  readonly content: string;
-  readonly active: boolean;
-  readonly requiresOwnerSignature: boolean;
-  readonly requiresWitnessSignature: boolean;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-
-interface ResponsibilityTermInput {
-  readonly title?: string;
-  readonly code?: string | null;
-  readonly usageContext?: ResponsibilityTermUsageContext;
-  readonly content?: string;
-  readonly active?: boolean;
-  readonly requiresOwnerSignature?: boolean;
-  readonly requiresWitnessSignature?: boolean;
-}
-
-interface ResponsibilityTermListFilters {
-  readonly search?: string;
-  readonly active?: boolean;
-  readonly usageContext?: string;
-}
-
-interface ResponsibilityTermStore {
-  create(accountId: string, input: ResponsibilityTermInput): Promise<ResponsibilityTermSummary>;
-  update(termId: string, input: ResponsibilityTermInput): Promise<ResponsibilityTermSummary>;
-  getOrThrow(termId: string): Promise<ResponsibilityTermSummary>;
-  list(
-    accountId: string,
-    filters: ResponsibilityTermListFilters
-  ): Promise<ResponsibilityTermSummary[]>;
-  delete(termId: string): Promise<void>;
-}
-
-const responsibilityTermUsageContexts = new Set<ResponsibilityTermUsageContext>([
-  'atendimento',
-  'internacao',
-  'procedimento',
-  'autorizacao',
-  'outro'
-]);
-const responsibilityTermMaxTitleLength = 160;
-const responsibilityTermMaxCodeLength = 80;
-const responsibilityTermMaxContentLength = 20000;
-
-function normalizeResponsibilityTermUsageContext(
-  value: ResponsibilityTermUsageContext | undefined
-): ResponsibilityTermUsageContext {
-  if (!value) return 'atendimento';
-  if (!responsibilityTermUsageContexts.has(value)) {
-    throw new ValidationError('usageContext is invalid');
-  }
-  return value;
-}
-
-function normalizeResponsibilityTermTitle(value: string | undefined): string {
-  const title = requireNonEmptyString(value, 'title').trim();
-  if (title.length > responsibilityTermMaxTitleLength) {
-    throw new ValidationError(
-      `title must have at most ${responsibilityTermMaxTitleLength} characters`
-    );
-  }
-  return title;
-}
-
-function normalizeResponsibilityTermCode(value: string | null | undefined): string | null {
-  const code = value?.trim() || null;
-  if (code && code.length > responsibilityTermMaxCodeLength) {
-    throw new ValidationError(
-      `code must have at most ${responsibilityTermMaxCodeLength} characters`
-    );
-  }
-  return code;
-}
-
-function normalizeResponsibilityTermContent(value: string | undefined): string {
-  const content = requireNonEmptyString(value, 'content').trim();
-  if (content.length > responsibilityTermMaxContentLength) {
-    throw new ValidationError(
-      `content must have at most ${responsibilityTermMaxContentLength} characters`
-    );
-  }
-  return content;
-}
-
-function mapResponsibilityTermRow(row: Record<string, unknown>): ResponsibilityTermSummary {
-  return {
-    id: row.id as string,
-    accountId: row.account_id as string,
-    title: row.title as string,
-    code: (row.code as string | null) ?? null,
-    usageContext: row.usage_context as ResponsibilityTermUsageContext,
-    content: row.content as string,
-    active: row.active as boolean,
-    requiresOwnerSignature: row.requires_owner_signature as boolean,
-    requiresWitnessSignature: row.requires_witness_signature as boolean,
-    createdAt: new Date(row.created_at as string | Date).toISOString(),
-    updatedAt: new Date(row.updated_at as string | Date).toISOString()
-  };
-}
-
-class InMemoryResponsibilityTermStore implements ResponsibilityTermStore {
-  readonly #terms = new Map<string, ResponsibilityTermSummary>();
-
-  async create(
-    accountId: string,
-    input: ResponsibilityTermInput
-  ): Promise<ResponsibilityTermSummary> {
-    const now = new Date().toISOString();
-    const term: ResponsibilityTermSummary = {
-      id: createCorrelationId('term'),
-      accountId,
-      title: normalizeResponsibilityTermTitle(input.title),
-      code: normalizeResponsibilityTermCode(input.code),
-      usageContext: normalizeResponsibilityTermUsageContext(input.usageContext),
-      content: normalizeResponsibilityTermContent(input.content),
-      active: input.active ?? true,
-      requiresOwnerSignature: input.requiresOwnerSignature ?? true,
-      requiresWitnessSignature: input.requiresWitnessSignature ?? false,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    this.#terms.set(term.id, term);
-    return term;
-  }
-
-  async update(termId: string, input: ResponsibilityTermInput): Promise<ResponsibilityTermSummary> {
-    const existing = await this.getOrThrow(termId);
-    const updated: ResponsibilityTermSummary = {
-      ...existing,
-      title:
-        input.title !== undefined ? normalizeResponsibilityTermTitle(input.title) : existing.title,
-      code: input.code !== undefined ? normalizeResponsibilityTermCode(input.code) : existing.code,
-      usageContext:
-        input.usageContext !== undefined
-          ? normalizeResponsibilityTermUsageContext(input.usageContext)
-          : existing.usageContext,
-      content:
-        input.content !== undefined
-          ? normalizeResponsibilityTermContent(input.content)
-          : existing.content,
-      active: input.active ?? existing.active,
-      requiresOwnerSignature: input.requiresOwnerSignature ?? existing.requiresOwnerSignature,
-      requiresWitnessSignature: input.requiresWitnessSignature ?? existing.requiresWitnessSignature,
-      updatedAt: new Date().toISOString()
-    };
-
-    this.#terms.set(updated.id, updated);
-    return updated;
-  }
-
-  async getOrThrow(termId: string): Promise<ResponsibilityTermSummary> {
-    const term = this.#terms.get(termId);
-    if (!term) {
-      throw new NotFoundError('Responsibility term not found', { termId });
-    }
-    return term;
-  }
-
-  async list(
-    accountId: string,
-    filters: ResponsibilityTermListFilters
-  ): Promise<ResponsibilityTermSummary[]> {
-    let items = Array.from(this.#terms.values()).filter((term) => term.accountId === accountId);
-
-    if (filters.active !== undefined) {
-      items = items.filter((term) => term.active === filters.active);
-    }
-
-    if (
-      filters.usageContext &&
-      responsibilityTermUsageContexts.has(filters.usageContext as ResponsibilityTermUsageContext)
-    ) {
-      items = items.filter((term) => term.usageContext === filters.usageContext);
-    }
-
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      items = items.filter(
-        (term) =>
-          term.title.toLowerCase().includes(search) ||
-          (term.code?.toLowerCase().includes(search) ?? false) ||
-          term.content.toLowerCase().includes(search)
-      );
-    }
-
-    return items.sort((a, b) => a.title.localeCompare(b.title));
-  }
-
-  async delete(termId: string): Promise<void> {
-    this.#terms.delete(termId);
-  }
-}
-
-class DatabaseResponsibilityTermStore implements ResponsibilityTermStore {
-  async create(
-    accountId: string,
-    input: ResponsibilityTermInput
-  ): Promise<ResponsibilityTermSummary> {
-    const now = new Date();
-    const term: ResponsibilityTermSummary = {
-      id: createCorrelationId('term'),
-      accountId,
-      title: normalizeResponsibilityTermTitle(input.title),
-      code: normalizeResponsibilityTermCode(input.code),
-      usageContext: normalizeResponsibilityTermUsageContext(input.usageContext),
-      content: normalizeResponsibilityTermContent(input.content),
-      active: input.active ?? true,
-      requiresOwnerSignature: input.requiresOwnerSignature ?? true,
-      requiresWitnessSignature: input.requiresWitnessSignature ?? false,
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString()
-    };
-
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query(
-        `INSERT INTO responsibility_terms (
-           id,
-           account_id,
-           title,
-           code,
-           usage_context,
-           content,
-           active,
-           requires_owner_signature,
-           requires_witness_signature,
-           created_at,
-           updated_at
-         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-         RETURNING *`,
-        [
-          term.id,
-          term.accountId,
-          term.title,
-          term.code,
-          term.usageContext,
-          term.content,
-          term.active,
-          term.requiresOwnerSignature,
-          term.requiresWitnessSignature,
-          new Date(term.createdAt),
-          new Date(term.updatedAt)
-        ]
-      );
-      return mapResponsibilityTermRow(result.rows[0]);
-    });
-  }
-
-  async update(termId: string, input: ResponsibilityTermInput): Promise<ResponsibilityTermSummary> {
-    const existing = await this.getOrThrow(termId);
-    const updated: ResponsibilityTermSummary = {
-      ...existing,
-      title:
-        input.title !== undefined ? normalizeResponsibilityTermTitle(input.title) : existing.title,
-      code: input.code !== undefined ? normalizeResponsibilityTermCode(input.code) : existing.code,
-      usageContext:
-        input.usageContext !== undefined
-          ? normalizeResponsibilityTermUsageContext(input.usageContext)
-          : existing.usageContext,
-      content:
-        input.content !== undefined
-          ? normalizeResponsibilityTermContent(input.content)
-          : existing.content,
-      active: input.active ?? existing.active,
-      requiresOwnerSignature: input.requiresOwnerSignature ?? existing.requiresOwnerSignature,
-      requiresWitnessSignature: input.requiresWitnessSignature ?? existing.requiresWitnessSignature,
-      updatedAt: new Date().toISOString()
-    };
-
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query(
-        `UPDATE responsibility_terms
-         SET title = $2,
-             code = $3,
-             usage_context = $4,
-             content = $5,
-             active = $6,
-             requires_owner_signature = $7,
-             requires_witness_signature = $8,
-             updated_at = $9
-         WHERE id = $1
-         RETURNING *`,
-        [
-          termId,
-          updated.title,
-          updated.code,
-          updated.usageContext,
-          updated.content,
-          updated.active,
-          updated.requiresOwnerSignature,
-          updated.requiresWitnessSignature,
-          new Date(updated.updatedAt)
-        ]
-      );
-
-      if (result.rows.length === 0) {
-        throw new NotFoundError('Responsibility term not found', { termId });
-      }
-      return mapResponsibilityTermRow(result.rows[0]);
-    });
-  }
-
-  async getOrThrow(termId: string): Promise<ResponsibilityTermSummary> {
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM responsibility_terms WHERE id = $1', [
-        termId
-      ]);
-      if (result.rows.length === 0) {
-        throw new NotFoundError('Responsibility term not found', { termId });
-      }
-      return mapResponsibilityTermRow(result.rows[0]);
-    });
-  }
-
-  async list(
-    accountId: string,
-    filters: ResponsibilityTermListFilters
-  ): Promise<ResponsibilityTermSummary[]> {
-    return await withTenantQuery(getPool(), async (client) => {
-      let sql = 'SELECT * FROM responsibility_terms WHERE account_id = $1';
-      const params: unknown[] = [accountId];
-      let nextParam = 2;
-
-      if (filters.active !== undefined) {
-        sql += ` AND active = $${nextParam}`;
-        params.push(filters.active);
-        nextParam++;
-      }
-
-      if (
-        filters.usageContext &&
-        responsibilityTermUsageContexts.has(filters.usageContext as ResponsibilityTermUsageContext)
-      ) {
-        sql += ` AND usage_context = $${nextParam}`;
-        params.push(filters.usageContext);
-        nextParam++;
-      }
-
-      if (filters.search) {
-        sql += ` AND (title ILIKE $${nextParam} OR code ILIKE $${nextParam} OR content ILIKE $${nextParam})`;
-        params.push(`%${filters.search}%`);
-        nextParam++;
-      }
-
-      sql += ' ORDER BY title ASC';
-      const result = await client.query(sql, params);
-      return result.rows.map((row: Record<string, unknown>) => mapResponsibilityTermRow(row));
-    });
-  }
-
-  async delete(termId: string): Promise<void> {
-    await withTenantQuery(getPool(), async (client) => {
-      await client.query('DELETE FROM responsibility_terms WHERE id = $1', [termId]);
-    });
-  }
-}
-
-function createResponsibilityTermStore(useDatabase: boolean): ResponsibilityTermStore {
-  if (!useDatabase) return new InMemoryResponsibilityTermStore();
-
-  try {
-    getPool();
-    return new DatabaseResponsibilityTermStore();
-  } catch {
-    return new InMemoryResponsibilityTermStore();
-  }
-}
-
-type BreedSpecies =
-  | 'not_defined'
-  | 'avian'
-  | 'bovine'
-  | 'canine'
-  | 'rabbit'
-  | 'equine'
-  | 'feline'
-  | 'other'
-  | 'primate'
-  | 'rodent'
-  | 'reptile';
-
-interface BreedSummary {
-  readonly id: string;
-  readonly accountId: string;
-  readonly name: string;
-  readonly code: string | null;
-  readonly species: BreedSpecies;
-  readonly description: string | null;
-  readonly active: boolean;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-
-interface BreedInput {
-  readonly name?: string;
-  readonly code?: string | null;
-  readonly species?: BreedSpecies;
-  readonly description?: string | null;
-  readonly active?: boolean;
-}
-
-interface BreedListFilters {
-  readonly search?: string;
-  readonly active?: boolean;
-  readonly species?: string;
-}
-
-interface BreedStore {
-  create(accountId: string, input: BreedInput): Promise<BreedSummary>;
-  update(breedId: string, input: BreedInput): Promise<BreedSummary>;
-  getOrThrow(breedId: string): Promise<BreedSummary>;
-  list(accountId: string, filters: BreedListFilters): Promise<BreedSummary[]>;
-  delete(breedId: string): Promise<void>;
-}
-
-const breedSpeciesValues = new Set<BreedSpecies>([
-  'not_defined',
-  'avian',
-  'bovine',
-  'canine',
-  'rabbit',
-  'equine',
-  'feline',
-  'other',
-  'primate',
-  'rodent',
-  'reptile'
-]);
-const breedMaxNameLength = 160;
-const breedMaxCodeLength = 80;
-const breedMaxDescriptionLength = 1000;
-
-const defaultBreedSeeds: readonly Omit<
-  BreedSummary,
-  'id' | 'accountId' | 'createdAt' | 'updatedAt'
->[] = [
-  {
-    name: 'Yorkshire Terrier',
-    code: 'CAN-YORKSHIRE-TERRIER',
-    species: 'canine',
-    description: 'Raca canina de pequeno porte usada no cadastro Vetus-like.',
-    active: true
-  },
-  {
-    name: 'Golden Retriever',
-    code: 'CAN-GOLDEN-RETRIEVER',
-    species: 'canine',
-    description: 'Raca canina de grande porte.',
-    active: true
-  },
-  {
-    name: 'Shih Tzu',
-    code: 'CAN-SHIH-TZU',
-    species: 'canine',
-    description: 'Raca canina de pequeno porte.',
-    active: true
-  },
-  {
-    name: 'Poodle',
-    code: 'CAN-POODLE',
-    species: 'canine',
-    description: 'Raca canina comum em atendimento clinico.',
-    active: true
-  },
-  {
-    name: 'Sem raca definida',
-    code: 'CAN-SRD',
-    species: 'canine',
-    description: 'Paciente canino sem raca definida.',
-    active: true
-  },
-  {
-    name: 'Persa',
-    code: 'FEL-PERSA',
-    species: 'feline',
-    description: 'Raca felina Persa.',
-    active: true
-  },
-  {
-    name: 'Siamês',
-    code: 'FEL-SIAMES',
-    species: 'feline',
-    description: 'Raca felina Siames.',
-    active: true
-  },
-  {
-    name: 'Sem raca definida',
-    code: 'FEL-SRD',
-    species: 'feline',
-    description: 'Paciente felino sem raca definida.',
-    active: true
-  }
-];
-
-function createCatalogSeedId(prefix: string, accountId: string, code: string): string {
-  return `${prefix}_${accountId}_${code}`.toLowerCase().replace(/[^a-z0-9_-]+/g, '_');
-}
-
-function normalizeBreedSpecies(value: BreedSpecies | undefined): BreedSpecies {
-  if (!value) return 'canine';
-  if (!breedSpeciesValues.has(value)) {
-    throw new ValidationError('species is invalid');
-  }
-  return value;
-}
-
-function normalizeBreedName(value: string | undefined): string {
-  const name = requireNonEmptyString(value, 'name').trim();
-  if (name.length > breedMaxNameLength) {
-    throw new ValidationError(`name must have at most ${breedMaxNameLength} characters`);
-  }
-  return name;
-}
-
-function normalizeBreedCode(value: string | null | undefined): string | null {
-  const code = value?.trim() || null;
-  if (code && code.length > breedMaxCodeLength) {
-    throw new ValidationError(`code must have at most ${breedMaxCodeLength} characters`);
-  }
-  return code;
-}
-
-function normalizeBreedDescription(value: string | null | undefined): string | null {
-  const description = value?.trim() || null;
-  if (description && description.length > breedMaxDescriptionLength) {
-    throw new ValidationError(
-      `description must have at most ${breedMaxDescriptionLength} characters`
-    );
-  }
-  return description;
-}
-
-function mapBreedRow(row: Record<string, unknown>): BreedSummary {
-  return {
-    id: row.id as string,
-    accountId: row.account_id as string,
-    name: row.name as string,
-    code: (row.code as string | null) ?? null,
-    species: row.species as BreedSpecies,
-    description: (row.description as string | null) ?? null,
-    active: row.active as boolean,
-    createdAt: new Date(row.created_at as string | Date).toISOString(),
-    updatedAt: new Date(row.updated_at as string | Date).toISOString()
-  };
-}
-
-class InMemoryBreedStore implements BreedStore {
-  readonly #breeds = new Map<string, BreedSummary>();
-
-  #ensureSeedData(accountId: string): void {
-    const now = new Date().toISOString();
-    for (const seed of defaultBreedSeeds) {
-      const alreadyExists = Array.from(this.#breeds.values()).some(
-        (breed) => breed.accountId === accountId && breed.code === seed.code
-      );
-      if (alreadyExists || !seed.code) continue;
-
-      const breed: BreedSummary = {
-        id: createCatalogSeedId('breed', accountId, seed.code),
-        accountId,
-        ...seed,
-        createdAt: now,
-        updatedAt: now
-      };
-      this.#breeds.set(breed.id, breed);
-    }
-  }
-
-  async create(accountId: string, input: BreedInput): Promise<BreedSummary> {
-    const now = new Date().toISOString();
-    const breed: BreedSummary = {
-      id: createCorrelationId('breed'),
-      accountId,
-      name: normalizeBreedName(input.name),
-      code: normalizeBreedCode(input.code),
-      species: normalizeBreedSpecies(input.species),
-      description: normalizeBreedDescription(input.description),
-      active: input.active ?? true,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    this.#breeds.set(breed.id, breed);
-    return breed;
-  }
-
-  async update(breedId: string, input: BreedInput): Promise<BreedSummary> {
-    const existing = await this.getOrThrow(breedId);
-    const updated: BreedSummary = {
-      ...existing,
-      name: input.name !== undefined ? normalizeBreedName(input.name) : existing.name,
-      code: input.code !== undefined ? normalizeBreedCode(input.code) : existing.code,
-      species:
-        input.species !== undefined ? normalizeBreedSpecies(input.species) : existing.species,
-      description:
-        input.description !== undefined
-          ? normalizeBreedDescription(input.description)
-          : existing.description,
-      active: input.active ?? existing.active,
-      updatedAt: new Date().toISOString()
-    };
-
-    this.#breeds.set(updated.id, updated);
-    return updated;
-  }
-
-  async getOrThrow(breedId: string): Promise<BreedSummary> {
-    const breed = this.#breeds.get(breedId);
-    if (!breed) {
-      throw new NotFoundError('Breed not found', { breedId });
-    }
-    return breed;
-  }
-
-  async list(accountId: string, filters: BreedListFilters): Promise<BreedSummary[]> {
-    this.#ensureSeedData(accountId);
-    let items = Array.from(this.#breeds.values()).filter((breed) => breed.accountId === accountId);
-
-    if (filters.active !== undefined) {
-      items = items.filter((breed) => breed.active === filters.active);
-    }
-
-    if (filters.species && breedSpeciesValues.has(filters.species as BreedSpecies)) {
-      items = items.filter((breed) => breed.species === filters.species);
-    }
-
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      items = items.filter(
-        (breed) =>
-          breed.name.toLowerCase().includes(search) ||
-          (breed.code?.toLowerCase().includes(search) ?? false) ||
-          (breed.description?.toLowerCase().includes(search) ?? false)
-      );
-    }
-
-    return items.sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  async delete(breedId: string): Promise<void> {
-    this.#breeds.delete(breedId);
-  }
-}
-
-class DatabaseBreedStore implements BreedStore {
-  async #ensureSeedData(accountId: string): Promise<void> {
-    await withTenantQuery(getPool(), async (client) => {
-      const now = new Date();
-      for (const seed of defaultBreedSeeds) {
-        if (!seed.code) continue;
-        await client.query(
-          `INSERT INTO breeds (
-             id,
-             account_id,
-             name,
-             code,
-             species,
-             description,
-             active,
-             created_at,
-             updated_at
-           )
-           SELECT
-             $1::varchar,
-             $2::uuid,
-             $3::varchar,
-             $4::varchar,
-             $5::varchar,
-             $6::text,
-             $7::boolean,
-             $8::timestamptz,
-             $9::timestamptz
-           WHERE NOT EXISTS (
-             SELECT 1 FROM breeds WHERE account_id = $2::uuid AND code = $4::varchar
-           )`,
-          [
-            createCatalogSeedId('breed', accountId, seed.code),
-            accountId,
-            seed.name,
-            seed.code,
-            seed.species,
-            seed.description,
-            seed.active,
-            now,
-            now
-          ]
-        );
-      }
-    });
-  }
-
-  async create(accountId: string, input: BreedInput): Promise<BreedSummary> {
-    const now = new Date();
-    const breed: BreedSummary = {
-      id: createCorrelationId('breed'),
-      accountId,
-      name: normalizeBreedName(input.name),
-      code: normalizeBreedCode(input.code),
-      species: normalizeBreedSpecies(input.species),
-      description: normalizeBreedDescription(input.description),
-      active: input.active ?? true,
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString()
-    };
-
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query(
-        `INSERT INTO breeds (
-           id,
-           account_id,
-           name,
-           code,
-           species,
-           description,
-           active,
-           created_at,
-           updated_at
-         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         RETURNING *`,
-        [
-          breed.id,
-          breed.accountId,
-          breed.name,
-          breed.code,
-          breed.species,
-          breed.description,
-          breed.active,
-          new Date(breed.createdAt),
-          new Date(breed.updatedAt)
-        ]
-      );
-      return mapBreedRow(result.rows[0]);
-    });
-  }
-
-  async update(breedId: string, input: BreedInput): Promise<BreedSummary> {
-    const existing = await this.getOrThrow(breedId);
-    const updated: BreedSummary = {
-      ...existing,
-      name: input.name !== undefined ? normalizeBreedName(input.name) : existing.name,
-      code: input.code !== undefined ? normalizeBreedCode(input.code) : existing.code,
-      species:
-        input.species !== undefined ? normalizeBreedSpecies(input.species) : existing.species,
-      description:
-        input.description !== undefined
-          ? normalizeBreedDescription(input.description)
-          : existing.description,
-      active: input.active ?? existing.active,
-      updatedAt: new Date().toISOString()
-    };
-
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query(
-        `UPDATE breeds
-         SET name = $2,
-             code = $3,
-             species = $4,
-             description = $5,
-             active = $6,
-             updated_at = $7
-         WHERE id = $1
-         RETURNING *`,
-        [
-          breedId,
-          updated.name,
-          updated.code,
-          updated.species,
-          updated.description,
-          updated.active,
-          new Date(updated.updatedAt)
-        ]
-      );
-
-      if (result.rows.length === 0) {
-        throw new NotFoundError('Breed not found', { breedId });
-      }
-      return mapBreedRow(result.rows[0]);
-    });
-  }
-
-  async getOrThrow(breedId: string): Promise<BreedSummary> {
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM breeds WHERE id = $1', [breedId]);
-      if (result.rows.length === 0) {
-        throw new NotFoundError('Breed not found', { breedId });
-      }
-      return mapBreedRow(result.rows[0]);
-    });
-  }
-
-  async list(accountId: string, filters: BreedListFilters): Promise<BreedSummary[]> {
-    await this.#ensureSeedData(accountId);
-    return await withTenantQuery(getPool(), async (client) => {
-      let sql = 'SELECT * FROM breeds WHERE account_id = $1';
-      const params: unknown[] = [accountId];
-      let nextParam = 2;
-
-      if (filters.active !== undefined) {
-        sql += ` AND active = $${nextParam}`;
-        params.push(filters.active);
-        nextParam++;
-      }
-
-      if (filters.species && breedSpeciesValues.has(filters.species as BreedSpecies)) {
-        sql += ` AND species = $${nextParam}`;
-        params.push(filters.species);
-        nextParam++;
-      }
-
-      if (filters.search) {
-        sql += ` AND (name ILIKE $${nextParam} OR code ILIKE $${nextParam} OR description ILIKE $${nextParam})`;
-        params.push(`%${filters.search}%`);
-        nextParam++;
-      }
-
-      sql += ' ORDER BY name ASC';
-      const result = await client.query(sql, params);
-      return result.rows.map((row: Record<string, unknown>) => mapBreedRow(row));
-    });
-  }
-
-  async delete(breedId: string): Promise<void> {
-    await withTenantQuery(getPool(), async (client) => {
-      await client.query('DELETE FROM breeds WHERE id = $1', [breedId]);
-    });
-  }
-}
-
-function createBreedStore(useDatabase: boolean): BreedStore {
-  if (!useDatabase) return new InMemoryBreedStore();
-
-  try {
-    getPool();
-    return new DatabaseBreedStore();
-  } catch {
-    return new InMemoryBreedStore();
-  }
-}
-
-type AnimalSpeciesSystemCode =
-  | 'not_defined'
-  | 'avian'
-  | 'bovine'
-  | 'canine'
-  | 'rabbit'
-  | 'equine'
-  | 'feline'
-  | 'other'
-  | 'primate'
-  | 'rodent'
-  | 'reptile';
-
-interface AnimalSpeciesSummary {
-  readonly id: string;
-  readonly accountId: string;
-  readonly name: string;
-  readonly code: string | null;
-  readonly systemCode: AnimalSpeciesSystemCode;
-  readonly description: string | null;
-  readonly active: boolean;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-
-interface AnimalSpeciesInput {
-  readonly name?: string;
-  readonly code?: string | null;
-  readonly systemCode?: AnimalSpeciesSystemCode;
-  readonly description?: string | null;
-  readonly active?: boolean;
-}
-
-interface AnimalSpeciesListFilters {
-  readonly search?: string;
-  readonly active?: boolean;
-  readonly systemCode?: string;
-}
-
-interface AnimalSpeciesStore {
-  create(accountId: string, input: AnimalSpeciesInput): Promise<AnimalSpeciesSummary>;
-  update(speciesId: string, input: AnimalSpeciesInput): Promise<AnimalSpeciesSummary>;
-  getOrThrow(speciesId: string): Promise<AnimalSpeciesSummary>;
-  list(accountId: string, filters: AnimalSpeciesListFilters): Promise<AnimalSpeciesSummary[]>;
-  delete(speciesId: string): Promise<void>;
-}
-
-const animalSpeciesSystemCodes = new Set<AnimalSpeciesSystemCode>([
-  'not_defined',
-  'avian',
-  'bovine',
-  'canine',
-  'rabbit',
-  'equine',
-  'feline',
-  'other',
-  'primate',
-  'rodent',
-  'reptile'
-]);
-const animalSpeciesMaxNameLength = 160;
-const animalSpeciesMaxCodeLength = 80;
-const animalSpeciesMaxDescriptionLength = 1000;
-
-const defaultAnimalSpeciesSeeds: readonly Omit<
-  AnimalSpeciesSummary,
-  'id' | 'accountId' | 'createdAt' | 'updatedAt'
->[] = [
-  {
-    name: 'Não Definido',
-    code: 'NOT_DEFINED',
-    systemCode: 'not_defined',
-    description: 'Opcao Vetus para especie nao definida.',
-    active: true
-  },
-  {
-    name: 'Avicola',
-    code: 'AVIAN',
-    systemCode: 'avian',
-    description: 'Opcao Vetus para especies avicolas.',
-    active: true
-  },
-  {
-    name: 'Bovino',
-    code: 'BOVINE',
-    systemCode: 'bovine',
-    description: 'Opcao Vetus para bovinos.',
-    active: true
-  },
-  {
-    name: 'Canina',
-    code: 'CANINE',
-    systemCode: 'canine',
-    description: 'Pacientes caes.',
-    active: true
-  },
-  {
-    name: 'Cunicula',
-    code: 'RABBIT',
-    systemCode: 'rabbit',
-    description: 'Opcao Vetus para lagomorfos/coelhos.',
-    active: true
-  },
-  {
-    name: 'Equina',
-    code: 'EQUINE',
-    systemCode: 'equine',
-    description: 'Opcao Vetus para equinos.',
-    active: true
-  },
-  {
-    name: 'Felina',
-    code: 'FELINE',
-    systemCode: 'feline',
-    description: 'Pacientes gatos.',
-    active: true
-  },
-  {
-    name: 'Outro',
-    code: 'OTHER',
-    systemCode: 'other',
-    description: 'Outras especies cadastradas para atendimento.',
-    active: true
-  },
-  {
-    name: 'Primata',
-    code: 'PRIMATE',
-    systemCode: 'primate',
-    description: 'Opcao Vetus para primatas.',
-    active: true
-  },
-  {
-    name: 'Roedor',
-    code: 'RODENT',
-    systemCode: 'rodent',
-    description: 'Pacientes roedores.',
-    active: true
-  },
-  {
-    name: 'Reptil',
-    code: 'REPTILE',
-    systemCode: 'reptile',
-    description: 'Pacientes repteis.',
-    active: true
-  }
-];
-
-function normalizeAnimalSpeciesSystemCode(
-  value: AnimalSpeciesSystemCode | undefined
-): AnimalSpeciesSystemCode {
-  if (!value) return 'other';
-  if (!animalSpeciesSystemCodes.has(value)) {
-    throw new ValidationError('systemCode is invalid');
-  }
-  return value;
-}
-
-function normalizeAnimalSpeciesName(value: string | undefined): string {
-  const name = requireNonEmptyString(value, 'name').trim();
-  if (name.length > animalSpeciesMaxNameLength) {
-    throw new ValidationError(`name must have at most ${animalSpeciesMaxNameLength} characters`);
-  }
-  return name;
-}
-
-function normalizeAnimalSpeciesCode(value: string | null | undefined): string | null {
-  const code = value?.trim() || null;
-  if (code && code.length > animalSpeciesMaxCodeLength) {
-    throw new ValidationError(`code must have at most ${animalSpeciesMaxCodeLength} characters`);
-  }
-  return code;
-}
-
-function normalizeAnimalSpeciesDescription(value: string | null | undefined): string | null {
-  const description = value?.trim() || null;
-  if (description && description.length > animalSpeciesMaxDescriptionLength) {
-    throw new ValidationError(
-      `description must have at most ${animalSpeciesMaxDescriptionLength} characters`
-    );
-  }
-  return description;
-}
-
-function mapAnimalSpeciesRow(row: Record<string, unknown>): AnimalSpeciesSummary {
-  return {
-    id: row.id as string,
-    accountId: row.account_id as string,
-    name: row.name as string,
-    code: (row.code as string | null) ?? null,
-    systemCode: row.system_code as AnimalSpeciesSystemCode,
-    description: (row.description as string | null) ?? null,
-    active: row.active as boolean,
-    createdAt: new Date(row.created_at as string | Date).toISOString(),
-    updatedAt: new Date(row.updated_at as string | Date).toISOString()
-  };
-}
-
-class InMemoryAnimalSpeciesStore implements AnimalSpeciesStore {
-  readonly #species = new Map<string, AnimalSpeciesSummary>();
-
-  #ensureSeedData(accountId: string): void {
-    const now = new Date().toISOString();
-    for (const seed of defaultAnimalSpeciesSeeds) {
-      const alreadyExists = Array.from(this.#species.values()).some(
-        (species) => species.accountId === accountId && species.code === seed.code
-      );
-      if (alreadyExists || !seed.code) continue;
-
-      const species: AnimalSpeciesSummary = {
-        id: createCatalogSeedId('species', accountId, seed.code),
-        accountId,
-        ...seed,
-        createdAt: now,
-        updatedAt: now
-      };
-      this.#species.set(species.id, species);
-    }
-  }
-
-  async create(accountId: string, input: AnimalSpeciesInput): Promise<AnimalSpeciesSummary> {
-    const now = new Date().toISOString();
-    const species: AnimalSpeciesSummary = {
-      id: createCorrelationId('species'),
-      accountId,
-      name: normalizeAnimalSpeciesName(input.name),
-      code: normalizeAnimalSpeciesCode(input.code),
-      systemCode: normalizeAnimalSpeciesSystemCode(input.systemCode),
-      description: normalizeAnimalSpeciesDescription(input.description),
-      active: input.active ?? true,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    this.#species.set(species.id, species);
-    return species;
-  }
-
-  async update(speciesId: string, input: AnimalSpeciesInput): Promise<AnimalSpeciesSummary> {
-    const existing = await this.getOrThrow(speciesId);
-    const updated: AnimalSpeciesSummary = {
-      ...existing,
-      name: input.name !== undefined ? normalizeAnimalSpeciesName(input.name) : existing.name,
-      code: input.code !== undefined ? normalizeAnimalSpeciesCode(input.code) : existing.code,
-      systemCode:
-        input.systemCode !== undefined
-          ? normalizeAnimalSpeciesSystemCode(input.systemCode)
-          : existing.systemCode,
-      description:
-        input.description !== undefined
-          ? normalizeAnimalSpeciesDescription(input.description)
-          : existing.description,
-      active: input.active ?? existing.active,
-      updatedAt: new Date().toISOString()
-    };
-
-    this.#species.set(updated.id, updated);
-    return updated;
-  }
-
-  async getOrThrow(speciesId: string): Promise<AnimalSpeciesSummary> {
-    const species = this.#species.get(speciesId);
-    if (!species) {
-      throw new NotFoundError('Animal species not found', { speciesId });
-    }
-    return species;
-  }
-
-  async list(
-    accountId: string,
-    filters: AnimalSpeciesListFilters
-  ): Promise<AnimalSpeciesSummary[]> {
-    this.#ensureSeedData(accountId);
-    let items = Array.from(this.#species.values()).filter(
-      (species) => species.accountId === accountId
-    );
-
-    if (filters.active !== undefined) {
-      items = items.filter((species) => species.active === filters.active);
-    }
-
-    if (
-      filters.systemCode &&
-      animalSpeciesSystemCodes.has(filters.systemCode as AnimalSpeciesSystemCode)
-    ) {
-      items = items.filter((species) => species.systemCode === filters.systemCode);
-    }
-
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      items = items.filter(
-        (species) =>
-          species.name.toLowerCase().includes(search) ||
-          (species.code?.toLowerCase().includes(search) ?? false) ||
-          species.systemCode.toLowerCase().includes(search) ||
-          (species.description?.toLowerCase().includes(search) ?? false)
-      );
-    }
-
-    return items.sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  async delete(speciesId: string): Promise<void> {
-    this.#species.delete(speciesId);
-  }
-}
-
-class DatabaseAnimalSpeciesStore implements AnimalSpeciesStore {
-  async #ensureSeedData(accountId: string): Promise<void> {
-    await withTenantQuery(getPool(), async (client) => {
-      const now = new Date();
-      for (const seed of defaultAnimalSpeciesSeeds) {
-        if (!seed.code) continue;
-        await client.query(
-          `INSERT INTO animal_species (
-             id,
-             account_id,
-             name,
-             code,
-             system_code,
-             description,
-             active,
-             created_at,
-             updated_at
-           )
-           SELECT
-             $1::varchar,
-             $2::uuid,
-             $3::varchar,
-             $4::varchar,
-             $5::varchar,
-             $6::text,
-             $7::boolean,
-             $8::timestamptz,
-             $9::timestamptz
-           WHERE NOT EXISTS (
-             SELECT 1 FROM animal_species WHERE account_id = $2::uuid AND code = $4::varchar
-           )`,
-          [
-            createCatalogSeedId('species', accountId, seed.code),
-            accountId,
-            seed.name,
-            seed.code,
-            seed.systemCode,
-            seed.description,
-            seed.active,
-            now,
-            now
-          ]
-        );
-      }
-    });
-  }
-
-  async create(accountId: string, input: AnimalSpeciesInput): Promise<AnimalSpeciesSummary> {
-    const now = new Date();
-    const species: AnimalSpeciesSummary = {
-      id: createCorrelationId('species'),
-      accountId,
-      name: normalizeAnimalSpeciesName(input.name),
-      code: normalizeAnimalSpeciesCode(input.code),
-      systemCode: normalizeAnimalSpeciesSystemCode(input.systemCode),
-      description: normalizeAnimalSpeciesDescription(input.description),
-      active: input.active ?? true,
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString()
-    };
-
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query(
-        `INSERT INTO animal_species (
-           id,
-           account_id,
-           name,
-           code,
-           system_code,
-           description,
-           active,
-           created_at,
-           updated_at
-         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-         RETURNING *`,
-        [
-          species.id,
-          species.accountId,
-          species.name,
-          species.code,
-          species.systemCode,
-          species.description,
-          species.active,
-          new Date(species.createdAt),
-          new Date(species.updatedAt)
-        ]
-      );
-      return mapAnimalSpeciesRow(result.rows[0]);
-    });
-  }
-
-  async update(speciesId: string, input: AnimalSpeciesInput): Promise<AnimalSpeciesSummary> {
-    const existing = await this.getOrThrow(speciesId);
-    const updated: AnimalSpeciesSummary = {
-      ...existing,
-      name: input.name !== undefined ? normalizeAnimalSpeciesName(input.name) : existing.name,
-      code: input.code !== undefined ? normalizeAnimalSpeciesCode(input.code) : existing.code,
-      systemCode:
-        input.systemCode !== undefined
-          ? normalizeAnimalSpeciesSystemCode(input.systemCode)
-          : existing.systemCode,
-      description:
-        input.description !== undefined
-          ? normalizeAnimalSpeciesDescription(input.description)
-          : existing.description,
-      active: input.active ?? existing.active,
-      updatedAt: new Date().toISOString()
-    };
-
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query(
-        `UPDATE animal_species
-         SET name = $2,
-             code = $3,
-             system_code = $4,
-             description = $5,
-             active = $6,
-             updated_at = $7
-         WHERE id = $1
-         RETURNING *`,
-        [
-          speciesId,
-          updated.name,
-          updated.code,
-          updated.systemCode,
-          updated.description,
-          updated.active,
-          new Date(updated.updatedAt)
-        ]
-      );
-
-      if (result.rows.length === 0) {
-        throw new NotFoundError('Animal species not found', { speciesId });
-      }
-      return mapAnimalSpeciesRow(result.rows[0]);
-    });
-  }
-
-  async getOrThrow(speciesId: string): Promise<AnimalSpeciesSummary> {
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM animal_species WHERE id = $1', [speciesId]);
-      if (result.rows.length === 0) {
-        throw new NotFoundError('Animal species not found', { speciesId });
-      }
-      return mapAnimalSpeciesRow(result.rows[0]);
-    });
-  }
-
-  async list(
-    accountId: string,
-    filters: AnimalSpeciesListFilters
-  ): Promise<AnimalSpeciesSummary[]> {
-    await this.#ensureSeedData(accountId);
-    return await withTenantQuery(getPool(), async (client) => {
-      let sql = 'SELECT * FROM animal_species WHERE account_id = $1';
-      const params: unknown[] = [accountId];
-      let nextParam = 2;
-
-      if (filters.active !== undefined) {
-        sql += ` AND active = $${nextParam}`;
-        params.push(filters.active);
-        nextParam++;
-      }
-
-      if (
-        filters.systemCode &&
-        animalSpeciesSystemCodes.has(filters.systemCode as AnimalSpeciesSystemCode)
-      ) {
-        sql += ` AND system_code = $${nextParam}`;
-        params.push(filters.systemCode);
-        nextParam++;
-      }
-
-      if (filters.search) {
-        sql += ` AND (name ILIKE $${nextParam} OR code ILIKE $${nextParam} OR system_code ILIKE $${nextParam} OR description ILIKE $${nextParam})`;
-        params.push(`%${filters.search}%`);
-        nextParam++;
-      }
-
-      sql += ' ORDER BY name ASC';
-      const result = await client.query(sql, params);
-      return result.rows.map((row: Record<string, unknown>) => mapAnimalSpeciesRow(row));
-    });
-  }
-
-  async delete(speciesId: string): Promise<void> {
-    await withTenantQuery(getPool(), async (client) => {
-      await client.query('DELETE FROM animal_species WHERE id = $1', [speciesId]);
-    });
-  }
-}
-
-function createAnimalSpeciesStore(useDatabase: boolean): AnimalSpeciesStore {
-  if (!useDatabase) return new InMemoryAnimalSpeciesStore();
-
-  try {
-    getPool();
-    return new DatabaseAnimalSpeciesStore();
-  } catch {
-    return new InMemoryAnimalSpeciesStore();
-  }
-}
-
-interface CoatColorSummary {
-  readonly id: string;
-  readonly accountId: string;
-  readonly name: string;
-  readonly code: string | null;
-  readonly colorGroup: string | null;
-  readonly hexColor: string | null;
-  readonly description: string | null;
-  readonly active: boolean;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-
-interface CoatColorInput {
-  readonly name?: string;
-  readonly code?: string | null;
-  readonly colorGroup?: string | null;
-  readonly hexColor?: string | null;
-  readonly description?: string | null;
-  readonly active?: boolean;
-}
-
-interface CoatColorListFilters {
-  readonly search?: string;
-  readonly active?: boolean;
-  readonly colorGroup?: string;
-}
-
-interface CoatColorStore {
-  create(accountId: string, input: CoatColorInput): Promise<CoatColorSummary>;
-  update(coatColorId: string, input: CoatColorInput): Promise<CoatColorSummary>;
-  getOrThrow(coatColorId: string): Promise<CoatColorSummary>;
-  list(accountId: string, filters: CoatColorListFilters): Promise<CoatColorSummary[]>;
-  delete(coatColorId: string): Promise<void>;
-}
-
-const coatColorMaxNameLength = 160;
-const coatColorMaxCodeLength = 80;
-const coatColorMaxGroupLength = 80;
-const coatColorMaxDescriptionLength = 1000;
-const coatColorHexPattern = /^#[0-9A-Fa-f]{6}$/;
-
-function normalizeCoatColorName(value: string | undefined): string {
-  const name = requireNonEmptyString(value, 'name').trim();
-  if (name.length > coatColorMaxNameLength) {
-    throw new ValidationError(`name must have at most ${coatColorMaxNameLength} characters`);
-  }
-  return name;
-}
-
-function normalizeCoatColorCode(value: string | null | undefined): string | null {
-  const code = value?.trim() || null;
-  if (code && code.length > coatColorMaxCodeLength) {
-    throw new ValidationError(`code must have at most ${coatColorMaxCodeLength} characters`);
-  }
-  return code;
-}
-
-function normalizeCoatColorGroup(value: string | null | undefined): string | null {
-  const colorGroup = value?.trim() || null;
-  if (colorGroup && colorGroup.length > coatColorMaxGroupLength) {
-    throw new ValidationError(`colorGroup must have at most ${coatColorMaxGroupLength} characters`);
-  }
-  return colorGroup;
-}
-
-function normalizeCoatColorHex(value: string | null | undefined): string | null {
-  const hexColor = value?.trim() || null;
-  if (hexColor && !coatColorHexPattern.test(hexColor)) {
-    throw new ValidationError('hexColor must be a valid #RRGGBB value');
-  }
-  return hexColor;
-}
-
-function normalizeCoatColorDescription(value: string | null | undefined): string | null {
-  const description = value?.trim() || null;
-  if (description && description.length > coatColorMaxDescriptionLength) {
-    throw new ValidationError(
-      `description must have at most ${coatColorMaxDescriptionLength} characters`
-    );
-  }
-  return description;
-}
-
-function mapCoatColorRow(row: Record<string, unknown>): CoatColorSummary {
-  return {
-    id: row.id as string,
-    accountId: row.account_id as string,
-    name: row.name as string,
-    code: (row.code as string | null) ?? null,
-    colorGroup: (row.color_group as string | null) ?? null,
-    hexColor: (row.hex_color as string | null) ?? null,
-    description: (row.description as string | null) ?? null,
-    active: row.active as boolean,
-    createdAt: new Date(row.created_at as string | Date).toISOString(),
-    updatedAt: new Date(row.updated_at as string | Date).toISOString()
-  };
-}
-
-class InMemoryCoatColorStore implements CoatColorStore {
-  readonly #coatColors = new Map<string, CoatColorSummary>();
-
-  async create(accountId: string, input: CoatColorInput): Promise<CoatColorSummary> {
-    const now = new Date().toISOString();
-    const coatColor: CoatColorSummary = {
-      id: createCorrelationId('coat-color'),
-      accountId,
-      name: normalizeCoatColorName(input.name),
-      code: normalizeCoatColorCode(input.code),
-      colorGroup: normalizeCoatColorGroup(input.colorGroup),
-      hexColor: normalizeCoatColorHex(input.hexColor),
-      description: normalizeCoatColorDescription(input.description),
-      active: input.active ?? true,
-      createdAt: now,
-      updatedAt: now
-    };
-
-    this.#coatColors.set(coatColor.id, coatColor);
-    return coatColor;
-  }
-
-  async update(coatColorId: string, input: CoatColorInput): Promise<CoatColorSummary> {
-    const existing = await this.getOrThrow(coatColorId);
-    const updated: CoatColorSummary = {
-      ...existing,
-      name: input.name !== undefined ? normalizeCoatColorName(input.name) : existing.name,
-      code: input.code !== undefined ? normalizeCoatColorCode(input.code) : existing.code,
-      colorGroup:
-        input.colorGroup !== undefined
-          ? normalizeCoatColorGroup(input.colorGroup)
-          : existing.colorGroup,
-      hexColor:
-        input.hexColor !== undefined ? normalizeCoatColorHex(input.hexColor) : existing.hexColor,
-      description:
-        input.description !== undefined
-          ? normalizeCoatColorDescription(input.description)
-          : existing.description,
-      active: input.active ?? existing.active,
-      updatedAt: new Date().toISOString()
-    };
-
-    this.#coatColors.set(updated.id, updated);
-    return updated;
-  }
-
-  async getOrThrow(coatColorId: string): Promise<CoatColorSummary> {
-    const coatColor = this.#coatColors.get(coatColorId);
-    if (!coatColor) {
-      throw new NotFoundError('Coat color not found', { coatColorId });
-    }
-    return coatColor;
-  }
-
-  async list(accountId: string, filters: CoatColorListFilters): Promise<CoatColorSummary[]> {
-    let items = Array.from(this.#coatColors.values()).filter(
-      (coatColor) => coatColor.accountId === accountId
-    );
-
-    if (filters.active !== undefined) {
-      items = items.filter((coatColor) => coatColor.active === filters.active);
-    }
-
-    if (filters.colorGroup) {
-      const colorGroup = filters.colorGroup.toLowerCase();
-      items = items.filter((coatColor) => coatColor.colorGroup?.toLowerCase() === colorGroup);
-    }
-
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      items = items.filter(
-        (coatColor) =>
-          coatColor.name.toLowerCase().includes(search) ||
-          (coatColor.code?.toLowerCase().includes(search) ?? false) ||
-          (coatColor.colorGroup?.toLowerCase().includes(search) ?? false) ||
-          (coatColor.description?.toLowerCase().includes(search) ?? false)
-      );
-    }
-
-    return items.sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  async delete(coatColorId: string): Promise<void> {
-    this.#coatColors.delete(coatColorId);
-  }
-}
-
-class DatabaseCoatColorStore implements CoatColorStore {
-  async create(accountId: string, input: CoatColorInput): Promise<CoatColorSummary> {
-    const now = new Date();
-    const coatColor: CoatColorSummary = {
-      id: createCorrelationId('coat-color'),
-      accountId,
-      name: normalizeCoatColorName(input.name),
-      code: normalizeCoatColorCode(input.code),
-      colorGroup: normalizeCoatColorGroup(input.colorGroup),
-      hexColor: normalizeCoatColorHex(input.hexColor),
-      description: normalizeCoatColorDescription(input.description),
-      active: input.active ?? true,
-      createdAt: now.toISOString(),
-      updatedAt: now.toISOString()
-    };
-
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query(
-        `INSERT INTO coat_colors (
-           id,
-           account_id,
-           name,
-           code,
-           color_group,
-           hex_color,
-           description,
-           active,
-           created_at,
-           updated_at
-         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-         RETURNING *`,
-        [
-          coatColor.id,
-          coatColor.accountId,
-          coatColor.name,
-          coatColor.code,
-          coatColor.colorGroup,
-          coatColor.hexColor,
-          coatColor.description,
-          coatColor.active,
-          new Date(coatColor.createdAt),
-          new Date(coatColor.updatedAt)
-        ]
-      );
-      return mapCoatColorRow(result.rows[0]);
-    });
-  }
-
-  async update(coatColorId: string, input: CoatColorInput): Promise<CoatColorSummary> {
-    const existing = await this.getOrThrow(coatColorId);
-    const updated: CoatColorSummary = {
-      ...existing,
-      name: input.name !== undefined ? normalizeCoatColorName(input.name) : existing.name,
-      code: input.code !== undefined ? normalizeCoatColorCode(input.code) : existing.code,
-      colorGroup:
-        input.colorGroup !== undefined
-          ? normalizeCoatColorGroup(input.colorGroup)
-          : existing.colorGroup,
-      hexColor:
-        input.hexColor !== undefined ? normalizeCoatColorHex(input.hexColor) : existing.hexColor,
-      description:
-        input.description !== undefined
-          ? normalizeCoatColorDescription(input.description)
-          : existing.description,
-      active: input.active ?? existing.active,
-      updatedAt: new Date().toISOString()
-    };
-
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query(
-        `UPDATE coat_colors
-         SET name = $2,
-             code = $3,
-             color_group = $4,
-             hex_color = $5,
-             description = $6,
-             active = $7,
-             updated_at = $8
-         WHERE id = $1
-         RETURNING *`,
-        [
-          coatColorId,
-          updated.name,
-          updated.code,
-          updated.colorGroup,
-          updated.hexColor,
-          updated.description,
-          updated.active,
-          new Date(updated.updatedAt)
-        ]
-      );
-
-      if (result.rows.length === 0) {
-        throw new NotFoundError('Coat color not found', { coatColorId });
-      }
-      return mapCoatColorRow(result.rows[0]);
-    });
-  }
-
-  async getOrThrow(coatColorId: string): Promise<CoatColorSummary> {
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM coat_colors WHERE id = $1', [coatColorId]);
-      if (result.rows.length === 0) {
-        throw new NotFoundError('Coat color not found', { coatColorId });
-      }
-      return mapCoatColorRow(result.rows[0]);
-    });
-  }
-
-  async list(accountId: string, filters: CoatColorListFilters): Promise<CoatColorSummary[]> {
-    return await withTenantQuery(getPool(), async (client) => {
-      let sql = 'SELECT * FROM coat_colors WHERE account_id = $1';
-      const params: unknown[] = [accountId];
-      let nextParam = 2;
-
-      if (filters.active !== undefined) {
-        sql += ` AND active = $${nextParam}`;
-        params.push(filters.active);
-        nextParam++;
-      }
-
-      if (filters.colorGroup) {
-        sql += ` AND color_group ILIKE $${nextParam}`;
-        params.push(filters.colorGroup);
-        nextParam++;
-      }
-
-      if (filters.search) {
-        sql += ` AND (name ILIKE $${nextParam} OR code ILIKE $${nextParam} OR color_group ILIKE $${nextParam} OR description ILIKE $${nextParam})`;
-        params.push(`%${filters.search}%`);
-        nextParam++;
-      }
-
-      sql += ' ORDER BY name ASC';
-      const result = await client.query(sql, params);
-      return result.rows.map((row: Record<string, unknown>) => mapCoatColorRow(row));
-    });
-  }
-
-  async delete(coatColorId: string): Promise<void> {
-    await withTenantQuery(getPool(), async (client) => {
-      await client.query('DELETE FROM coat_colors WHERE id = $1', [coatColorId]);
-    });
-  }
-}
-
-function createCoatColorStore(useDatabase: boolean): CoatColorStore {
-  if (!useDatabase) return new InMemoryCoatColorStore();
-
-  try {
-    getPool();
-    return new DatabaseCoatColorStore();
-  } catch {
-    return new InMemoryCoatColorStore();
-  }
-}
-
-interface CustomerGroupSummary {
-  readonly id: string;
-  readonly accountId: string;
-  readonly name: string;
-  readonly code: string | null;
-  readonly segment: string | null;
-  readonly discountPercent: number;
-  readonly paymentTermDays: number;
-  readonly creditLimitAmount: number | null;
-  readonly description: string | null;
-  readonly active: boolean;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-
-interface CustomerGroupInput {
-  readonly name?: string;
-  readonly code?: string | null;
-  readonly segment?: string | null;
-  readonly discountPercent?: number | string | null;
-  readonly paymentTermDays?: number | string | null;
-  readonly creditLimitAmount?: number | string | null;
-  readonly description?: string | null;
-  readonly active?: boolean;
-}
-
-interface CustomerGroupListFilters {
-  readonly search?: string;
-  readonly active?: boolean;
-  readonly segment?: string;
-}
-
-interface CustomerGroupStore {
-  create(accountId: string, input: CustomerGroupInput): Promise<CustomerGroupSummary>;
-  update(customerGroupId: string, input: CustomerGroupInput): Promise<CustomerGroupSummary>;
-  getOrThrow(customerGroupId: string): Promise<CustomerGroupSummary>;
-  list(accountId: string, filters: CustomerGroupListFilters): Promise<CustomerGroupSummary[]>;
-  delete(customerGroupId: string): Promise<void>;
-}
-
-const customerGroupMaxNameLength = 160;
-const customerGroupMaxCodeLength = 80;
-const customerGroupMaxSegmentLength = 80;
-const customerGroupMaxDescriptionLength = 1000;
-
-function normalizeCustomerGroupName(value: string | undefined): string {
-  const name = requireNonEmptyString(value, 'name').trim();
-  if (name.length > customerGroupMaxNameLength) {
-    throw new ValidationError(`name must have at most ${customerGroupMaxNameLength} characters`);
-  }
-  return name;
-}
-
-function normalizeCustomerGroupCode(value: string | null | undefined): string | null {
-  const code = value?.trim() || null;
-  if (code && code.length > customerGroupMaxCodeLength) {
-    throw new ValidationError(`code must have at most ${customerGroupMaxCodeLength} characters`);
-  }
-  return code;
-}
-
-function normalizeCustomerGroupSegment(value: string | null | undefined): string | null {
-  const segment = value?.trim() || null;
-  if (segment && segment.length > customerGroupMaxSegmentLength) {
-    throw new ValidationError(
-      `segment must have at most ${customerGroupMaxSegmentLength} characters`
-    );
-  }
-  return segment;
-}
-
-function normalizeCustomerGroupDescription(value: string | null | undefined): string | null {
-  const description = value?.trim() || null;
-  if (description && description.length > customerGroupMaxDescriptionLength) {
-    throw new ValidationError(
-      `description must have at most ${customerGroupMaxDescriptionLength} characters`
-    );
-  }
-  return description;
-}
-
-function normalizeCustomerGroupNumber(
-  value: number | string | null | undefined,
-  field: string,
-  min: number,
-  max: number,
-  defaultValue: number
-): number {
-  if (value === null || value === undefined || value === '') return defaultValue;
-  const numberValue = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(numberValue) || numberValue < min || numberValue > max) {
-    throw new ValidationError(`${field} must be between ${min} and ${max}`);
-  }
-  return Number(numberValue.toFixed(2));
-}
-
-function normalizeCustomerGroupCreditLimit(
-  value: number | string | null | undefined
-): number | null {
-  if (value === null || value === undefined || value === '') return null;
-  const numberValue = typeof value === 'number' ? value : Number(value);
-  if (!Number.isFinite(numberValue) || numberValue < 0) {
-    throw new ValidationError('creditLimitAmount must be greater than or equal to 0');
-  }
-  return Number(numberValue.toFixed(2));
-}
-
-function mapCustomerGroupRow(row: Record<string, unknown>): CustomerGroupSummary {
-  return {
-    id: row.id as string,
-    accountId: row.account_id as string,
-    name: row.name as string,
-    code: (row.code as string | null) ?? null,
-    segment: (row.segment as string | null) ?? null,
-    discountPercent: Number(row.discount_percent ?? 0),
-    paymentTermDays: Number(row.payment_term_days ?? 0),
-    creditLimitAmount: row.credit_limit_amount === null ? null : Number(row.credit_limit_amount),
-    description: (row.description as string | null) ?? null,
-    active: row.active as boolean,
-    createdAt: new Date(row.created_at as string | Date).toISOString(),
-    updatedAt: new Date(row.updated_at as string | Date).toISOString()
-  };
-}
-
-function createCustomerGroupSummary(
-  accountId: string,
-  input: CustomerGroupInput
-): CustomerGroupSummary {
-  const now = new Date().toISOString();
-  return {
-    id: createCorrelationId('customer-group'),
-    accountId,
-    name: normalizeCustomerGroupName(input.name),
-    code: normalizeCustomerGroupCode(input.code),
-    segment: normalizeCustomerGroupSegment(input.segment),
-    discountPercent: normalizeCustomerGroupNumber(
-      input.discountPercent,
-      'discountPercent',
-      0,
-      100,
-      0
-    ),
-    paymentTermDays: Math.round(
-      normalizeCustomerGroupNumber(input.paymentTermDays, 'paymentTermDays', 0, 365, 0)
-    ),
-    creditLimitAmount: normalizeCustomerGroupCreditLimit(input.creditLimitAmount),
-    description: normalizeCustomerGroupDescription(input.description),
-    active: input.active ?? true,
-    createdAt: now,
-    updatedAt: now
-  };
-}
-
-class InMemoryCustomerGroupStore implements CustomerGroupStore {
-  readonly #customerGroups = new Map<string, CustomerGroupSummary>();
-
-  async create(accountId: string, input: CustomerGroupInput): Promise<CustomerGroupSummary> {
-    const customerGroup = createCustomerGroupSummary(accountId, input);
-    this.#customerGroups.set(customerGroup.id, customerGroup);
-    return customerGroup;
-  }
-
-  async update(customerGroupId: string, input: CustomerGroupInput): Promise<CustomerGroupSummary> {
-    const existing = await this.getOrThrow(customerGroupId);
-    const updated: CustomerGroupSummary = {
-      ...existing,
-      name: input.name !== undefined ? normalizeCustomerGroupName(input.name) : existing.name,
-      code: input.code !== undefined ? normalizeCustomerGroupCode(input.code) : existing.code,
-      segment:
-        input.segment !== undefined
-          ? normalizeCustomerGroupSegment(input.segment)
-          : existing.segment,
-      discountPercent:
-        input.discountPercent !== undefined
-          ? normalizeCustomerGroupNumber(input.discountPercent, 'discountPercent', 0, 100, 0)
-          : existing.discountPercent,
-      paymentTermDays:
-        input.paymentTermDays !== undefined
-          ? Math.round(
-              normalizeCustomerGroupNumber(input.paymentTermDays, 'paymentTermDays', 0, 365, 0)
-            )
-          : existing.paymentTermDays,
-      creditLimitAmount:
-        input.creditLimitAmount !== undefined
-          ? normalizeCustomerGroupCreditLimit(input.creditLimitAmount)
-          : existing.creditLimitAmount,
-      description:
-        input.description !== undefined
-          ? normalizeCustomerGroupDescription(input.description)
-          : existing.description,
-      active: input.active ?? existing.active,
-      updatedAt: new Date().toISOString()
-    };
-    this.#customerGroups.set(updated.id, updated);
-    return updated;
-  }
-
-  async getOrThrow(customerGroupId: string): Promise<CustomerGroupSummary> {
-    const customerGroup = this.#customerGroups.get(customerGroupId);
-    if (!customerGroup) {
-      throw new NotFoundError('Customer group not found', { customerGroupId });
-    }
-    return customerGroup;
-  }
-
-  async list(
-    accountId: string,
-    filters: CustomerGroupListFilters
-  ): Promise<CustomerGroupSummary[]> {
-    let items = Array.from(this.#customerGroups.values()).filter(
-      (customerGroup) => customerGroup.accountId === accountId
-    );
-
-    if (filters.active !== undefined) {
-      items = items.filter((customerGroup) => customerGroup.active === filters.active);
-    }
-    if (filters.segment) {
-      const segment = filters.segment.toLowerCase();
-      items = items.filter((customerGroup) => customerGroup.segment?.toLowerCase() === segment);
-    }
-    if (filters.search) {
-      const search = filters.search.toLowerCase();
-      items = items.filter(
-        (customerGroup) =>
-          customerGroup.name.toLowerCase().includes(search) ||
-          (customerGroup.code?.toLowerCase().includes(search) ?? false) ||
-          (customerGroup.segment?.toLowerCase().includes(search) ?? false) ||
-          (customerGroup.description?.toLowerCase().includes(search) ?? false)
-      );
-    }
-
-    return items.sort((a, b) => a.name.localeCompare(b.name));
-  }
-
-  async delete(customerGroupId: string): Promise<void> {
-    this.#customerGroups.delete(customerGroupId);
-  }
-}
-
-class DatabaseCustomerGroupStore implements CustomerGroupStore {
-  async create(accountId: string, input: CustomerGroupInput): Promise<CustomerGroupSummary> {
-    const customerGroup = createCustomerGroupSummary(accountId, input);
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query(
-        `INSERT INTO customer_groups (
-           id,
-           account_id,
-           name,
-           code,
-           segment,
-           discount_percent,
-           payment_term_days,
-           credit_limit_amount,
-           description,
-           active,
-           created_at,
-           updated_at
-         )
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
-         RETURNING *`,
-        [
-          customerGroup.id,
-          customerGroup.accountId,
-          customerGroup.name,
-          customerGroup.code,
-          customerGroup.segment,
-          customerGroup.discountPercent,
-          customerGroup.paymentTermDays,
-          customerGroup.creditLimitAmount,
-          customerGroup.description,
-          customerGroup.active,
-          new Date(customerGroup.createdAt),
-          new Date(customerGroup.updatedAt)
-        ]
-      );
-      return mapCustomerGroupRow(result.rows[0]);
-    });
-  }
-
-  async update(customerGroupId: string, input: CustomerGroupInput): Promise<CustomerGroupSummary> {
-    const existing = await this.getOrThrow(customerGroupId);
-    const updated: CustomerGroupSummary = {
-      ...existing,
-      name: input.name !== undefined ? normalizeCustomerGroupName(input.name) : existing.name,
-      code: input.code !== undefined ? normalizeCustomerGroupCode(input.code) : existing.code,
-      segment:
-        input.segment !== undefined
-          ? normalizeCustomerGroupSegment(input.segment)
-          : existing.segment,
-      discountPercent:
-        input.discountPercent !== undefined
-          ? normalizeCustomerGroupNumber(input.discountPercent, 'discountPercent', 0, 100, 0)
-          : existing.discountPercent,
-      paymentTermDays:
-        input.paymentTermDays !== undefined
-          ? Math.round(
-              normalizeCustomerGroupNumber(input.paymentTermDays, 'paymentTermDays', 0, 365, 0)
-            )
-          : existing.paymentTermDays,
-      creditLimitAmount:
-        input.creditLimitAmount !== undefined
-          ? normalizeCustomerGroupCreditLimit(input.creditLimitAmount)
-          : existing.creditLimitAmount,
-      description:
-        input.description !== undefined
-          ? normalizeCustomerGroupDescription(input.description)
-          : existing.description,
-      active: input.active ?? existing.active,
-      updatedAt: new Date().toISOString()
-    };
-
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query(
-        `UPDATE customer_groups
-         SET name = $2,
-             code = $3,
-             segment = $4,
-             discount_percent = $5,
-             payment_term_days = $6,
-             credit_limit_amount = $7,
-             description = $8,
-             active = $9,
-             updated_at = $10
-         WHERE id = $1
-         RETURNING *`,
-        [
-          customerGroupId,
-          updated.name,
-          updated.code,
-          updated.segment,
-          updated.discountPercent,
-          updated.paymentTermDays,
-          updated.creditLimitAmount,
-          updated.description,
-          updated.active,
-          new Date(updated.updatedAt)
-        ]
-      );
-
-      if (result.rows.length === 0) {
-        throw new NotFoundError('Customer group not found', { customerGroupId });
-      }
-      return mapCustomerGroupRow(result.rows[0]);
-    });
-  }
-
-  async getOrThrow(customerGroupId: string): Promise<CustomerGroupSummary> {
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM customer_groups WHERE id = $1', [
-        customerGroupId
-      ]);
-      if (result.rows.length === 0) {
-        throw new NotFoundError('Customer group not found', { customerGroupId });
-      }
-      return mapCustomerGroupRow(result.rows[0]);
-    });
-  }
-
-  async list(
-    accountId: string,
-    filters: CustomerGroupListFilters
-  ): Promise<CustomerGroupSummary[]> {
-    return await withTenantQuery(getPool(), async (client) => {
-      let sql = 'SELECT * FROM customer_groups WHERE account_id = $1';
-      const params: unknown[] = [accountId];
-      let nextParam = 2;
-
-      if (filters.active !== undefined) {
-        sql += ` AND active = $${nextParam}`;
-        params.push(filters.active);
-        nextParam++;
-      }
-
-      if (filters.segment) {
-        sql += ` AND segment ILIKE $${nextParam}`;
-        params.push(filters.segment);
-        nextParam++;
-      }
-
-      if (filters.search) {
-        sql += ` AND (name ILIKE $${nextParam} OR code ILIKE $${nextParam} OR segment ILIKE $${nextParam} OR description ILIKE $${nextParam})`;
-        params.push(`%${filters.search}%`);
-        nextParam++;
-      }
-
-      sql += ' ORDER BY name ASC';
-      const result = await client.query(sql, params);
-      return result.rows.map((row: Record<string, unknown>) => mapCustomerGroupRow(row));
-    });
-  }
-
-  async delete(customerGroupId: string): Promise<void> {
-    await withTenantQuery(getPool(), async (client) => {
-      await client.query('DELETE FROM customer_groups WHERE id = $1', [customerGroupId]);
-    });
-  }
-}
-
-function createCustomerGroupStore(useDatabase: boolean): CustomerGroupStore {
-  if (!useDatabase) return new InMemoryCustomerGroupStore();
-
-  try {
-    getPool();
-    return new DatabaseCustomerGroupStore();
-  } catch {
-    return new InMemoryCustomerGroupStore();
-  }
-}
-
-type PreventiveItemType = 'vaccine' | 'dewormer' | 'other';
-type PreventiveEventStatus = 'scheduled' | 'executed';
-
-interface PreventiveEventSummary {
-  readonly id: string;
-  readonly accountId: string;
-  readonly patientId: string | null;
-  readonly ownerId: string | null;
-  readonly clientName: string;
-  readonly animalName: string;
-  readonly eventDate: string;
-  readonly itemType: PreventiveItemType;
-  readonly protocolCode: string | null;
-  readonly lotNumber: string | null;
-  readonly description: string;
-  readonly status: PreventiveEventStatus;
-  readonly observation: string | null;
-  readonly executedAt: string | null;
-  readonly executedObservation: string | null;
-  readonly nextDoseDate: string | null;
-  readonly rescheduledFromId: string | null;
-  readonly reminderEmailPreparedAt: string | null;
-  readonly createdAt: string;
-  readonly updatedAt: string;
-}
-
-interface PreventiveEventInput {
-  readonly patientId?: string | null;
-  readonly ownerId?: string | null;
-  readonly clientName?: string;
-  readonly animalName?: string;
-  readonly eventDate?: string;
-  readonly itemType?: PreventiveItemType;
-  readonly protocolCode?: string | null;
-  readonly lotNumber?: string | null;
-  readonly description?: string;
-  readonly observation?: string | null;
-  readonly status?: PreventiveEventStatus;
-}
-
-interface PreventiveEventExecuteInput {
-  readonly observation?: string | null;
-  readonly rescheduleTo?: string | null;
-}
-
-interface PreventiveEventListFilters {
-  readonly dateFrom?: string;
-  readonly dateTo?: string;
-  readonly client?: string;
-  readonly animal?: string;
-  readonly patientId?: string;
-  readonly ownerId?: string;
-  readonly includeExecuted?: boolean;
-  readonly itemType?: string;
-}
-
-interface PreventiveEmailResult {
-  readonly preparedCount: number;
-  readonly preparedAt: string;
-}
-
-interface PreventiveEventStore {
-  create(accountId: string, input: PreventiveEventInput): Promise<PreventiveEventSummary>;
-  update(eventId: string, input: PreventiveEventInput): Promise<PreventiveEventSummary>;
-  getOrThrow(eventId: string): Promise<PreventiveEventSummary>;
-  list(accountId: string, filters: PreventiveEventListFilters): Promise<PreventiveEventSummary[]>;
-  delete(eventId: string): Promise<void>;
-  execute(
-    eventId: string,
-    input: PreventiveEventExecuteInput
-  ): Promise<{
-    event: PreventiveEventSummary;
-    rescheduledEvent: PreventiveEventSummary | null;
-  }>;
-  prepareEmail(eventId: string): Promise<PreventiveEventSummary>;
-  prepareBulkEmail(
-    accountId: string,
-    filters: PreventiveEventListFilters
-  ): Promise<PreventiveEmailResult>;
-}
-
-const preventiveItemTypes = new Set<PreventiveItemType>(['vaccine', 'dewormer', 'other']);
-const preventiveStatuses = new Set<PreventiveEventStatus>(['scheduled', 'executed']);
-const preventiveMaxNameLength = 160;
-const preventiveMaxDescriptionLength = 255;
-const preventiveMaxObservationLength = 1000;
-const preventiveMaxProtocolLength = 120;
-const preventiveMaxLotLength = 120;
-const isoDatePattern = /^\d{4}-\d{2}-\d{2}$/;
-
-function normalizePreventiveText(
-  value: string | undefined,
-  field: string,
-  maxLength: number
-): string {
-  const text = requireNonEmptyString(value, field).trim();
-  if (text.length > maxLength) {
-    throw new ValidationError(`${field} must have at most ${maxLength} characters`);
-  }
-  return text;
-}
-
-function normalizePreventiveOptionalText(
-  value: string | null | undefined,
-  field: string,
-  maxLength: number
-): string | null {
-  const text = value?.trim() || null;
-  if (text && text.length > maxLength) {
-    throw new ValidationError(`${field} must have at most ${maxLength} characters`);
-  }
-  return text;
-}
-
-function normalizePreventiveOptionalId(
-  value: string | null | undefined,
-  field: string
-): string | null {
-  const text = value?.trim() || null;
-  if (text && text.length > 255) {
-    throw new ValidationError(`${field} must have at most 255 characters`);
-  }
-  return text;
-}
-
-function normalizePreventiveDate(value: string | undefined, field: string): string {
-  const date = requireNonEmptyString(value, field).trim();
-  if (!isoDatePattern.test(date) || Number.isNaN(new Date(`${date}T12:00:00Z`).getTime())) {
-    throw new ValidationError(`${field} must be a valid YYYY-MM-DD date`);
-  }
-  return date;
-}
-
-function normalizePreventiveOptionalDate(
-  value: string | null | undefined,
-  field: string
-): string | null {
-  if (!value?.trim()) return null;
-  return normalizePreventiveDate(value, field);
-}
-
-function normalizePreventiveItemType(value: PreventiveItemType | undefined): PreventiveItemType {
-  if (!value) return 'vaccine';
-  if (!preventiveItemTypes.has(value)) {
-    throw new ValidationError('itemType is invalid');
-  }
-  return value;
-}
-
-function normalizePreventiveStatus(
-  value: PreventiveEventStatus | undefined
-): PreventiveEventStatus {
-  if (!value) return 'scheduled';
-  if (!preventiveStatuses.has(value)) {
-    throw new ValidationError('status is invalid');
-  }
-  return value;
-}
-
-function mapPreventiveDate(value: unknown): string {
-  if (value instanceof Date) return value.toISOString().slice(0, 10);
-  return String(value).slice(0, 10);
-}
-
-function mapPreventiveOptionalDate(value: unknown): string | null {
-  return value ? mapPreventiveDate(value) : null;
-}
-
-function mapPreventiveTimestamp(value: unknown): string | null {
-  if (!value) return null;
-  return new Date(value as string | Date).toISOString();
-}
-
-function mapPreventiveEventRow(row: Record<string, unknown>): PreventiveEventSummary {
-  return {
-    id: row.id as string,
-    accountId: row.account_id as string,
-    patientId: (row.patient_id as string | null) ?? null,
-    ownerId: (row.owner_id as string | null) ?? null,
-    clientName: row.client_name as string,
-    animalName: row.animal_name as string,
-    eventDate: mapPreventiveDate(row.event_date),
-    itemType: row.item_type as PreventiveItemType,
-    protocolCode: (row.protocol_code as string | null) ?? null,
-    lotNumber: (row.lot_number as string | null) ?? null,
-    description: row.description as string,
-    status: row.status as PreventiveEventStatus,
-    observation: (row.observation as string | null) ?? null,
-    executedAt: mapPreventiveTimestamp(row.executed_at),
-    executedObservation: (row.executed_observation as string | null) ?? null,
-    nextDoseDate: mapPreventiveOptionalDate(row.next_dose_date),
-    rescheduledFromId: (row.rescheduled_from_id as string | null) ?? null,
-    reminderEmailPreparedAt: mapPreventiveTimestamp(row.reminder_email_prepared_at),
-    createdAt: new Date(row.created_at as string | Date).toISOString(),
-    updatedAt: new Date(row.updated_at as string | Date).toISOString()
-  };
-}
-
-function createPreventiveEventSummary(
-  accountId: string,
-  input: PreventiveEventInput,
-  rescheduledFromId: string | null = null
-): PreventiveEventSummary {
-  const now = new Date().toISOString();
-  return {
-    id: createCorrelationId('preventive'),
-    accountId,
-    patientId: normalizePreventiveOptionalId(input.patientId, 'patientId'),
-    ownerId: normalizePreventiveOptionalId(input.ownerId, 'ownerId'),
-    clientName: normalizePreventiveText(input.clientName, 'clientName', preventiveMaxNameLength),
-    animalName: normalizePreventiveText(input.animalName, 'animalName', preventiveMaxNameLength),
-    eventDate: normalizePreventiveDate(input.eventDate, 'eventDate'),
-    itemType: normalizePreventiveItemType(input.itemType),
-    protocolCode: normalizePreventiveOptionalText(
-      input.protocolCode,
-      'protocolCode',
-      preventiveMaxProtocolLength
-    ),
-    lotNumber: normalizePreventiveOptionalText(
-      input.lotNumber,
-      'lotNumber',
-      preventiveMaxLotLength
-    ),
-    description: normalizePreventiveText(
-      input.description,
-      'description',
-      preventiveMaxDescriptionLength
-    ),
-    status: normalizePreventiveStatus(input.status),
-    observation: normalizePreventiveOptionalText(
-      input.observation,
-      'observation',
-      preventiveMaxObservationLength
-    ),
-    executedAt: null,
-    executedObservation: null,
-    nextDoseDate: null,
-    rescheduledFromId,
-    reminderEmailPreparedAt: null,
-    createdAt: now,
-    updatedAt: now
-  };
-}
-
-class InMemoryPreventiveEventStore implements PreventiveEventStore {
-  readonly #events = new Map<string, PreventiveEventSummary>();
-
-  async create(accountId: string, input: PreventiveEventInput): Promise<PreventiveEventSummary> {
-    const event = createPreventiveEventSummary(accountId, input);
-    this.#events.set(event.id, event);
-    return event;
-  }
-
-  async update(eventId: string, input: PreventiveEventInput): Promise<PreventiveEventSummary> {
-    const existing = await this.getOrThrow(eventId);
-    const updated: PreventiveEventSummary = {
-      ...existing,
-      patientId:
-        input.patientId !== undefined
-          ? normalizePreventiveOptionalId(input.patientId, 'patientId')
-          : existing.patientId,
-      ownerId:
-        input.ownerId !== undefined
-          ? normalizePreventiveOptionalId(input.ownerId, 'ownerId')
-          : existing.ownerId,
-      clientName:
-        input.clientName !== undefined
-          ? normalizePreventiveText(input.clientName, 'clientName', preventiveMaxNameLength)
-          : existing.clientName,
-      animalName:
-        input.animalName !== undefined
-          ? normalizePreventiveText(input.animalName, 'animalName', preventiveMaxNameLength)
-          : existing.animalName,
-      eventDate:
-        input.eventDate !== undefined
-          ? normalizePreventiveDate(input.eventDate, 'eventDate')
-          : existing.eventDate,
-      itemType:
-        input.itemType !== undefined
-          ? normalizePreventiveItemType(input.itemType)
-          : existing.itemType,
-      protocolCode:
-        input.protocolCode !== undefined
-          ? normalizePreventiveOptionalText(
-              input.protocolCode,
-              'protocolCode',
-              preventiveMaxProtocolLength
-            )
-          : existing.protocolCode,
-      lotNumber:
-        input.lotNumber !== undefined
-          ? normalizePreventiveOptionalText(input.lotNumber, 'lotNumber', preventiveMaxLotLength)
-          : existing.lotNumber,
-      description:
-        input.description !== undefined
-          ? normalizePreventiveText(
-              input.description,
-              'description',
-              preventiveMaxDescriptionLength
-            )
-          : existing.description,
-      status:
-        input.status !== undefined ? normalizePreventiveStatus(input.status) : existing.status,
-      observation:
-        input.observation !== undefined
-          ? normalizePreventiveOptionalText(
-              input.observation,
-              'observation',
-              preventiveMaxObservationLength
-            )
-          : existing.observation,
-      updatedAt: new Date().toISOString()
-    };
-    this.#events.set(updated.id, updated);
-    return updated;
-  }
-
-  async getOrThrow(eventId: string): Promise<PreventiveEventSummary> {
-    const event = this.#events.get(eventId);
-    if (!event) {
-      throw new NotFoundError('Preventive event not found', { eventId });
-    }
-    return event;
-  }
-
-  async list(
-    accountId: string,
-    filters: PreventiveEventListFilters
-  ): Promise<PreventiveEventSummary[]> {
-    let items = Array.from(this.#events.values()).filter((event) => event.accountId === accountId);
-    items = applyPreventiveFilters(items, filters);
-    return items.sort(
-      (a, b) => a.eventDate.localeCompare(b.eventDate) || a.clientName.localeCompare(b.clientName)
-    );
-  }
-
-  async delete(eventId: string): Promise<void> {
-    this.#events.delete(eventId);
-  }
-
-  async execute(
-    eventId: string,
-    input: PreventiveEventExecuteInput
-  ): Promise<{
-    event: PreventiveEventSummary;
-    rescheduledEvent: PreventiveEventSummary | null;
-  }> {
-    const existing = await this.getOrThrow(eventId);
-    const now = new Date().toISOString();
-    const event: PreventiveEventSummary = {
-      ...existing,
-      status: 'executed',
-      executedAt: now,
-      executedObservation: normalizePreventiveOptionalText(
-        input.observation,
-        'observation',
-        preventiveMaxObservationLength
-      ),
-      nextDoseDate: normalizePreventiveOptionalDate(input.rescheduleTo, 'rescheduleTo'),
-      observation:
-        normalizePreventiveOptionalText(
-          input.observation,
-          'observation',
-          preventiveMaxObservationLength
-        ) ?? existing.observation,
-      updatedAt: now
-    };
-    this.#events.set(event.id, event);
-
-    const rescheduleTo = normalizePreventiveOptionalDate(input.rescheduleTo, 'rescheduleTo');
-    if (!rescheduleTo) return { event, rescheduledEvent: null };
-
-    const rescheduledEvent: PreventiveEventSummary = {
-      ...existing,
-      id: createCorrelationId('preventive'),
-      eventDate: rescheduleTo,
-      status: 'scheduled',
-      executedAt: null,
-      executedObservation: null,
-      nextDoseDate: null,
-      rescheduledFromId: event.id,
-      reminderEmailPreparedAt: null,
-      observation: 'Reagendado apos baixa.',
-      createdAt: now,
-      updatedAt: now
-    };
-    this.#events.set(rescheduledEvent.id, rescheduledEvent);
-    return { event, rescheduledEvent };
-  }
-
-  async prepareEmail(eventId: string): Promise<PreventiveEventSummary> {
-    const existing = await this.getOrThrow(eventId);
-    const updated: PreventiveEventSummary = {
-      ...existing,
-      reminderEmailPreparedAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    this.#events.set(updated.id, updated);
-    return updated;
-  }
-
-  async prepareBulkEmail(
-    accountId: string,
-    filters: PreventiveEventListFilters
-  ): Promise<PreventiveEmailResult> {
-    const preparedAt = new Date().toISOString();
-    const items = await this.list(accountId, filters);
-    let preparedCount = 0;
-    for (const item of items.filter((event) => event.status === 'scheduled')) {
-      this.#events.set(item.id, {
-        ...item,
-        reminderEmailPreparedAt: preparedAt,
-        updatedAt: preparedAt
-      });
-      preparedCount++;
-    }
-    return { preparedCount, preparedAt };
-  }
-}
-
-function applyPreventiveFilters(
-  items: PreventiveEventSummary[],
-  filters: PreventiveEventListFilters
-): PreventiveEventSummary[] {
-  const client = filters.client?.trim().toLowerCase();
-  const animal = filters.animal?.trim().toLowerCase();
-  const dateFrom = filters.dateFrom ? normalizePreventiveDate(filters.dateFrom, 'dateFrom') : null;
-  const dateTo = filters.dateTo ? normalizePreventiveDate(filters.dateTo, 'dateTo') : null;
-
-  return items.filter((event) => {
-    if (!filters.includeExecuted && event.status === 'executed') return false;
-    if (dateFrom && event.eventDate < dateFrom) return false;
-    if (dateTo && event.eventDate > dateTo) return false;
-    if (
-      filters.itemType &&
-      preventiveItemTypes.has(filters.itemType as PreventiveItemType) &&
-      event.itemType !== filters.itemType
-    ) {
-      return false;
-    }
-    if (filters.patientId && event.patientId !== filters.patientId) return false;
-    if (filters.ownerId && event.ownerId !== filters.ownerId) return false;
-    if (client && !event.clientName.toLowerCase().includes(client)) return false;
-    if (animal && !event.animalName.toLowerCase().includes(animal)) return false;
-    return true;
-  });
-}
-
-class DatabasePreventiveEventStore implements PreventiveEventStore {
-  async create(accountId: string, input: PreventiveEventInput): Promise<PreventiveEventSummary> {
-    const event = createPreventiveEventSummary(accountId, input);
-    return await this.insertEvent(event);
-  }
-
-  async update(eventId: string, input: PreventiveEventInput): Promise<PreventiveEventSummary> {
-    const existing = await this.getOrThrow(eventId);
-    const updated: PreventiveEventSummary = {
-      ...existing,
-      patientId:
-        input.patientId !== undefined
-          ? normalizePreventiveOptionalId(input.patientId, 'patientId')
-          : existing.patientId,
-      ownerId:
-        input.ownerId !== undefined
-          ? normalizePreventiveOptionalId(input.ownerId, 'ownerId')
-          : existing.ownerId,
-      clientName:
-        input.clientName !== undefined
-          ? normalizePreventiveText(input.clientName, 'clientName', preventiveMaxNameLength)
-          : existing.clientName,
-      animalName:
-        input.animalName !== undefined
-          ? normalizePreventiveText(input.animalName, 'animalName', preventiveMaxNameLength)
-          : existing.animalName,
-      eventDate:
-        input.eventDate !== undefined
-          ? normalizePreventiveDate(input.eventDate, 'eventDate')
-          : existing.eventDate,
-      itemType:
-        input.itemType !== undefined
-          ? normalizePreventiveItemType(input.itemType)
-          : existing.itemType,
-      protocolCode:
-        input.protocolCode !== undefined
-          ? normalizePreventiveOptionalText(
-              input.protocolCode,
-              'protocolCode',
-              preventiveMaxProtocolLength
-            )
-          : existing.protocolCode,
-      lotNumber:
-        input.lotNumber !== undefined
-          ? normalizePreventiveOptionalText(input.lotNumber, 'lotNumber', preventiveMaxLotLength)
-          : existing.lotNumber,
-      description:
-        input.description !== undefined
-          ? normalizePreventiveText(
-              input.description,
-              'description',
-              preventiveMaxDescriptionLength
-            )
-          : existing.description,
-      status:
-        input.status !== undefined ? normalizePreventiveStatus(input.status) : existing.status,
-      observation:
-        input.observation !== undefined
-          ? normalizePreventiveOptionalText(
-              input.observation,
-              'observation',
-              preventiveMaxObservationLength
-            )
-          : existing.observation,
-      updatedAt: new Date().toISOString()
-    };
-
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query(
-        `UPDATE preventive_events
-         SET client_name = $2,
-             animal_name = $3,
-             patient_id = $4,
-             owner_id = $5,
-             event_date = $6,
-             item_type = $7,
-             protocol_code = $8,
-             lot_number = $9,
-             description = $10,
-             status = $11,
-             observation = $12,
-             updated_at = $13
-         WHERE id = $1
-         RETURNING *`,
-        [
-          eventId,
-          updated.clientName,
-          updated.animalName,
-          updated.patientId,
-          updated.ownerId,
-          updated.eventDate,
-          updated.itemType,
-          updated.protocolCode,
-          updated.lotNumber,
-          updated.description,
-          updated.status,
-          updated.observation,
-          new Date(updated.updatedAt)
-        ]
-      );
-      if (result.rows.length === 0) {
-        throw new NotFoundError('Preventive event not found', { eventId });
-      }
-      return mapPreventiveEventRow(result.rows[0]);
-    });
-  }
-
-  async getOrThrow(eventId: string): Promise<PreventiveEventSummary> {
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query('SELECT * FROM preventive_events WHERE id = $1', [eventId]);
-      if (result.rows.length === 0) {
-        throw new NotFoundError('Preventive event not found', { eventId });
-      }
-      return mapPreventiveEventRow(result.rows[0]);
-    });
-  }
-
-  async list(
-    accountId: string,
-    filters: PreventiveEventListFilters
-  ): Promise<PreventiveEventSummary[]> {
-    return await withTenantQuery(getPool(), async (client) => {
-      let sql = 'SELECT * FROM preventive_events WHERE account_id = $1';
-      const params: unknown[] = [accountId];
-      let nextParam = 2;
-
-      if (!filters.includeExecuted) {
-        sql += ` AND status <> $${nextParam}`;
-        params.push('executed');
-        nextParam++;
-      }
-      if (filters.dateFrom) {
-        sql += ` AND event_date >= $${nextParam}`;
-        params.push(normalizePreventiveDate(filters.dateFrom, 'dateFrom'));
-        nextParam++;
-      }
-      if (filters.dateTo) {
-        sql += ` AND event_date <= $${nextParam}`;
-        params.push(normalizePreventiveDate(filters.dateTo, 'dateTo'));
-        nextParam++;
-      }
-      if (filters.itemType && preventiveItemTypes.has(filters.itemType as PreventiveItemType)) {
-        sql += ` AND item_type = $${nextParam}`;
-        params.push(filters.itemType);
-        nextParam++;
-      }
-      if (filters.patientId) {
-        sql += ` AND patient_id = $${nextParam}`;
-        params.push(filters.patientId);
-        nextParam++;
-      }
-      if (filters.ownerId) {
-        sql += ` AND owner_id = $${nextParam}`;
-        params.push(filters.ownerId);
-        nextParam++;
-      }
-      if (filters.client) {
-        sql += ` AND client_name ILIKE $${nextParam}`;
-        params.push(`%${filters.client}%`);
-        nextParam++;
-      }
-      if (filters.animal) {
-        sql += ` AND animal_name ILIKE $${nextParam}`;
-        params.push(`%${filters.animal}%`);
-        nextParam++;
-      }
-
-      sql += ' ORDER BY event_date ASC, client_name ASC';
-      const result = await client.query(sql, params);
-      return result.rows.map((row: Record<string, unknown>) => mapPreventiveEventRow(row));
-    });
-  }
-
-  async delete(eventId: string): Promise<void> {
-    await withTenantQuery(getPool(), async (client) => {
-      await client.query('DELETE FROM preventive_events WHERE id = $1', [eventId]);
-    });
-  }
-
-  async execute(
-    eventId: string,
-    input: PreventiveEventExecuteInput
-  ): Promise<{
-    event: PreventiveEventSummary;
-    rescheduledEvent: PreventiveEventSummary | null;
-  }> {
-    const existing = await this.getOrThrow(eventId);
-    const executedObservation = normalizePreventiveOptionalText(
-      input.observation,
-      'observation',
-      preventiveMaxObservationLength
-    );
-    const rescheduleTo = normalizePreventiveOptionalDate(input.rescheduleTo, 'rescheduleTo');
-    const now = new Date();
-
-    return await withTenantQuery(getPool(), async (client) => {
-      const updateResult = await client.query(
-        `UPDATE preventive_events
-         SET status = 'executed',
-             executed_at = $2,
-             executed_observation = $3,
-             observation = COALESCE($3, observation),
-             next_dose_date = $4,
-             updated_at = $2
-         WHERE id = $1
-         RETURNING *`,
-        [eventId, now, executedObservation, rescheduleTo]
-      );
-      const event = mapPreventiveEventRow(updateResult.rows[0]);
-
-      if (!rescheduleTo) {
-        return { event, rescheduledEvent: null };
-      }
-
-      const rescheduledEvent = createPreventiveEventSummary(
-        existing.accountId,
-        {
-          patientId: existing.patientId,
-          ownerId: existing.ownerId,
-          clientName: existing.clientName,
-          animalName: existing.animalName,
-          eventDate: rescheduleTo,
-          itemType: existing.itemType,
-          protocolCode: existing.protocolCode,
-          lotNumber: existing.lotNumber,
-          description: existing.description,
-          observation: 'Reagendado apos baixa.',
-          status: 'scheduled'
-        },
-        event.id
-      );
-      const insertResult = await this.insertEventWithClient(client, rescheduledEvent);
-      return { event, rescheduledEvent: insertResult };
-    });
-  }
-
-  async prepareEmail(eventId: string): Promise<PreventiveEventSummary> {
-    const preparedAt = new Date();
-    return await withTenantQuery(getPool(), async (client) => {
-      const result = await client.query(
-        `UPDATE preventive_events
-         SET reminder_email_prepared_at = $2,
-             updated_at = $2
-         WHERE id = $1
-         RETURNING *`,
-        [eventId, preparedAt]
-      );
-      if (result.rows.length === 0) {
-        throw new NotFoundError('Preventive event not found', { eventId });
-      }
-      return mapPreventiveEventRow(result.rows[0]);
-    });
-  }
-
-  async prepareBulkEmail(
-    accountId: string,
-    filters: PreventiveEventListFilters
-  ): Promise<PreventiveEmailResult> {
-    const preparedAt = new Date();
-    const items = await this.list(accountId, { ...filters, includeExecuted: false });
-    if (items.length === 0) {
-      return { preparedCount: 0, preparedAt: preparedAt.toISOString() };
-    }
-
-    await withTenantQuery(getPool(), async (client) => {
-      await client.query(
-        `UPDATE preventive_events
-         SET reminder_email_prepared_at = $2,
-             updated_at = $2
-         WHERE account_id = $1
-           AND id = ANY($3::varchar[])`,
-        [accountId, preparedAt, items.map((item) => item.id)]
-      );
-    });
-
-    return { preparedCount: items.length, preparedAt: preparedAt.toISOString() };
-  }
-
-  private async insertEvent(event: PreventiveEventSummary): Promise<PreventiveEventSummary> {
-    return await withTenantQuery(getPool(), async (client) =>
-      this.insertEventWithClient(client, event)
-    );
-  }
-
-  private async insertEventWithClient(
-    client: {
-      query: (sql: string, params?: unknown[]) => Promise<{ rows: Record<string, unknown>[] }>;
-    },
-    event: PreventiveEventSummary
-  ): Promise<PreventiveEventSummary> {
-    const result = await client.query(
-      `INSERT INTO preventive_events (
-         id,
-         account_id,
-         patient_id,
-         owner_id,
-         client_name,
-         animal_name,
-         event_date,
-         item_type,
-         protocol_code,
-         lot_number,
-         next_dose_date,
-         description,
-         status,
-         observation,
-         executed_at,
-         executed_observation,
-         rescheduled_from_id,
-         reminder_email_prepared_at,
-         created_at,
-         updated_at
-       )
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
-       RETURNING *`,
-      [
-        event.id,
-        event.accountId,
-        event.patientId,
-        event.ownerId,
-        event.clientName,
-        event.animalName,
-        event.eventDate,
-        event.itemType,
-        event.protocolCode,
-        event.lotNumber,
-        event.nextDoseDate,
-        event.description,
-        event.status,
-        event.observation,
-        event.executedAt ? new Date(event.executedAt) : null,
-        event.executedObservation,
-        event.rescheduledFromId,
-        event.reminderEmailPreparedAt ? new Date(event.reminderEmailPreparedAt) : null,
-        new Date(event.createdAt),
-        new Date(event.updatedAt)
-      ]
-    );
-    return mapPreventiveEventRow(result.rows[0]);
-  }
-}
-
-function createPreventiveEventStore(useDatabase: boolean): PreventiveEventStore {
-  if (!useDatabase) {
-    return new InMemoryPreventiveEventStore();
-  }
-
-  try {
-    getPool();
-    return new DatabasePreventiveEventStore();
-  } catch {
-    return new InMemoryPreventiveEventStore();
-  }
 }
 
 function shouldUseTenantCommand(pathname: string, method: string | undefined): boolean {
@@ -3831,6 +905,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     tenantTransaction: options.tenantTransaction,
     medicalRecordsPersistenceMode: options.medicalRecordsPersistenceMode
   });
+  const requireEncounterForAccount = createEncounterAccountGuard(encounters);
+  const syncQueueWithEncounter = createEncounterQueueSynchronizer(encounters, scheduling);
   const runTenantCommand = createTenantCommandRunner({
     environment: options.environment,
     unitOfWork: options.unitOfWork,
@@ -3844,8 +920,20 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
           ): Promise<T> => withTenantTransaction(accountId, async () => command(), metadata)
         : undefined)
   });
-  const workflowTasks = options.workflowTaskService ?? createApiWorkflowTaskService(options.environment);
-  const clinicalOperationalMetricsProvider = options.clinicalOperationalMetricsProvider ?? createClinicalOperationalMetricsProvider({ users, inpatient, encounters, workflowTasks, prescriptionExecutions, diagnostics, clinicalHandoffs }); const ensureWorkflowTaskSchemaReady = createWorkflowTaskSchemaReadinessGuard(options.environment);
+  const workflowTasks =
+    options.workflowTaskService ?? createApiWorkflowTaskService(options.environment);
+  const clinicalOperationalMetricsProvider =
+    options.clinicalOperationalMetricsProvider ??
+    createClinicalOperationalMetricsProvider({
+      users,
+      inpatient,
+      encounters,
+      workflowTasks,
+      prescriptionExecutions,
+      diagnostics,
+      clinicalHandoffs
+    });
+  const ensureWorkflowTaskSchemaReady = createWorkflowTaskSchemaReadinessGuard(options.environment);
   const refreshAccessControlCaches = async (accountId: AccountId): Promise<void> => {
     try {
       await Promise.all([
@@ -4325,9 +1413,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     traceableRequest.span = span;
 
     const startTime = process.hrtime.bigint();
-    const correlationIdHeader = request.headers['x-correlation-id'];
-    const correlationId =
-      typeof correlationIdHeader === 'string' ? correlationIdHeader : createCorrelationId('api');
+    const correlationId = resolveRequestCorrelationId();
+    traceableRequest.correlationId = correlationId;
     requestCorrelationIds.set(request, correlationId);
 
     response.setHeader('content-type', 'application/json; charset=utf-8');
@@ -4407,41 +1494,27 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       ) {
         return;
       }
-      if (METRICS_PATHS.has(pathname) && request.method === 'GET') {
-        if (!isMetricsRequestAuthorized(request.headers, metricsAuthToken)) {
-          sendMetricsAuthorizationRequired(response);
-          return;
-        }
-        await refreshClinicalOperationalMetrics(clinicalOperationalMetricsProvider, logger);
-        updateDatabasePoolMetrics(getInitializedDatabasePool());
-        const appState = getAppState();
-        const redisHealth = await resolveRedisHealthStatus(
-          healthRouteOptions,
-          effectiveRuntimeDistributedStateEnabled
-        );
-        const operationalState = resolveOperationalRuntimeState({
-          appState,
-          activeExperimentIds: chaos.listActiveExperiments().map((experiment) => experiment.id),
+      if (
+        (pathname === '/metrics' || pathname === '/internal/metrics') &&
+        request.method === 'GET'
+      ) {
+        await handleMetricsReadRoute(pathname, request, response, {
+          metricsAuthToken,
+          refreshClinicalMetrics: () =>
+            refreshClinicalOperationalMetrics(clinicalOperationalMetricsProvider, logger),
+          updateDatabasePoolMetrics: () => updateDatabasePoolMetrics(getInitializedDatabasePool()),
+          getAppState,
+          resolveRedisHealthStatus: () =>
+            resolveRedisHealthStatus(healthRouteOptions, effectiveRuntimeDistributedStateEnabled),
+          listActiveExperimentIds: () =>
+            chaos.listActiveExperiments().map((experiment) => experiment.id),
           runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
           redisUrl: options.redisUrl,
-          redisHealth
+          updateAppMetrics,
+          getMetricsText,
+          getChaosMetricsText: () => chaosMetrics.register.metrics(),
+          uptimeSeconds: () => Math.round(process.uptime())
         });
-        updateAppMetrics({
-          uptime: Math.round(process.uptime()),
-          dbHealthy: operationalState.databaseHealthy,
-          persistenceMode: operationalState.persistenceMode,
-          redisHealthy: operationalState.redisHealthy,
-          rateLimiterMode: operationalState.rateLimiterMode,
-          runtimeDistributedStateEnabled: operationalState.runtimeDistributedStateEnabled
-        });
-
-        const [metricsText, chaosMetricsText] = await Promise.all([
-          getMetricsText(),
-          chaosMetrics.register.metrics()
-        ]);
-        response.setHeader('content-type', 'text/plain; version=0.0.4; charset=utf-8');
-        response.statusCode = 200;
-        response.end(`${metricsText}\n${chaosMetricsText}`);
         return;
       }
 
@@ -4519,47 +1592,17 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       }
 
       // List all available chaos experiments
-      if (request.url === '/chaos/experiments' && request.method === 'GET') {
-        await requireEarlyPrincipal('users.manage');
-        const appState = getAppState();
-        const activeExperimentIds = chaos
-          .listActiveExperiments()
-          .map((experiment) => experiment.id);
-        const redisHealth = await resolveRedisHealthStatus(
-          healthRouteOptions,
-          effectiveRuntimeDistributedStateEnabled
-        );
-        const operationalState = resolveOperationalRuntimeState({
-          appState,
-          activeExperimentIds,
+      if (
+        await handleChaosExperimentListRoute(request, response, {
+          requireEarlyPrincipal,
+          chaos,
+          getAppState,
+          resolveRedisHealthStatus: () =>
+            resolveRedisHealthStatus(healthRouteOptions, effectiveRuntimeDistributedStateEnabled),
           runtimeDistributedStateEnabled: effectiveRuntimeDistributedStateEnabled,
-          redisUrl: options.redisUrl,
-          redisHealth
-        });
-        const experiments = chaos.listExperiments().map((e) => ({
-          id: e.id,
-          name: e.name,
-          description: e.description,
-          active: chaos.isActive(e.id),
-          runbook: describeChaosExperiment(e.id)?.runbook,
-          indicators: describeChaosExperiment(e.id)?.indicators ?? [],
-          runtimeImpact: {
-            summary: describeChaosExperiment(e.id)?.summary ?? 'No operational summary registered.',
-            databaseHealthy: e.id === 'database-failure' ? false : operationalState.databaseHealthy,
-            persistenceMode:
-              e.id === 'database-failure' && chaos.isActive(e.id)
-                ? 'unavailable'
-                : operationalState.persistenceMode,
-            workerReady: e.id === 'worker-failure' ? false : operationalState.workerReady,
-            externalProvidersHealthy:
-              e.id === 'provider-failure' ? false : operationalState.externalProvidersHealthy,
-            redisHealthy: e.id === 'redis-failure' ? false : operationalState.redisHealthy,
-            rateLimiterMode: operationalState.rateLimiterMode
-          }
-        }));
-        response.setHeader('content-type', 'application/json');
-        response.statusCode = 200;
-        response.end(JSON.stringify({ runtimeState: operationalState, experiments }));
+          redisUrl: options.redisUrl
+        })
+      ) {
         return;
       }
 
@@ -4645,7 +1688,13 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             return;
           }
 
-          const featureFlagContext: EvaluationContext = { environment: options.environment, tenantId: tenantCtx.tenantId, accountId: tenantCtx.accountId, userId: tenantCtx.userId, correlationId };
+          const featureFlagContext: EvaluationContext = {
+            environment: options.environment,
+            tenantId: tenantCtx.tenantId,
+            accountId: tenantCtx.accountId,
+            userId: tenantCtx.userId,
+            correlationId
+          };
 
           const dispatchRequest = async (): Promise<void> => {
             // The equipment bridge must be the first body-consuming mutation
@@ -4694,7 +1743,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 webauthnChallengeTtlMs: WEBAUTHN_CHALLENGE_TTL_MS,
                 oidcStateStore,
                 oidcStateTtlMs: OIDC_STATE_TTL_MS,
-                featureFlagEvaluator: featureFlags.evaluate, featureFlagContext,
+                featureFlagEvaluator: featureFlags.evaluate,
+                featureFlagContext,
                 refreshCookieMaxAgeSeconds: options.refreshTokenTtlSeconds,
                 secureCookies: isProductionLikeEnvironment(options.environment),
                 csrfAllowedOrigins: corsAllowedOrigins,
@@ -4799,7 +1849,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 audit,
                 requirePrincipal,
                 fiscalBackofficeEnabled: featureFlags.fiscalBackofficeEnabled,
-                featureFlagEvaluator: featureFlags.evaluate, featureFlagContext
+                featureFlagEvaluator: featureFlags.evaluate,
+                featureFlagContext
               })
             ) {
               return;
@@ -4812,7 +1863,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 smartScheduling,
                 audit,
                 featureFlags,
-                featureFlagEvaluator: featureFlags.evaluate, featureFlagContext,
+                featureFlagEvaluator: featureFlags.evaluate,
+                featureFlagContext,
                 requirePrincipal,
                 runCommand: runTenantCommand
               })
@@ -4844,75 +1896,14 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               }
             }
 
-            if (pathname === '/medical-records' && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'medical-records.read');
-              const encounterId = url.searchParams.get('encounterId');
-
-              if (encounterId) {
-                requireEncounterForAccount(encounterId, principal.user.accountId);
-                const record = await medicalRecords.getRecordByEncounterOrThrowAsync(
-                  principal.user.accountId as never,
-                  encounterId as never
-                );
-                appendAudit(
-                  principal.user.id,
-                  principal.user.accountId,
-                  'medical-records',
-                  'read_record',
-                  'medical-record',
-                  record.id,
-                  `Medical record read for encounter ${encounterId}`,
-                  'high',
-                  correlationId
-                );
-                response.statusCode = 200;
-                response.end(
-                  JSON.stringify({
-                    record,
-                    entries: await medicalRecords.listEntriesByEncounterAsync(
-                      principal.user.accountId as never,
-                      encounterId as never
-                    )
-                  })
-                );
-                return;
-              }
-
-              const items = await medicalRecords.listAll(principal.user.accountId as never);
-              response.statusCode = 200;
-              response.end(JSON.stringify({ items }));
-              return;
-            }
-
-            if (pathname === '/medical-records/entries' && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'medical-records.read');
-              const encounterId = requireNonEmptyString(
-                url.searchParams.get('encounterId'),
-                'encounterId'
-              );
-              const includeArchived = parseIncludeArchived(url.searchParams.get('includeArchived'));
-              requireEncounterForAccount(encounterId, principal.user.accountId);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'medical-records',
-                'list_entries',
-                'clinical-entry',
-                encounterId,
-                'Clinical entries listed',
-                'high',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(
-                JSON.stringify({
-                  items: await medicalRecords.listEntriesByEncounterAsync(
-                    principal.user.accountId as never,
-                    encounterId as never,
-                    { includeArchived }
-                  )
-                })
-              );
+            if (
+              await handleMedicalRecordReadRoutes(pathname, url, request, response, correlationId, {
+                medicalRecords,
+                requirePrincipal,
+                requireEncounterForAccount,
+                appendAudit
+              })
+            ) {
               return;
             }
 
@@ -5003,39 +1994,6 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               const medicalRecordEntryParts = pathname.split('/');
               const entryId = requireNonEmptyString(medicalRecordEntryParts[3], 'entryId');
 
-              if (
-                request.method === 'GET' &&
-                medicalRecordEntryParts.length === 5 &&
-                medicalRecordEntryParts[4] === 'revisions'
-              ) {
-                const principal = await requirePrincipal(request, 'medical-records.read');
-                const entry = await medicalRecords.getEntryOrThrowAsync(
-                  principal.user.accountId as never,
-                  entryId as never
-                );
-                if (entry.accountId !== principal.user.accountId) {
-                  throw new NotFoundError('Clinical entry not found', { entryId });
-                }
-                const revisions = await medicalRecords.getEntryRevisionsAsync(
-                  principal.user.accountId as never,
-                  entryId as never
-                );
-                appendAudit(
-                  principal.user.id,
-                  principal.user.accountId,
-                  'medical-records',
-                  'read_revisions',
-                  'clinical-entry',
-                  entryId,
-                  `Clinical entry ${entryId} revision history inspected`,
-                  'medium',
-                  correlationId
-                );
-                response.statusCode = 200;
-                response.end(JSON.stringify({ items: revisions }));
-                return;
-              }
-
               const principal = await requirePrincipal(request, 'medical-records.manage');
               const existingEntry = await medicalRecords.getEntryOrThrowAsync(
                 principal.user.accountId as never,
@@ -5096,687 +2054,186 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               }
             }
 
-            if (pathname === '/medical-records/timeline' && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'medical-records.read');
-              const encounterId = requireNonEmptyString(
-                url.searchParams.get('encounterId'),
-                'encounterId'
-              );
-              requireEncounterForAccount(encounterId, principal.user.accountId);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'medical-records',
-                'read_timeline',
-                'clinical-timeline',
-                encounterId,
-                'Clinical timeline inspected',
-                'high',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(
-                JSON.stringify({
-                  items: await medicalRecords.listTimelineByEncounterAsync(
-                    principal.user.accountId as never,
-                    encounterId as never
-                  )
-                })
-              );
-              return;
-            }
-
-            if (pathname === '/attachments' && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'attachments.read');
-              const linkedEntityType = requireNonEmptyString(
-                url.searchParams.get('linkedEntityType'),
-                'linkedEntityType'
-              ) as 'encounter' | 'medical_record' | 'diagnostic_order';
-              const linkedEntityId = requireNonEmptyString(
-                url.searchParams.get('linkedEntityId'),
-                'linkedEntityId'
-              );
-              await requireAttachmentTargetForAccount(
-                linkedEntityType,
-                linkedEntityId,
-                principal.user.accountId
-              );
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'attachments',
-                'list',
-                'attachment',
-                linkedEntityId,
-                'Clinical attachments listed',
-                'high',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(
-                JSON.stringify({
-                  items: await attachments.listByLinkedEntity(
-                    linkedEntityType,
-                    linkedEntityId,
-                    principal.user.accountId
-                  )
-                })
-              );
-              return;
-            }
-
-            const attachmentDownloadUrlMatch = pathname.match(
-              /^\/attachments\/([^/]+)\/download-url$/
-            );
-            if (attachmentDownloadUrlMatch && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'attachments.read');
-              const attachmentId = requireNonEmptyString(
-                attachmentDownloadUrlMatch[1],
-                'attachmentId'
-              );
-              const attachment = await attachments.getById(principal.user.accountId, attachmentId);
-              if (!attachment || attachment.accountId !== principal.user.accountId) {
-                throw new NotFoundError('Attachment not found', { attachmentId });
-              }
-              if (attachment.scanStatus !== 'available') {
-                throw new AppError(
-                  'ATTACHMENT_NOT_AVAILABLE',
-                  'Attachment is not available until security scanning completes',
-                  409,
-                  { scanStatus: attachment.scanStatus }
-                );
-              }
-              const expiresAt = Date.now() + 5 * 60 * 1000;
-              const token = createAttachmentDownloadToken(options.authSecret, {
-                attachmentId: attachment.id,
-                accountId: attachment.accountId,
-                expiresAt
-              });
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'attachments',
-                'create_download_url',
-                'attachment',
-                attachment.id,
-                'Short-lived attachment download URL issued',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(
-                JSON.stringify({
-                  url: `/attachments/${encodeURIComponent(attachment.id)}/content?token=${encodeURIComponent(token)}`,
-                  expiresAt: new Date(expiresAt).toISOString()
-                })
-              );
-              return;
-            }
-
-            const attachmentContentMatch = pathname.match(/^\/attachments\/([^/]+)\/content$/);
-            if (attachmentContentMatch && request.method === 'GET') {
-              const attachmentId = requireNonEmptyString(attachmentContentMatch[1], 'attachmentId');
-              const signedClaims = signedAttachmentClaims;
-              const principal = signedClaims
-                ? undefined
-                : await requirePrincipal(request, 'attachments.read');
-              const requestedAccountId = signedClaims?.accountId ?? principal?.user.accountId;
-              const attachment = requestedAccountId
-                ? await attachments.getById(requestedAccountId as never, attachmentId)
-                : null;
-              if (
-                !attachment ||
-                !requestedAccountId ||
-                attachment.accountId !== requestedAccountId ||
-                (signedClaims && signedClaims.attachmentId !== attachment.id)
-              ) {
-                throw new NotFoundError('Attachment not found', { attachmentId });
-              }
-              if (attachment.scanStatus !== 'available') {
-                throw new AppError(
-                  'ATTACHMENT_NOT_AVAILABLE',
-                  'Attachment is not available until security scanning completes',
-                  409,
-                  { scanStatus: attachment.scanStatus }
-                );
-              }
-              const content = await attachments.getFileContent(
-                requestedAccountId as never,
-                attachment.storageKey
-              );
-              if (!content)
-                throw new NotFoundError('Attachment content not found', { attachmentId });
-              const safeFileName = attachment.fileName.replace(/[\r\n"\\]/g, '_');
-              response.setHeader('content-type', attachment.mimeType);
-              response.setHeader('content-length', String(content.length));
-              response.setHeader('content-disposition', `attachment; filename="${safeFileName}"`);
-              response.setHeader('x-content-type-options', 'nosniff');
-              appendAudit(
-                principal?.user.id ?? 'signed-download',
-                attachment.accountId,
-                'attachments',
-                signedClaims ? 'download_signed' : 'download',
-                'attachment',
-                attachment.id,
-                `Attachment ${attachment.id} downloaded`,
-                'high',
-                correlationId
-              );
-              await audit.waitForPersistence();
-              response.statusCode = 200;
-              response.end(content);
-              return;
-            }
-
-            if (pathname === '/attachments' && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'attachments.manage');
-              const payload = (await readJsonBody(
+            if (
+              await handleMedicalRecordTimelineRoute(
+                pathname,
+                url,
                 request,
-                MAX_ATTACHMENT_JSON_BODY_BYTES
-              )) as CreateAttachmentRequest;
-              await requireAttachmentTargetForAccount(
-                payload.linkedEntityType,
-                payload.linkedEntityId,
-                principal.user.accountId
-              );
-              const fileContent = decodeAttachmentContent(payload.contentBase64);
-              const attachment = await attachments.upload(
-                principal.user.id,
-                principal.user.accountId as AccountId,
-                payload,
-                fileContent
-              );
-
-              if (payload.linkedEntityType === 'encounter') {
-                medicalRecords.ensureRecord(
-                  principal.user.accountId as never,
-                  payload.linkedEntityId as never
-                );
-                medicalRecords.appendAttachmentEvent(
-                  principal.user.accountId as never,
-                  payload.linkedEntityId as never,
-                  principal.user.id,
-                  attachment.id,
-                  `Attachment added to encounter ${payload.linkedEntityId}`
-                );
-              } else if (payload.linkedEntityType === 'medical_record') {
-                const record = await medicalRecords.getRecordOrThrowAsync(
-                  principal.user.accountId as never,
-                  payload.linkedEntityId as never
-                );
-                medicalRecords.appendAttachmentEvent(
-                  principal.user.accountId as never,
-                  record.encounterId,
-                  principal.user.id,
-                  attachment.id,
-                  `Attachment added to medical record ${record.id}`
-                );
-              } else {
-                const order = diagnostics.getOrThrow(
-                  principal.user.accountId as AccountId,
-                  payload.linkedEntityId as never
-                );
-                medicalRecords.appendAttachmentEvent(
-                  principal.user.accountId as never,
-                  order.encounterId,
-                  principal.user.id,
-                  attachment.id,
-                  `Attachment added to diagnostic order ${order.id}`
-                );
-              }
-
-              await medicalRecords.waitForPersistence();
-
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'attachments',
-                'upload',
-                'attachment',
-                attachment.id,
-                `Attachment ${attachment.fileName} uploaded`,
-                'high',
-                correlationId
-              );
-              response.statusCode = 201;
-              response.end(JSON.stringify(attachment));
-              return;
-            }
-
-            if (pathname === '/inpatient' && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'inpatient.read');
-              const encounterId = url.searchParams.get('encounterId') ?? undefined;
-              const patientId = url.searchParams.get('patientId') ?? undefined;
-              const includeDischarged = url.searchParams.get('includeDischarged') === 'true';
-              // A read boundary can be served by a different API instance than
-              // the command that changed the stay. Refresh the tenant slice from
-              // committed PostgreSQL rows before rendering the operational board
-              // so a warm process cannot return an empty or stale cache.
-              await inpatient.refreshAccount(principal.user.accountId);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'inpatient',
-                'list',
-                'inpatient-stay',
-                encounterId ?? patientId ?? 'all',
-                'Inpatient stays listed',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(
-                JSON.stringify({
-                  items: inpatient.list(principal.user.accountId, {
-                    encounterId,
-                    patientId,
-                    includeDischarged
-                  })
-                })
-              );
-              return;
-            }
-
-            if (pathname === '/notifications' && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'notifications.read');
-              const status = url.searchParams.get('status') as 'queued' | 'sent' | 'read' | null;
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'notifications',
-                'list',
-                'notification',
-                status ?? 'all',
-                'Operational notifications listed',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(
-                JSON.stringify({
-                  items: await notificationPersistence.listFromRepository(
-                    principal.user.accountId,
-                    status ?? undefined
-                  )
-                })
-              );
-              return;
-            }
-
-            if (pathname === '/notifications/jobs' && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'notifications.read');
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'notifications',
-                'list_jobs',
-                'notification-job',
-                'all',
-                'Notification jobs listed',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(
-                JSON.stringify({
-                  items: await notificationPersistence.listJobsFromRepository(
-                    principal.user.accountId
-                  )
-                })
-              );
-              return;
-            }
-
-            if (pathname === '/notifications' && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'notifications.manage');
-              const payload = (await readJsonBody(request)) as CreateNotificationRequest;
-              const notification = await notifications.create(
-                principal.user.id,
-                principal.user.accountId,
-                payload
-              );
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'notifications',
-                'create',
-                'notification',
-                notification.id,
-                `Notification queued for category ${notification.category}`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 201;
-              response.end(JSON.stringify(notification));
-              return;
-            }
-
-            if (pathname === '/notifications/process' && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'notifications.manage');
-              const payload = (await readJsonBody(request).catch(
-                () => ({})
-              )) as ProcessNotificationsRequest;
-              const processed = await notificationPersistence.processPendingFromRepository(
-                principal.user.accountId,
-                payload
-              );
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'notifications',
-                'process_jobs',
-                'notification-job',
-                String(processed.length),
-                `Processed ${processed.length} notification jobs`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify({ items: processed }));
-              return;
-            }
-
-            if (pathname === '/clinical-handoffs' && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'encounters.read');
-              const status =
-                url.searchParams.get('handoffStatus') ?? url.searchParams.get('status');
-              const priority = url.searchParams.get('priority');
-              const validStatuses = new Set<ClinicalHandoffStatus>([
-                'ready_to_send',
-                'sent_to_reception',
-                'acknowledged_by_reception',
-                'waiting_pending_resolution',
-                'returned_to_clinic',
-                'sent_to_finance'
-              ]);
-              const validPriorities = new Set<ClinicalHandoffPriority>([
-                'low',
-                'medium',
-                'high',
-                'critical'
-              ]);
-
-              if (status && !validStatuses.has(status as ClinicalHandoffStatus)) {
-                throw new ValidationError('Invalid clinical handoff status filter', { status });
-              }
-
-              if (priority && !validPriorities.has(priority as ClinicalHandoffPriority)) {
-                throw new ValidationError('Invalid clinical handoff priority filter', { priority });
-              }
-
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'clinical-handoffs',
-                'list',
-                'clinical-handoff',
-                'all',
-                'Clinical handoffs listed',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(
-                JSON.stringify({
-                  items: clinicalHandoffs.list(principal.user.accountId, {
-                    handoffStatus: status ? (status as ClinicalHandoffStatus) : undefined,
-                    encounterId: (url.searchParams.get('encounterId') ?? undefined) as never,
-                    ownerId: (url.searchParams.get('ownerId') ?? undefined) as never,
-                    patientId: (url.searchParams.get('patientId') ?? undefined) as never,
-                    priority: priority ? (priority as ClinicalHandoffPriority) : undefined
-                  })
-                })
-              );
-              return;
-            }
-
-            if (pathname === '/clinical-handoffs/send-to-reception' && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'encounters.manage');
-              const payload = (await readJsonBody(request)) as SendClinicalHandoffRequest;
-              const handoff = clinicalHandoffs.sendToReception(
-                principal.user.accountId,
-                principal.user.id,
-                payload
-              );
-              await Promise.all([
-                clinicalHandoffs.waitForPersistence(),
-                encounters.waitForPersistence()
-              ]);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'clinical-handoffs',
-                'send_to_reception',
-                'clinical-handoff',
-                handoff.id,
-                `Clinical handoff sent to reception for encounter ${handoff.encounterId}`,
-                'high',
-                correlationId
-              );
-              response.statusCode = 201;
-              response.end(JSON.stringify(handoff));
+                response,
+                correlationId,
+                {
+                  medicalRecords,
+                  requirePrincipal,
+                  requireEncounterForAccount,
+                  appendAudit
+                }
+              )
+            ) {
               return;
             }
 
             if (
-              pathname.startsWith('/clinical-handoffs/') &&
-              pathname.endsWith('/acknowledge') &&
-              request.method === 'POST'
+              await handleAttachmentReadRoutes(pathname, url, request, response, correlationId, {
+                attachments,
+                requirePrincipal,
+                requireAttachmentTargetForAccount,
+                appendAudit
+              })
             ) {
-              const principal = await requirePrincipal(request, 'encounters.manage');
-              const handoffId = requireNonEmptyString(pathname.split('/')[2], 'handoffId');
-              const payload = (await readJsonBody(request).catch(
-                () => ({}) as AcknowledgeClinicalHandoffRequest
-              )) as AcknowledgeClinicalHandoffRequest;
-              const handoff = clinicalHandoffs.acknowledge(
-                principal.user.accountId,
-                principal.user.id,
-                handoffId as never,
-                payload
-              );
-              await Promise.all([
-                clinicalHandoffs.waitForPersistence(),
-                encounters.waitForPersistence()
-              ]);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'clinical-handoffs',
-                'acknowledge',
-                'clinical-handoff',
-                handoff.id,
-                `Clinical handoff acknowledged for encounter ${handoff.encounterId}`,
-                'high',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(handoff));
               return;
             }
 
             if (
-              pathname.startsWith('/clinical-handoffs/') &&
-              pathname.endsWith('/pending') &&
-              request.method === 'POST'
+              await handleAttachmentDownloadUrlRoutes(pathname, request, response, correlationId, {
+                attachments,
+                authSecret: options.authSecret,
+                requirePrincipal,
+                appendAudit
+              })
             ) {
-              const principal = await requirePrincipal(request, 'encounters.manage');
-              const handoffId = requireNonEmptyString(pathname.split('/')[2], 'handoffId');
-              const payload = (await readJsonBody(request)) as MarkClinicalHandoffPendingRequest;
-              const handoff = clinicalHandoffs.markPending(
-                principal.user.accountId,
-                principal.user.id,
-                handoffId as never,
-                payload
-              );
-              await Promise.all([
-                clinicalHandoffs.waitForPersistence(),
-                encounters.waitForPersistence()
-              ]);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'clinical-handoffs',
-                'mark_pending',
-                'clinical-handoff',
-                handoff.id,
-                `Clinical handoff pending issue marked for encounter ${handoff.encounterId}`,
-                'high',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(handoff));
               return;
             }
 
             if (
-              pathname.startsWith('/clinical-handoffs/') &&
-              pathname.includes('/pending/') &&
-              pathname.endsWith('/resolve') &&
-              request.method === 'POST'
+              await handleAttachmentContentReadRoute(pathname, request, response, correlationId, {
+                attachments,
+                signedClaims: signedAttachmentClaims,
+                requirePrincipal,
+                appendAudit,
+                waitForAuditPersistence: () => audit.waitForPersistence()
+              })
             ) {
-              const principal = await requirePrincipal(request, 'encounters.manage');
-              const [, , handoffId, , issueId] = pathname.split('/');
-              const payload = (await readJsonBody(request)) as ResolveClinicalHandoffPendingRequest;
-              const handoff = clinicalHandoffs.resolvePending(
-                principal.user.accountId,
-                principal.user.id,
-                requireNonEmptyString(handoffId, 'handoffId') as never,
-                requireNonEmptyString(issueId, 'issueId') as never,
-                payload
-              );
-              await Promise.all([
-                clinicalHandoffs.waitForPersistence(),
-                encounters.waitForPersistence()
-              ]);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'clinical-handoffs',
-                'resolve_pending',
-                'clinical-handoff',
-                handoff.id,
-                `Clinical handoff pending issue resolved for encounter ${handoff.encounterId}`,
-                'high',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(handoff));
               return;
             }
 
             if (
-              pathname.startsWith('/clinical-handoffs/') &&
-              pathname.endsWith('/return-to-clinic') &&
-              request.method === 'POST'
+              await handleAttachmentUploadRoute(pathname, request, response, correlationId, {
+                attachments,
+                diagnostics,
+                medicalRecords,
+                requirePrincipal,
+                requireAttachmentTargetForAccount,
+                appendAudit
+              })
             ) {
-              const principal = await requirePrincipal(request, 'encounters.manage');
-              const handoffId = requireNonEmptyString(pathname.split('/')[2], 'handoffId');
-              const payload = (await readJsonBody(request)) as ReturnClinicalHandoffToClinicRequest;
-              const handoff = clinicalHandoffs.returnToClinic(
-                principal.user.accountId,
-                principal.user.id,
-                handoffId as never,
-                payload
-              );
-              await Promise.all([
-                clinicalHandoffs.waitForPersistence(),
-                encounters.waitForPersistence()
-              ]);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'clinical-handoffs',
-                'return_to_clinic',
-                'clinical-handoff',
-                handoff.id,
-                `Clinical handoff returned to clinic for encounter ${handoff.encounterId}`,
-                'high',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(handoff));
               return;
             }
 
             if (
-              pathname.startsWith('/clinical-handoffs/') &&
-              pathname.endsWith('/send-to-finance') &&
-              request.method === 'POST'
+              await handleInpatientListRoute(pathname, url, request, response, correlationId, {
+                inpatient,
+                audit,
+                requirePrincipal
+              })
             ) {
-              const principal = await requirePrincipal(request, 'encounters.manage');
-              const handoffId = requireNonEmptyString(pathname.split('/')[2], 'handoffId');
-              const payload = (await readJsonBody(request).catch(
-                () => ({}) as SendClinicalHandoffToFinanceRequest
-              )) as SendClinicalHandoffToFinanceRequest;
-              const handoff = clinicalHandoffs.sendToFinance(
-                principal.user.accountId,
-                principal.user.id,
-                handoffId as never,
-                payload
-              );
-              await Promise.all([
-                clinicalHandoffs.waitForPersistence(),
-                encounters.waitForPersistence()
-              ]);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'clinical-handoffs',
-                'send_to_finance',
-                'clinical-handoff',
-                handoff.id,
-                `Clinical handoff sent to finance for encounter ${handoff.encounterId}`,
-                'high',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(handoff));
               return;
             }
 
-            if (pathname.startsWith('/clinical-handoffs/') && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'encounters.read');
-              const handoffId = requireNonEmptyString(pathname.split('/')[2], 'handoffId');
-              const handoff = clinicalHandoffs.getOrThrow(
-                principal.user.accountId,
-                handoffId as never
-              );
-
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'clinical-handoffs',
-                'read',
-                'clinical-handoff',
-                handoff.id,
-                `Clinical handoff ${handoff.id} inspected`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(handoff));
+            if (
+              await handleNotificationReadRoutes(pathname, url, request, response, correlationId, {
+                notificationPersistence,
+                requirePrincipal,
+                appendAudit
+              })
+            ) {
               return;
             }
-            if (pathname === '/encounters' && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'encounters.read');
-              const encounterItems = paginateList(encounters.listAll(principal.user.accountId), url);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'encounters',
-                'list',
-                'encounter',
-                'all',
-                'Encounters listed',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(
-                JSON.stringify({
-                  items: encounterItems
-                })
-              );
+
+            if (
+              await handleNotificationWriteRoutes(pathname, request, response, correlationId, {
+                notifications,
+                notificationPersistence,
+                requirePrincipal,
+                appendAudit
+              })
+            ) {
+              return;
+            }
+
+            if (
+              await handleClinicalHandoffsReadRoute(
+                pathname,
+                url,
+                request,
+                response,
+                correlationId,
+                {
+                  clinicalHandoffs,
+                  requirePrincipal,
+                  appendAudit
+                }
+              )
+            ) {
+              return;
+            }
+
+            if (
+              await handleClinicalHandoffSendRoute(pathname, request, response, correlationId, {
+                clinicalHandoffs,
+                encounters,
+                requirePrincipal,
+                appendAudit
+              })
+            ) {
+              return;
+            }
+
+            if (
+              await handleClinicalHandoffAcknowledgeRoute(
+                pathname,
+                request,
+                response,
+                correlationId,
+                {
+                  clinicalHandoffs,
+                  encounters,
+                  requirePrincipal,
+                  appendAudit
+                }
+              )
+            ) {
+              return;
+            }
+
+            if (
+              await handleClinicalHandoffWorkflowRoutes(
+                pathname,
+                request,
+                response,
+                correlationId,
+                {
+                  clinicalHandoffs,
+                  encounters,
+                  requirePrincipal,
+                  appendAudit
+                }
+              )
+            ) {
+              return;
+            }
+
+            if (
+              await handleClinicalHandoffDetailReadRoute(
+                pathname,
+                request,
+                response,
+                correlationId,
+                {
+                  clinicalHandoffs,
+                  requirePrincipal,
+                  appendAudit
+                }
+              )
+            ) {
+              return;
+            }
+            if (
+              await handleEncounterListRoute(pathname, url, request, response, correlationId, {
+                encounters,
+                requirePrincipal,
+                appendAudit
+              })
+            ) {
               return;
             }
 
@@ -5842,33 +2299,13 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             }
 
             if (
-              pathname.startsWith('/encounters/') &&
-              pathname.endsWith('/timeline') &&
-              request.method === 'GET'
+              await handleEncounterTimelineRoute(pathname, request, response, correlationId, {
+                encounters,
+                requirePrincipal,
+                requireEncounterForAccount,
+                appendAudit
+              })
             ) {
-              const principal = await requirePrincipal(request, 'encounters.read');
-              const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
-              requireEncounterForAccount(encounterId, principal.user.accountId);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'encounters',
-                'read_timeline',
-                'encounter-timeline',
-                encounterId,
-                'Encounter timeline inspected',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(
-                JSON.stringify({
-                  items: await encounters.listTimelineAsync(
-                    principal.user.accountId,
-                    encounterId as never
-                  )
-                })
-              );
               return;
             }
 
@@ -6222,279 +2659,65 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               return;
             }
 
-            if (pathname.startsWith('/encounters/') && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'encounters.read');
-              const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
-              const encounter = requireEncounterForAccount(encounterId, principal.user.accountId);
-
-              if (pathname.endsWith('/summary')) {
-                const timeline = await encounters.listTimelineAsync(
-                  principal.user.accountId,
-                  encounterId as never
-                );
-                const orders = diagnostics.list(
-                  principal.user.accountId as AccountId,
-                  encounterId as never
-                );
-                let financial = null;
-
-                try {
-                  financial = await encounterFinancial.getSummary(
-                    principal.user.accountId,
-                    encounterId as never
-                  );
-                } catch {
-                  financial = null;
-                }
-
-                appendAudit(
-                  principal.user.id,
-                  principal.user.accountId,
-                  'encounters',
-                  'read_summary',
-                  'encounter',
-                  encounter.id,
-                  `Encounter ${encounter.id} summary inspected`,
-                  'medium',
-                  correlationId
-                );
-                response.statusCode = 200;
-                response.end(
-                  JSON.stringify({
-                    encounter,
-                    timeline,
-                    diagnostics: {
-                      totalOrders: orders.length,
-                      pendingOrders: orders.filter((order) => order.status !== 'resulted').length,
-                      releasedResults: orders.filter((order) => order.status === 'resulted').length,
-                      latestOrders: orders.slice(0, 5)
-                    },
-                    financial
-                  })
-                );
-                return;
-              }
-
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'encounters',
-                'read',
-                'encounter',
-                encounter.id,
-                `Encounter ${encounter.id} inspected`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(encounter));
-              return;
-            }
-
-            if (pathname.startsWith('/encounters/') && request.method === 'DELETE') {
-              const principal = await requirePrincipal(request, 'encounters.manage');
-              const encounterId = requireNonEmptyString(pathname.split('/')[2], 'encounterId');
-              requireEncounterForAccount(encounterId, principal.user.accountId);
-              if (encounterCashReceiptRepository) {
-                await assertEncounterHasNoCashReceipt(
-                  encounterCashReceiptRepository,
-                  principal.user.accountId,
-                  encounterId
-                );
-              }
-              encounters.deleteEncounter(principal.user.accountId, encounterId as never);
-              await encounters.waitForPersistence();
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'encounters',
-                'delete',
-                'encounter',
-                encounterId,
-                `Encounter ${encounterId} deleted`,
-                'high',
-                correlationId
-              );
-              response.statusCode = 204;
-              response.end();
-              return;
-            }
-
-            if (pathname === '/triage' && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'triage.read');
-              const rawEncounterId = url.searchParams.get('encounterId');
-              const encounterId =
-                rawEncounterId === null
-                  ? undefined
-                  : (requireNonEmptyString(rawEncounterId, 'encounterId') as never);
-              if (encounterId) {
-                requireEncounterForAccount(encounterId, principal.user.accountId);
-              }
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'triage',
-                'list',
-                'triage-record',
-                encounterId ?? 'all',
-                'Triage records listed',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(
-                JSON.stringify({
-                  items: triage.list(principal.user.accountId as never, encounterId as never)
-                })
-              );
-              return;
-            }
-
-            if (pathname === '/triage' && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'triage.manage');
-              const payload = (await readJsonBody(request)) as CreateTriageRequest;
-              const encounterId = requireNonEmptyString(payload.encounterId, 'encounterId');
-              const currentEncounter = requireEncounterForAccount(
-                encounterId,
-                principal.user.accountId
-              );
-              const record = await triage.createTriage(
-                principal.user.id,
-                payload,
-                principal.user.accountId as never
-              );
-              if (currentEncounter.status === 'reception') {
-                encounters.transitionEncounter(
-                  principal.user.accountId,
-                  currentEncounter.id,
-                  principal.user.id,
-                  {
-                    nextStatus: 'in_triage'
-                  }
-                );
-                await syncQueueWithEncounter(
-                  principal.user.accountId,
-                  currentEncounter.id,
-                  'in_triage'
-                );
-              }
-              encounters.appendTimeline(principal.user.accountId, record.encounterId, {
-                accountId: record.accountId,
-                eventType: 'triage_recorded',
-                summary: `Initial triage recorded with priority ${record.priority}`,
-                actorUserId: principal.user.id
-              });
-              const encounter = encounters.transitionEncounter(
-                principal.user.accountId,
-                record.encounterId,
-                principal.user.id,
-                {
-                  nextStatus: record.destination
-                }
-              );
-              await syncQueueWithEncounter(
-                principal.user.accountId,
-                encounter.id,
-                encounter.status
-              );
-              await encounters.waitForPersistence();
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'triage',
-                'create',
-                'triage-record',
-                record.id,
-                `Initial triage recorded for encounter ${record.encounterId}`,
-                'high',
-                correlationId
-              );
-              response.statusCode = 201;
-              response.end(JSON.stringify(record));
+            if (
+              await handleEncounterReadRoutes(pathname, request, response, correlationId, {
+                encounters,
+                diagnostics,
+                encounterFinancial,
+                requirePrincipal,
+                requireEncounterForAccount,
+                appendAudit
+              })
+            ) {
               return;
             }
 
             if (
-              pathname.startsWith('/triage/') &&
-              pathname.endsWith('/history') &&
-              request.method === 'GET'
+              await handleEncounterDeleteRoutes(pathname, request, response, correlationId, {
+                encounters,
+                encounterCashReceiptRepository,
+                requirePrincipal,
+                requireEncounterForAccount,
+                assertEncounterHasNoCashReceipt,
+                appendAudit
+              })
             ) {
-              const principal = await requirePrincipal(request, 'triage.read');
-              const triageId = requireNonEmptyString(pathname.split('/')[2], 'triageId');
-              const record = triage.getOrThrow(
-                triageId as never,
-                principal.user.accountId as never
-              );
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'triage',
-                'read_history',
-                'triage-record-version',
-                record.id,
-                `Triage history inspected for encounter ${record.encounterId}`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(
-                JSON.stringify({
-                  items: triage.listVersions(triageId as never, principal.user.accountId as never)
-                })
-              );
               return;
             }
 
-            if (pathname.startsWith('/triage/') && request.method === 'PATCH') {
-              const principal = await requirePrincipal(request, 'triage.manage');
-              const triageId = requireNonEmptyString(pathname.split('/')[2], 'triageId');
-              const payload = (await readJsonBody(request)) as UpdateTriageRequest;
-              const before = triage.getOrThrow(
-                triageId as never,
-                principal.user.accountId as never
-              );
-              const record = await triage.updateTriage(
-                triageId as never,
-                payload,
-                principal.user.accountId as never,
-                principal.user.id
-              );
-              encounters.appendTimeline(principal.user.accountId, record.encounterId, {
-                accountId: record.accountId,
-                eventType: 'triage_recorded',
-                summary: `Triage updated from ${before.priority}/${before.destination} to ${record.priority}/${record.destination}`,
-                actorUserId: principal.user.id
-              });
-              const encounter = encounters.getOrThrow(principal.user.accountId, record.encounterId);
-              if (encounter.status !== 'closed' && encounter.status !== record.destination) {
-                const transitioned = encounters.transitionEncounter(
-                  principal.user.accountId,
-                  record.encounterId,
-                  principal.user.id,
-                  {
-                    nextStatus: record.destination
-                  }
-                );
-                await syncQueueWithEncounter(
-                  principal.user.accountId,
-                  transitioned.id,
-                  transitioned.status
-                );
-              }
-              await encounters.waitForPersistence();
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'triage',
-                'update',
-                'triage-record',
-                record.id,
-                `Triage updated for encounter ${record.encounterId}`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(record));
+            if (
+              await handleTriageReadRoutes(pathname, url, request, response, correlationId, {
+                triage,
+                requirePrincipal,
+                requireEncounterForAccount,
+                appendAudit
+              })
+            ) {
+              return;
+            }
+
+            if (
+              await handleTriageCreateRoute(pathname, request, response, correlationId, {
+                triage,
+                encounters,
+                requirePrincipal,
+                requireEncounterForAccount,
+                syncQueueWithEncounter,
+                appendAudit
+              })
+            ) {
+              return;
+            }
+
+            if (
+              await handleTriageUpdateRoute(pathname, request, response, correlationId, {
+                triage,
+                encounters,
+                requirePrincipal,
+                syncQueueWithEncounter,
+                appendAudit
+              })
+            ) {
               return;
             }
 
@@ -6584,1070 +2807,65 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               return;
             }
 
-            if (pathname === '/products' && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'product.read');
-              const search = url.searchParams.get('search') ?? undefined;
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'products',
-                'list',
-                'product',
-                search ?? 'all',
-                'Products catalog inspected',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(
-                JSON.stringify({
-                  items: products.list(principal.user.accountId as never, { search })
-                })
-              );
-              return;
-            }
-
-            if (pathname === '/products' && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'product.write');
-              const payload = (await readJsonBody(request)) as {
-                name: string;
-                code?: string | null;
-                description?: string | null;
-                basePrice: number;
-                active?: boolean;
-              };
-              const product = await products.create(principal.user.accountId as never, {
-                name: requireNonEmptyString(payload.name, 'name'),
-                code: payload.code,
-                description: payload.description,
-                basePrice: payload.basePrice,
-                active: payload.active
-              });
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'products',
-                'create',
-                'product',
-                product.id,
-                `Product ${product.name} created`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 201;
-              response.end(JSON.stringify(product));
-              return;
-            }
-
-            if (pathname.startsWith('/products/') && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'product.read');
-              const productId = requireNonEmptyString(pathname.split('/')[2], 'productId');
-              const product = products.getOrThrow(productId);
-              if (product.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Product not found for current account');
-              }
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'products',
-                'read',
-                'product',
-                product.id,
-                `Product ${product.name} inspected`,
-                'low',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(product));
-              return;
-            }
-
-            if (pathname.startsWith('/products/') && request.method === 'PATCH') {
-              const principal = await requirePrincipal(request, 'product.write');
-              const productId = requireNonEmptyString(pathname.split('/')[2], 'productId');
-              const existingProduct = products.getOrThrow(productId);
-              if (existingProduct.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Product not found for current account');
-              }
-              const payload = (await readJsonBody(request)) as {
-                name?: string;
-                code?: string | null;
-                description?: string | null;
-                basePrice?: number;
-                active?: boolean;
-              };
-              const product = await products.update(productId, {
-                name: payload.name,
-                code: payload.code,
-                description: payload.description,
-                basePrice: payload.basePrice,
-                active: payload.active
-              });
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'products',
-                'update',
-                'product',
-                product.id,
-                `Product ${product.name} updated`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(product));
-              return;
-            }
-
-            if (pathname === '/services' && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'service.read');
-              const search = url.searchParams.get('search') ?? undefined;
-              const activeParam = url.searchParams.get('active');
-              const active =
-                activeParam === null ? undefined : activeParam.toLowerCase() === 'true';
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'services',
-                'list',
-                'service',
-                search ?? 'all',
-                'Services catalog inspected',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(
-                JSON.stringify({
-                  items: services.list(principal.user.accountId as never, { search, active })
-                })
-              );
-              return;
-            }
-
-            if (pathname === '/services' && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const payload = (await readJsonBody(request)) as {
-                name: string;
-                code?: string | null;
-                description?: string | null;
-                basePrice: number;
-                active?: boolean;
-              };
-              const service = await services.create(principal.user.accountId as never, {
-                name: requireNonEmptyString(payload.name, 'name'),
-                code: payload.code,
-                description: payload.description,
-                basePrice: payload.basePrice,
-                active: payload.active
-              });
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'services',
-                'create',
-                'service',
-                service.id,
-                `Service ${service.name} created`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 201;
-              response.end(JSON.stringify(service));
-              return;
-            }
-
-            if (pathname.startsWith('/services/') && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'service.read');
-              const serviceId = requireNonEmptyString(pathname.split('/')[2], 'serviceId');
-              const service = services.getOrThrow(serviceId);
-              if (service.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Service not found for current account');
-              }
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'services',
-                'read',
-                'service',
-                service.id,
-                `Service ${service.name} inspected`,
-                'low',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(service));
-              return;
-            }
-
-            if (pathname.startsWith('/services/') && request.method === 'PATCH') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const serviceId = requireNonEmptyString(pathname.split('/')[2], 'serviceId');
-              const existingService = services.getOrThrow(serviceId);
-              if (existingService.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Service not found for current account');
-              }
-              const payload = (await readJsonBody(request)) as {
-                name?: string;
-                code?: string | null;
-                description?: string | null;
-                basePrice?: number;
-                active?: boolean;
-              };
-              const service = await services.update(serviceId, {
-                name: payload.name,
-                code: payload.code,
-                description: payload.description,
-                basePrice: payload.basePrice,
-                active: payload.active
-              });
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'services',
-                'update',
-                'service',
-                service.id,
-                `Service ${service.name} updated`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(service));
-              return;
-            }
-
-            if ((pathname === '/breeds' || pathname === '/breed') && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'service.read');
-              const search = url.searchParams.get('search') ?? undefined;
-              const activeParam = url.searchParams.get('active');
-              const species = url.searchParams.get('species') ?? undefined;
-              const active =
-                activeParam === null ? undefined : activeParam.toLowerCase() === 'true';
-              const items = await breeds.list(principal.user.accountId, {
-                search,
-                active,
-                species
-              });
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'breeds',
-                'list',
-                'breed',
-                search ?? species ?? 'all',
-                'Breeds catalog inspected',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify({ items }));
-              return;
-            }
-
-            if (pathname === '/breeds' && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const payload = (await readJsonBody(request)) as BreedInput;
-              const breed = await breeds.create(principal.user.accountId, payload);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'breeds',
-                'create',
-                'breed',
-                breed.id,
-                `Breed ${breed.name} created`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 201;
-              response.end(JSON.stringify(breed));
-              return;
-            }
-
-            if (pathname.startsWith('/breeds/') && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'service.read');
-              const breedId = requireNonEmptyString(pathname.split('/')[2], 'breedId');
-              const breed = await breeds.getOrThrow(breedId);
-              if (breed.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Breed not found for current account');
-              }
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'breeds',
-                'read',
-                'breed',
-                breed.id,
-                `Breed ${breed.name} inspected`,
-                'low',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(breed));
-              return;
-            }
-
-            if (pathname.startsWith('/breeds/') && request.method === 'PATCH') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const breedId = requireNonEmptyString(pathname.split('/')[2], 'breedId');
-              const existingBreed = await breeds.getOrThrow(breedId);
-              if (existingBreed.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Breed not found for current account');
-              }
-              const payload = (await readJsonBody(request)) as BreedInput;
-              const breed = await breeds.update(breedId, payload);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'breeds',
-                'update',
-                'breed',
-                breed.id,
-                `Breed ${breed.name} updated`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(breed));
-              return;
-            }
-
-            if (pathname.startsWith('/breeds/') && request.method === 'DELETE') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const breedId = requireNonEmptyString(pathname.split('/')[2], 'breedId');
-              const existingBreed = await breeds.getOrThrow(breedId);
-              if (existingBreed.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Breed not found for current account');
-              }
-              await breeds.delete(breedId);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'breeds',
-                'delete',
-                'breed',
-                breedId,
-                `Breed ${existingBreed.name} deleted`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 204;
-              response.end();
-              return;
-            }
-
-            if ((pathname === '/species' || pathname === '/specie') && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'service.read');
-              const search = url.searchParams.get('search') ?? undefined;
-              const activeParam = url.searchParams.get('active');
-              const systemCode = url.searchParams.get('systemCode') ?? undefined;
-              const active =
-                activeParam === null ? undefined : activeParam.toLowerCase() === 'true';
-              const items = await animalSpecies.list(principal.user.accountId, {
-                search,
-                active,
-                systemCode
-              });
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'species',
-                'list',
-                'animal-species',
-                search ?? systemCode ?? 'all',
-                'Animal species catalog inspected',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify({ items }));
-              return;
-            }
-
-            if (pathname === '/species' && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const payload = (await readJsonBody(request)) as AnimalSpeciesInput;
-              const species = await animalSpecies.create(principal.user.accountId, payload);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'species',
-                'create',
-                'animal-species',
-                species.id,
-                `Animal species ${species.name} created`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 201;
-              response.end(JSON.stringify(species));
-              return;
-            }
-
-            if (pathname.startsWith('/species/') && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'service.read');
-              const speciesId = requireNonEmptyString(pathname.split('/')[2], 'speciesId');
-              const species = await animalSpecies.getOrThrow(speciesId);
-              if (species.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Animal species not found for current account');
-              }
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'species',
-                'read',
-                'animal-species',
-                species.id,
-                `Animal species ${species.name} inspected`,
-                'low',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(species));
-              return;
-            }
-
-            if (pathname.startsWith('/species/') && request.method === 'PATCH') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const speciesId = requireNonEmptyString(pathname.split('/')[2], 'speciesId');
-              const existingSpecies = await animalSpecies.getOrThrow(speciesId);
-              if (existingSpecies.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Animal species not found for current account');
-              }
-              const payload = (await readJsonBody(request)) as AnimalSpeciesInput;
-              const species = await animalSpecies.update(speciesId, payload);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'species',
-                'update',
-                'animal-species',
-                species.id,
-                `Animal species ${species.name} updated`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(species));
-              return;
-            }
-
-            if (pathname.startsWith('/species/') && request.method === 'DELETE') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const speciesId = requireNonEmptyString(pathname.split('/')[2], 'speciesId');
-              const existingSpecies = await animalSpecies.getOrThrow(speciesId);
-              if (existingSpecies.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Animal species not found for current account');
-              }
-              await animalSpecies.delete(speciesId);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'species',
-                'delete',
-                'animal-species',
-                speciesId,
-                `Animal species ${existingSpecies.name} deleted`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 204;
-              response.end();
+            if (
+              await handleProductServiceCatalogRoutes(
+                pathname,
+                url,
+                request,
+                response,
+                correlationId,
+                { products, services, requirePrincipal, appendAudit }
+              )
+            ) {
               return;
             }
 
             if (
-              (pathname === '/coat-colors' ||
-                pathname === '/coat-color' ||
-                pathname === '/pelagens') &&
-              request.method === 'GET'
+              await handleAnimalCatalogRoutes(pathname, url, request, response, correlationId, {
+                breeds,
+                animalSpecies,
+                coatColors,
+                requirePrincipal,
+                appendAudit
+              })
             ) {
-              const principal = await requirePrincipal(request, 'service.read');
-              const search = url.searchParams.get('search') ?? undefined;
-              const activeParam = url.searchParams.get('active');
-              const colorGroup = url.searchParams.get('colorGroup') ?? undefined;
-              const active =
-                activeParam === null ? undefined : activeParam.toLowerCase() === 'true';
-              const items = await coatColors.list(principal.user.accountId, {
-                search,
-                active,
-                colorGroup
-              });
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'coat-colors',
-                'list',
-                'coat-color',
-                search ?? colorGroup ?? 'all',
-                'Coat colors catalog inspected',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify({ items }));
-              return;
-            }
-
-            if (pathname === '/coat-colors' && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const payload = (await readJsonBody(request)) as CoatColorInput;
-              const coatColor = await coatColors.create(principal.user.accountId, payload);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'coat-colors',
-                'create',
-                'coat-color',
-                coatColor.id,
-                `Coat color ${coatColor.name} created`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 201;
-              response.end(JSON.stringify(coatColor));
-              return;
-            }
-
-            if (pathname.startsWith('/coat-colors/') && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'service.read');
-              const coatColorId = requireNonEmptyString(pathname.split('/')[2], 'coatColorId');
-              const coatColor = await coatColors.getOrThrow(coatColorId);
-              if (coatColor.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Coat color not found for current account');
-              }
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'coat-colors',
-                'read',
-                'coat-color',
-                coatColor.id,
-                `Coat color ${coatColor.name} inspected`,
-                'low',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(coatColor));
-              return;
-            }
-
-            if (pathname.startsWith('/coat-colors/') && request.method === 'PATCH') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const coatColorId = requireNonEmptyString(pathname.split('/')[2], 'coatColorId');
-              const existingCoatColor = await coatColors.getOrThrow(coatColorId);
-              if (existingCoatColor.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Coat color not found for current account');
-              }
-              const payload = (await readJsonBody(request)) as CoatColorInput;
-              const coatColor = await coatColors.update(coatColorId, payload);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'coat-colors',
-                'update',
-                'coat-color',
-                coatColor.id,
-                `Coat color ${coatColor.name} updated`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(coatColor));
-              return;
-            }
-
-            if (pathname.startsWith('/coat-colors/') && request.method === 'DELETE') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const coatColorId = requireNonEmptyString(pathname.split('/')[2], 'coatColorId');
-              const existingCoatColor = await coatColors.getOrThrow(coatColorId);
-              if (existingCoatColor.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Coat color not found for current account');
-              }
-              await coatColors.delete(coatColorId);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'coat-colors',
-                'delete',
-                'coat-color',
-                coatColorId,
-                `Coat color ${existingCoatColor.name} deleted`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 204;
-              response.end();
               return;
             }
 
             if (
-              (pathname === '/customer-groups' ||
-                pathname === '/customer-group' ||
-                pathname === '/grupos-de-clientes') &&
-              request.method === 'GET'
+              await handleCustomerGroupRoutes(pathname, url, request, response, correlationId, {
+                customerGroups,
+                requirePrincipal,
+                appendAudit
+              })
             ) {
-              const principal = await requirePrincipal(request, 'service.read');
-              const search = url.searchParams.get('search') ?? undefined;
-              const activeParam = url.searchParams.get('active');
-              const segment = url.searchParams.get('segment') ?? undefined;
-              const active =
-                activeParam === null ? undefined : activeParam.toLowerCase() === 'true';
-              const items = await customerGroups.list(principal.user.accountId, {
-                search,
-                active,
-                segment
-              });
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'customer-groups',
-                'list',
-                'customer-group',
-                search ?? segment ?? 'all',
-                'Customer groups catalog inspected',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify({ items }));
-              return;
-            }
-
-            if (pathname === '/customer-groups' && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const payload = (await readJsonBody(request)) as CustomerGroupInput;
-              const customerGroup = await customerGroups.create(principal.user.accountId, payload);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'customer-groups',
-                'create',
-                'customer-group',
-                customerGroup.id,
-                `Customer group ${customerGroup.name} created`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 201;
-              response.end(JSON.stringify(customerGroup));
-              return;
-            }
-
-            if (pathname.startsWith('/customer-groups/') && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'service.read');
-              const customerGroupId = requireNonEmptyString(
-                pathname.split('/')[2],
-                'customerGroupId'
-              );
-              const customerGroup = await customerGroups.getOrThrow(customerGroupId);
-              if (customerGroup.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Customer group not found for current account');
-              }
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'customer-groups',
-                'read',
-                'customer-group',
-                customerGroup.id,
-                `Customer group ${customerGroup.name} inspected`,
-                'low',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(customerGroup));
-              return;
-            }
-
-            if (pathname.startsWith('/customer-groups/') && request.method === 'PATCH') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const customerGroupId = requireNonEmptyString(
-                pathname.split('/')[2],
-                'customerGroupId'
-              );
-              const existingCustomerGroup = await customerGroups.getOrThrow(customerGroupId);
-              if (existingCustomerGroup.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Customer group not found for current account');
-              }
-              const payload = (await readJsonBody(request)) as CustomerGroupInput;
-              const customerGroup = await customerGroups.update(customerGroupId, payload);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'customer-groups',
-                'update',
-                'customer-group',
-                customerGroup.id,
-                `Customer group ${customerGroup.name} updated`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(customerGroup));
-              return;
-            }
-
-            if (pathname.startsWith('/customer-groups/') && request.method === 'DELETE') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const customerGroupId = requireNonEmptyString(
-                pathname.split('/')[2],
-                'customerGroupId'
-              );
-              const existingCustomerGroup = await customerGroups.getOrThrow(customerGroupId);
-              if (existingCustomerGroup.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Customer group not found for current account');
-              }
-              await customerGroups.delete(customerGroupId);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'customer-groups',
-                'delete',
-                'customer-group',
-                customerGroupId,
-                `Customer group ${existingCustomerGroup.name} deleted`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 204;
-              response.end();
-              return;
-            }
-
-            if (pathname === '/vaccines-dewormers' && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'service.read');
-              const includeExecutedParam = url.searchParams.get('includeExecuted');
-              const filters: PreventiveEventListFilters = {
-                dateFrom: url.searchParams.get('dateFrom') ?? undefined,
-                dateTo: url.searchParams.get('dateTo') ?? undefined,
-                client: url.searchParams.get('client') ?? undefined,
-                animal: url.searchParams.get('animal') ?? undefined,
-                patientId: url.searchParams.get('patientId') ?? undefined,
-                ownerId: url.searchParams.get('ownerId') ?? undefined,
-                itemType: url.searchParams.get('itemType') ?? undefined,
-                includeExecuted: includeExecutedParam?.toLowerCase() === 'true'
-              };
-              const items = await preventiveEvents.list(principal.user.accountId, filters);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'vaccines-dewormers',
-                'list',
-                'preventive-event',
-                filters.patientId ??
-                  filters.ownerId ??
-                  filters.client ??
-                  filters.animal ??
-                  filters.itemType ??
-                  'all',
-                'Preventive events inspected',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify({ items }));
-              return;
-            }
-
-            if (pathname === '/vaccines-dewormers' && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const payload = (await readJsonBody(request)) as PreventiveEventInput;
-              const event = await preventiveEvents.create(principal.user.accountId, payload);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'vaccines-dewormers',
-                'create',
-                'preventive-event',
-                event.id,
-                `Preventive event ${event.description} created`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 201;
-              response.end(JSON.stringify(event));
-              return;
-            }
-
-            if (pathname === '/vaccines-dewormers/reminders/email' && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const payload = (await readJsonBody(request).catch(
-                () => ({})
-              )) as PreventiveEventListFilters;
-              const result = await preventiveEvents.prepareBulkEmail(principal.user.accountId, {
-                dateFrom: payload.dateFrom,
-                dateTo: payload.dateTo,
-                client: payload.client,
-                animal: payload.animal,
-                patientId: payload.patientId,
-                ownerId: payload.ownerId,
-                itemType: payload.itemType,
-                includeExecuted: false
-              });
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'vaccines-dewormers',
-                'prepare-email',
-                'preventive-event',
-                'bulk',
-                `Preventive reminder emails prepared for ${result.preparedCount} event(s)`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(result));
               return;
             }
 
             if (
-              pathname.startsWith('/vaccines-dewormers/') &&
-              pathname.endsWith('/execute') &&
-              request.method === 'POST'
+              await handlePreventiveEventRoutes(pathname, url, request, response, correlationId, {
+                preventiveEvents,
+                requirePrincipal,
+                appendAudit
+              })
             ) {
-              const principal = await requirePrincipal(request, 'service.write');
-              const eventId = requireNonEmptyString(pathname.split('/')[2], 'eventId');
-              const existingEvent = await preventiveEvents.getOrThrow(eventId);
-              if (existingEvent.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Preventive event not found for current account');
-              }
-              const payload = (await readJsonBody(request)) as PreventiveEventExecuteInput;
-              const result = await preventiveEvents.execute(eventId, payload);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'vaccines-dewormers',
-                'execute',
-                'preventive-event',
-                eventId,
-                `Preventive event ${existingEvent.description} executed`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(result));
               return;
             }
 
             if (
-              pathname.startsWith('/vaccines-dewormers/') &&
-              pathname.endsWith('/email') &&
-              request.method === 'POST'
+              await handleResponsibilityTermRoutes(
+                pathname,
+                url,
+                request,
+                response,
+                correlationId,
+                {
+                  responsibilityTerms,
+                  requirePrincipal,
+                  appendAudit
+                }
+              )
             ) {
-              const principal = await requirePrincipal(request, 'service.write');
-              const eventId = requireNonEmptyString(pathname.split('/')[2], 'eventId');
-              const existingEvent = await preventiveEvents.getOrThrow(eventId);
-              if (existingEvent.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Preventive event not found for current account');
-              }
-              const event = await preventiveEvents.prepareEmail(eventId);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'vaccines-dewormers',
-                'prepare-email',
-                'preventive-event',
-                event.id,
-                `Preventive reminder email prepared for ${event.description}`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(event));
-              return;
-            }
-
-            if (pathname.startsWith('/vaccines-dewormers/') && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'service.read');
-              const eventId = requireNonEmptyString(pathname.split('/')[2], 'eventId');
-              const event = await preventiveEvents.getOrThrow(eventId);
-              if (event.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Preventive event not found for current account');
-              }
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'vaccines-dewormers',
-                'read',
-                'preventive-event',
-                event.id,
-                `Preventive event ${event.description} inspected`,
-                'low',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(event));
-              return;
-            }
-
-            if (pathname.startsWith('/vaccines-dewormers/') && request.method === 'PATCH') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const eventId = requireNonEmptyString(pathname.split('/')[2], 'eventId');
-              const existingEvent = await preventiveEvents.getOrThrow(eventId);
-              if (existingEvent.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Preventive event not found for current account');
-              }
-              const payload = (await readJsonBody(request)) as PreventiveEventInput;
-              const event = await preventiveEvents.update(eventId, payload);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'vaccines-dewormers',
-                'update',
-                'preventive-event',
-                event.id,
-                `Preventive event ${event.description} updated`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(event));
-              return;
-            }
-
-            if (pathname.startsWith('/vaccines-dewormers/') && request.method === 'DELETE') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const eventId = requireNonEmptyString(pathname.split('/')[2], 'eventId');
-              const existingEvent = await preventiveEvents.getOrThrow(eventId);
-              if (existingEvent.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Preventive event not found for current account');
-              }
-              await preventiveEvents.delete(eventId);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'vaccines-dewormers',
-                'delete',
-                'preventive-event',
-                eventId,
-                `Preventive event ${existingEvent.description} deleted`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 204;
-              response.end();
-              return;
-            }
-
-            if (pathname === '/responsibility-terms' && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'service.read');
-              const search = url.searchParams.get('search') ?? undefined;
-              const activeParam = url.searchParams.get('active');
-              const usageContext = url.searchParams.get('usageContext') ?? undefined;
-              const active =
-                activeParam === null ? undefined : activeParam.toLowerCase() === 'true';
-              const items = await responsibilityTerms.list(principal.user.accountId, {
-                search,
-                active,
-                usageContext
-              });
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'responsibility-terms',
-                'list',
-                'responsibility-term',
-                search ?? 'all',
-                'Responsibility terms inspected',
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify({ items }));
-              return;
-            }
-
-            if (pathname === '/responsibility-terms' && request.method === 'POST') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const payload = (await readJsonBody(request)) as ResponsibilityTermInput;
-              const term = await responsibilityTerms.create(principal.user.accountId, payload);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'responsibility-terms',
-                'create',
-                'responsibility-term',
-                term.id,
-                `Responsibility term ${term.title} created`,
-                'high',
-                correlationId
-              );
-              response.statusCode = 201;
-              response.end(JSON.stringify(term));
-              return;
-            }
-
-            if (pathname.startsWith('/responsibility-terms/') && request.method === 'GET') {
-              const principal = await requirePrincipal(request, 'service.read');
-              const termId = requireNonEmptyString(pathname.split('/')[2], 'termId');
-              const term = await responsibilityTerms.getOrThrow(termId);
-              if (term.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Responsibility term not found for current account');
-              }
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'responsibility-terms',
-                'read',
-                'responsibility-term',
-                term.id,
-                `Responsibility term ${term.title} inspected`,
-                'medium',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(term));
-              return;
-            }
-
-            if (pathname.startsWith('/responsibility-terms/') && request.method === 'PATCH') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const termId = requireNonEmptyString(pathname.split('/')[2], 'termId');
-              const existingTerm = await responsibilityTerms.getOrThrow(termId);
-              if (existingTerm.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Responsibility term not found for current account');
-              }
-              const payload = (await readJsonBody(request)) as ResponsibilityTermInput;
-              const term = await responsibilityTerms.update(termId, payload);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'responsibility-terms',
-                'update',
-                'responsibility-term',
-                term.id,
-                `Responsibility term ${term.title} updated`,
-                'high',
-                correlationId
-              );
-              response.statusCode = 200;
-              response.end(JSON.stringify(term));
-              return;
-            }
-
-            if (pathname.startsWith('/responsibility-terms/') && request.method === 'DELETE') {
-              const principal = await requirePrincipal(request, 'service.write');
-              const termId = requireNonEmptyString(pathname.split('/')[2], 'termId');
-              const existingTerm = await responsibilityTerms.getOrThrow(termId);
-              if (existingTerm.accountId !== principal.user.accountId) {
-                throw new AuthenticationError('Responsibility term not found for current account');
-              }
-              await responsibilityTerms.delete(termId);
-              appendAudit(
-                principal.user.id,
-                principal.user.accountId,
-                'responsibility-terms',
-                'delete',
-                'responsibility-term',
-                termId,
-                `Responsibility term ${existingTerm.title} deleted`,
-                'high',
-                correlationId
-              );
-              response.statusCode = 204;
-              response.end();
               return;
             }
 
@@ -7719,67 +2937,11 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
             }
 
             // --- CEP Lookup (ViaCEP) ---
-
-            if (pathname === '/cep/lookup' && request.method === 'GET') {
-              const cep = url.searchParams.get('cep');
-              if (!cep) {
-                response.statusCode = 400;
-                response.end(
-                  JSON.stringify({
-                    code: 'VALIDATION_ERROR',
-                    message: 'CEP parameter required',
-                    correlationId
-                  })
-                );
-                return;
-              }
-              const cleanCep = cep.replace(/\D/g, '');
-              if (cleanCep.length !== 8) {
-                response.statusCode = 400;
-                response.end(
-                  JSON.stringify({
-                    code: 'VALIDATION_ERROR',
-                    message: 'CEP must have 8 digits',
-                    correlationId
-                  })
-                );
-                return;
-              }
-              try {
-                const viaCepResp = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, {
-                  signal: AbortSignal.timeout(5000)
-                });
-                const viaCepData = (await viaCepResp.json()) as Record<string, unknown>;
-                if (viaCepData.erro) {
-                  response.statusCode = 404;
-                  response.end(
-                    JSON.stringify({ code: 'NOT_FOUND', message: 'CEP not found', correlationId })
-                  );
-                  return;
-                }
-                response.statusCode = 200;
-                response.end(
-                  JSON.stringify({
-                    cep: viaCepData.cep,
-                    street: viaCepData.logradouro,
-                    complement: viaCepData.complemento,
-                    district: viaCepData.bairro,
-                    city: viaCepData.localidade,
-                    state: viaCepData.uf,
-                    ibge: viaCepData.ibge,
-                    found: true
-                  })
-                );
-              } catch (err) {
-                response.statusCode = 502;
-                response.end(
-                  JSON.stringify({
-                    code: 'SERVICE_UNAVAILABLE',
-                    message: 'CEP service unavailable',
-                    correlationId
-                  })
-                );
-              }
+            if (
+              await handleCepLookupRoute(pathname, url, request, response, correlationId, {
+                fetcher: (input, init) => fetch(input, init)
+              })
+            ) {
               return;
             }
 
@@ -7816,6 +2978,7 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
               await handlePrescriptionRoutes(pathname, request, response, correlationId, {
                 prescriptions,
                 audit,
+                patients,
                 requirePrincipal
               })
             ) {
@@ -7991,7 +3154,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 audit,
                 cardTransactions,
                 pixTransactions,
-                billing
+                billing,
+                requirePixIdempotencyKey: isProductionLikeEnvironment(options.environment)
               }
             );
             if (await paymentsHandled) return;
@@ -8052,7 +3216,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 telemetry: mlTelemetry,
                 audit,
                 featureFlags,
-                featureFlagEvaluator: featureFlags.evaluate, featureFlagContext,
+                featureFlagEvaluator: featureFlags.evaluate,
+                featureFlagContext,
                 requirePrincipal
               })
             ) {
@@ -8065,7 +3230,8 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
                 scheduling,
                 audit,
                 requirePrincipal,
-                featureFlagEvaluator: featureFlags.evaluate, featureFlagContext,
+                featureFlagEvaluator: featureFlags.evaluate,
+                featureFlagContext,
                 notificationsWhatsappInboundActionsEnabled:
                   featureFlags.notificationsWhatsappInboundActionsEnabled,
                 inboundWebhookSecret: options.whatsappWebhookSecret
@@ -8261,15 +3427,6 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     return { apiKey };
   }
 
-  function sanitizeApiKey(apiKey: ApiKeySummary): Omit<ApiKeySummary, 'keyHash'> {
-    const { keyHash: _keyHash, ...safe } = apiKey;
-    return safe;
-  }
-
-  function requireEncounterForAccount(encounterId: string, accountId: string) {
-    return encounters.getOrThrow(accountId as never, encounterId as never);
-  }
-
   async function requireAttachmentTargetForAccount(
     linkedEntityType: 'encounter' | 'medical_record' | 'diagnostic_order',
     linkedEntityId: string,
@@ -8294,30 +3451,6 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
     }
   }
 
-  async function syncQueueWithEncounter(
-    accountId: string,
-    encounterId: string,
-    status: 'reception' | 'in_triage' | 'in_care' | 'observation' | 'closed'
-  ) {
-    const encounter = encounters.getOrThrow(accountId as never, encounterId as never);
-    if (!encounter.queueEntryId) {
-      return;
-    }
-
-    if (status === 'closed') {
-      await scheduling.completeQueueEntry(encounter.queueEntryId);
-      return;
-    }
-
-    if (status === 'reception') {
-      return;
-    }
-
-    const queueStatus =
-      status === 'in_triage' ? 'in_triage' : status === 'in_care' ? 'in_care' : 'observation';
-    await scheduling.transitionQueueForEncounter(encounter.queueEntryId, queueStatus);
-  }
-
   function appendAudit(
     actorId: string,
     accountId: string,
@@ -8340,67 +3473,5 @@ export function createApiServer(options: ApiServerOptions): ApiServer {
       riskLevel,
       correlationId
     });
-  }
-}
-
-function readHeader(request: IncomingMessage, headerName: string): string | undefined {
-  const value = request.headers[headerName];
-  return typeof value === 'string' ? value : undefined;
-}
-
-// --- Body Validation Helper (F06 Hardening) ---
-
-interface FieldSpec {
-  type: 'string' | 'number' | 'boolean' | 'array' | 'object';
-  required?: boolean;
-  minLength?: number;
-  maxLength?: number;
-  enum?: readonly string[];
-}
-
-function validateRequestBody(
-  body: Record<string, unknown>,
-  fields: Record<string, FieldSpec>,
-  correlationId: string
-): void {
-  for (const [key, spec] of Object.entries(fields)) {
-    const value = body[key];
-
-    if (spec.required && (value === undefined || value === null)) {
-      throw new ValidationError(`Field '${key}' is required`, { correlationId, field: key });
-    }
-
-    if (value === undefined || value === null) continue;
-
-    // Type check
-    const actualType = Array.isArray(value) ? 'array' : typeof value;
-    if (actualType !== spec.type) {
-      throw new ValidationError(
-        `Field '${key}' must be of type '${spec.type}', got '${actualType}'`,
-        { correlationId, field: key }
-      );
-    }
-
-    // String validations
-    if (spec.type === 'string' && typeof value === 'string') {
-      if (spec.minLength !== undefined && value.length < spec.minLength) {
-        throw new ValidationError(
-          `Field '${key}' must have at least ${spec.minLength} characters`,
-          { correlationId, field: key }
-        );
-      }
-      if (spec.maxLength !== undefined && value.length > spec.maxLength) {
-        throw new ValidationError(`Field '${key}' must have at most ${spec.maxLength} characters`, {
-          correlationId,
-          field: key
-        });
-      }
-      if (spec.enum && !spec.enum.includes(value)) {
-        throw new ValidationError(`Field '${key}' must be one of: ${spec.enum.join(', ')}`, {
-          correlationId,
-          field: key
-        });
-      }
-    }
   }
 }

@@ -61,7 +61,44 @@ export interface LgpdServiceOptions {
   readonly consentRepository?: ConsentRepository;
   readonly dsrRepository?: DsrRepository;
   readonly dataProviders?: Record<string, LgpdDataProvider>;
+  /**
+   * Executes deletion/anonymization against the systems of record. Without it,
+   * erasure requests cannot be completed: a completion must reflect an effect.
+   */
+  readonly erasureExecutor?: LgpdErasureExecutor;
 }
+
+export interface LgpdErasureEvidence {
+  readonly executedAt: string;
+  /** Data types whose personal data was anonymized or purged by the executor. */
+  readonly erasedDataTypes: readonly string[];
+  /** Data types retained under a legal retention window, with the reason. */
+  readonly retainedDataTypes: readonly { readonly dataType: string; readonly reason: string }[];
+}
+
+export type LgpdErasureExecutor = (
+  context: LgpdDataProviderContext & {
+    readonly requestId: string;
+    readonly requestType: 'data_deletion' | 'data_anonymization';
+    readonly retentionEvidence: readonly LgpdRetentionEvidence[];
+  }
+) => Promise<LgpdErasureEvidence>;
+
+/** Raised when a DSR transition is not allowed; API layers map it to HTTP 409. */
+export class LgpdDsrStateError extends Error {
+  readonly code: 'DSR_NOT_OPEN' | 'DSR_ERASURE_EXECUTOR_UNAVAILABLE' | 'DSR_ERASURE_NOT_EXECUTED';
+
+  constructor(code: LgpdDsrStateError['code'], message: string) {
+    super(message);
+    this.name = 'LgpdDsrStateError';
+    this.code = code;
+  }
+}
+
+const OPEN_DSR_STATUSES: ReadonlySet<DataSubjectRequest['status']> = new Set([
+  'pending',
+  'in_progress'
+]);
 
 export interface LgpdDataProviderContext {
   readonly accountId: string;
@@ -151,11 +188,13 @@ export class LgpdService {
   readonly #consentRepo?: ConsentRepository;
   readonly #dsrRepo?: DsrRepository;
   readonly #dataProviders: Record<string, LgpdDataProvider>;
+  readonly #erasureExecutor?: LgpdErasureExecutor;
 
   constructor(options?: LgpdServiceOptions) {
     this.#consentRepo = options?.consentRepository;
     this.#dsrRepo = options?.dsrRepository;
     this.#dataProviders = { ...(options?.dataProviders ?? {}) };
+    this.#erasureExecutor = options?.erasureExecutor;
   }
 
   async grantConsent(request: ConsentGrantRequest): Promise<ConsentRecord> {
@@ -347,8 +386,16 @@ export class LgpdService {
     if (!request) {
       throw new Error(`DSR request not found: ${requestId}`);
     }
+    this.#assertOpen(request);
 
-    const result = resultJson ?? (await this.buildDsrResult(accountId, request));
+    // Effects (erasure, consent revocation) are always computed by the service;
+    // a caller-supplied result can never stand in for them.
+    const result =
+      request.requestType === 'data_deletion' ||
+      request.requestType === 'data_anonymization' ||
+      request.requestType === 'consent_revocation'
+        ? await this.buildDsrResult(accountId, request, completedBy)
+        : (resultJson ?? (await this.buildDsrResult(accountId, request, completedBy)));
 
     return this.#dsrRepo.updateStatus(accountId, requestId, 'completed', {
       completedBy,
@@ -366,6 +413,12 @@ export class LgpdService {
     if (!this.#dsrRepo) {
       throw new Error('DSR repository not configured');
     }
+
+    const request = await this.#dsrRepo.findById(accountId, requestId);
+    if (!request) {
+      throw new Error(`DSR request not found: ${requestId}`);
+    }
+    this.#assertOpen(request);
 
     return this.#dsrRepo.updateStatus(accountId, requestId, 'rejected', {
       completedBy: rejectedBy,
@@ -460,9 +513,58 @@ export class LgpdService {
     };
   }
 
+  #assertOpen(request: DataSubjectRequest): void {
+    if (!OPEN_DSR_STATUSES.has(request.status)) {
+      throw new LgpdDsrStateError(
+        'DSR_NOT_OPEN',
+        `DSR request is already ${request.status} and cannot change state`
+      );
+    }
+  }
+
+  async #executeErasure(
+    accountId: string,
+    request: DataSubjectRequest & { requestType: 'data_deletion' | 'data_anonymization' }
+  ): Promise<Record<string, unknown>> {
+    if (!this.#erasureExecutor) {
+      throw new LgpdDsrStateError(
+        'DSR_ERASURE_EXECUTOR_UNAVAILABLE',
+        'Erasure requests cannot be completed until an erasure executor is configured'
+      );
+    }
+    const disposition = this.buildErasureDisposition(request.subjectId, request.subjectType);
+    const evidence = await this.#erasureExecutor({
+      accountId,
+      subjectId: request.subjectId,
+      subjectType: request.subjectType,
+      requestId: request.id,
+      requestType: request.requestType,
+      retentionEvidence: this.buildRetentionEvidence(request.subjectType)
+    });
+    if (
+      !Number.isFinite(new Date(evidence.executedAt).getTime()) ||
+      evidence.erasedDataTypes.length + evidence.retainedDataTypes.length === 0
+    ) {
+      throw new LgpdDsrStateError(
+        'DSR_ERASURE_NOT_EXECUTED',
+        'Erasure executor did not report any executed or retained data type'
+      );
+    }
+    return {
+      ...disposition,
+      completedAt: evidence.executedAt,
+      erasureExecuted: true,
+      erasedDataTypes: evidence.erasedDataTypes,
+      retainedDataTypes: evidence.retainedDataTypes,
+      message:
+        'Solicitacao concluida: dados pessoais eliminados ou anonimizados conforme evidencia do executor; dados sob obrigacao legal retidos com justificativa.'
+    };
+  }
+
   private async buildDsrResult(
     accountId: string,
-    request: DataSubjectRequest
+    request: DataSubjectRequest,
+    actorId = 'system'
   ): Promise<Record<string, unknown>> {
     if (request.requestType === 'data_export' || request.requestType === 'data_portability' || request.requestType === 'data_access') {
       return {
@@ -471,17 +573,32 @@ export class LgpdService {
     }
 
     if (request.requestType === 'data_deletion' || request.requestType === 'data_anonymization') {
-      return this.buildErasureDisposition(request.subjectId, request.subjectType);
+      return this.#executeErasure(
+        accountId,
+        request as DataSubjectRequest & { requestType: 'data_deletion' | 'data_anonymization' }
+      );
     }
 
     if (request.requestType === 'consent_revocation') {
-      const consents = this.#consentRepo
-        ? await this.#consentRepo.findActiveBySubject(accountId, request.subjectId, request.subjectType)
-        : [];
+      if (!this.#consentRepo) {
+        throw new Error('Consent repository not configured');
+      }
+      const consents = await this.#consentRepo.findActiveBySubject(
+        accountId,
+        request.subjectId,
+        request.subjectType
+      );
+      const revokedAt = new Date().toISOString();
+      const revoked = [];
+      for (const consent of consents) {
+        revoked.push(await this.#consentRepo.revoke(consent.id, actorId, revokedAt));
+      }
       return {
         action: 'consent_revocation',
-        revokedConsentCandidates: consents.map((consent) => consent.id),
-        message: 'Revogacao deve ser aplicada por finalidade para preservar trilha juridica.'
+        revokedAt,
+        revokedConsentIds: revoked.map((consent) => consent.id),
+        revokedPurposes: revoked.map((consent) => consent.purpose),
+        message: 'Consentimentos ativos do titular revogados; historico preservado para trilha juridica.'
       };
     }
 

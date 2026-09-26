@@ -266,6 +266,39 @@ describe('apiRequest', () => {
     }
   });
 
+  it('preserves the API error correlation ID and details for the caller', async () => {
+    const errorBody = {
+      code: 'VALIDATION_ERROR',
+      message: 'page must be a positive safe integer',
+      details: { field: 'page' },
+      correlationId: 'api_error_contract_test'
+    };
+    const mockFetch = vi.fn().mockResolvedValue({
+      ok: false,
+      status: 400,
+      statusText: 'Bad Request',
+      json: vi.fn().mockResolvedValue(errorBody)
+    });
+
+    vi.stubGlobal('fetch', mockFetch);
+
+    const { apiRequest, cleanup } = await importApiModule();
+
+    try {
+      await expect(apiRequest('/patients?page=0')).rejects.toMatchObject({
+        name: 'ApiError',
+        message: errorBody.message,
+        status: 400,
+        statusText: 'Bad Request',
+        body: errorBody
+      });
+      expect(mockClearSession).not.toHaveBeenCalled();
+      expect(mockRouterReplace).not.toHaveBeenCalled();
+    } finally {
+      cleanup();
+    }
+  });
+
   it('aborts a request at the configured deadline and exposes an uncertain 408 outcome', async () => {
     const mockFetch = vi.fn((_url: string, init: RequestInit) =>
       new Promise((_resolve, reject) => {

@@ -13,7 +13,9 @@
   },
   "scripts": {
     "build": "tsc -b tsconfig.json --force",
-    "test": "cd ../../.. && vitest run packages/modules/pix/src/*.test.ts"
+    "test": "cd ../../.. && vitest run packages/modules/pix/src/*.test.ts",
+    "lint": "node ../../../scripts/run-semantic-lint.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
     "@cvg-his-v2/shared-database": "workspace:*",

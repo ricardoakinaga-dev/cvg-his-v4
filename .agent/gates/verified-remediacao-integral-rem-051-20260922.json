@@ -1,0 +1,87 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-051-20260922",
+  "timestamp": "2026-09-22T09:40:44.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "verificação candidate-bound dos nomes diagnósticos dos testes de foreign keys",
+  "scope_ref": "REM-051",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-REM051-001",
+      "description": "Cada caso de existência FK exibe a tabela, coluna e tabela referenciada reais no título do teste.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-051-fk-test-names-20260922.txt", "tests/integration/database/fk.test.ts"],
+      "confidence": "HIGH",
+      "limitations": "A prova é local ao runner Vitest candidate-bound."
+    },
+    {
+      "id": "V-REM051-002",
+      "description": "O known-bad de títulos undefined foi eliminado sem alterar a consulta ou os critérios de existência.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-051-fk-test-names-20260922.txt", "tests/integration/database/fk.test.ts"],
+      "confidence": "HIGH",
+      "limitations": "A equivalência semântica é delimitada pela inspeção do diff e pela regressão integral do arquivo."
+    },
+    {
+      "id": "V-REM051-003",
+      "description": "A regressão FK passou em PostgreSQL efêmero real no runtime oficial: 37 casos de existência e 5 casos de enforcement, 42/42 no total.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-051-fk-test-names-20260922.txt", "tests/integration/database/fk.test.ts", "tests/setup/global-setup.ts"],
+      "confidence": "HIGH",
+      "limitations": "O banco foi local e descartável; não constitui prova de target compartilhado."
+    },
+    {
+      "id": "V-REM051-004",
+      "description": "A mudança permanece restrita ao diagnóstico de registro dos casos; não há alteração de runtime, schema, migrations ou fixture SQL.",
+      "required": true,
+      "status": "PASS_WITH_CONDITIONS",
+      "evidence_refs": [".agent/evidence/rem-051-fk-test-names-20260922.txt", "tests/integration/database/fk.test.ts"],
+      "confidence": "HIGH",
+      "limitations": "Crítica independente, CI remoto, release e go/no-go permanecem fora do escopo."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-051-fk-test-names-20260922.txt",
+    "tests/integration/database/fk.test.ts",
+    "tests/setup/global-setup.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "A crítica independente E7 continua ausente por restrição de agente único.",
+    "CI/OCI, target, owners, UAT, browser/a11y, release e go/no-go permanecem fora do claim."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM051-DRIFT",
+      "description": "Reabrir REM-051 se a lista ESSENTIAL_FKS, o template dos títulos ou o teste focal sofrer drift.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a correção local; impede aceitar novamente sem prova current.",
+      "owner": "lead",
+      "due_or_trigger": "Drift em tests/integration/database/fk.test.ts ou em seus contratos de banco.",
+      "verification_method": "Reexecutar o teste focal em banco efêmero e gerar gate superseding.",
+      "status": "OPEN",
+      "residual_risk": "LOW",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "correção local reversível de títulos de testes FK",
+    "decision": "A instrução autoriza correção e regressão local; não autoriza fronteiras externas, release ou go/no-go.",
+    "evidence_ref": ".agent/evidence/rem-051-fk-test-names-20260922.txt",
+    "expires_or_revalidates": "Revalidar se o arquivo focal ou seus contratos de banco mudarem."
+  },
+  "residual_risk": "LOW",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-051:REOPEN-IF-DRIFT",
+  "revalidation_triggers": [
+    "Alterar ESSENTIAL_FKS, os títulos gerados ou os casos de enforcement.",
+    "Executar a suíte sem banco efêmero real, com outro runtime ou após mudança do harness.",
+    "Executar push, CI, target, deploy, UAT, release ou decisão humana sem gate específico."
+  ]
+}

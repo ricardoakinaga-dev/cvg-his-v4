@@ -1,0 +1,91 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-029-AGGREGATE-REVALIDATION-20260922",
+  "timestamp": "2026-09-22T09:18:00.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "revalidação agregada candidate-bound de REM-029 após reconciliar as quatro medições SPA do guard de complexidade",
+  "scope_ref": "REM-029",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-REM029-AGG-REVALIDATE-001",
+      "description": "Os três gates verified de sources, rendering e persistence e o aggregate anterior permanecem parseáveis e preservados; a revalidação não altera os boundaries de runtime.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-029-aggregate-revalidation-20260922.txt", ".agent/gates/verified-remediacao-integral-rem-029-aggregate-20260922.json", ".agent/gates/verified-remediacao-integral-rem-029-worker-report-sources-verify-20260922.json", ".agent/gates/verified-remediacao-integral-rem-029-reports-rendering-20260922.json", ".agent/gates/verified-remediacao-integral-rem-029-reports-persistence-verify-20260922.json"],
+      "confidence": "HIGH",
+      "limitations": "A revalidação é local e não substitui crítica independente."
+    },
+    {
+      "id": "V-REM029-AGG-REVALIDATE-002",
+      "description": "A condição de complexidade foi fechada: complexity:check e o teste focal do manifesto passaram após reconciliar current_lines/max_lines sem elevar limites.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-029-aggregate-revalidation-20260922.txt", ".agent/evidence/rem-027-hotspot-measurement-reconciliation-20260922.txt", "docs/engineering/complexity-hotspots.json"],
+      "confidence": "HIGH",
+      "limitations": "A correção é de inventário/guard; não comprova UX visual, a11y ou ownership."
+    },
+    {
+      "id": "V-REM029-AGG-REVALIDATE-003",
+      "description": "Reports e worker mantêm as regressões locais após a reconciliação: reports 40/40 e worker canônico passa com os focais de runner 65/65, sources 2/2 e job 11/11.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-029-aggregate-revalidation-20260922.txt", ".agent/evidence/rem-029-reports-aggregate-verify-20260922.txt", ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt"],
+      "confidence": "HIGH",
+      "limitations": "O processo PostgreSQL 28/28 é carregado do aggregate anterior porque o código de runtime não mudou nesta revalidação."
+    },
+    {
+      "id": "V-REM029-AGG-REVALIDATE-004",
+      "description": "O aggregate permanece DONE apenas no escopo local e PASS_WITH_CONDITIONS; E7, owners e fronteiras externas/humanas não foram promovidos por documentação.",
+      "required": true,
+      "status": "PASS_WITH_CONDITIONS",
+      "evidence_refs": [".agent/evidence/rem-029-aggregate-revalidation-20260922.txt", ".agent/state.json", ".agent/backlog.json"],
+      "confidence": "HIGH",
+      "limitations": "A ausência de crítica independente limita o veredito local a condicional."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-029-aggregate-revalidation-20260922.txt",
+    ".agent/evidence/rem-027-hotspot-measurement-reconciliation-20260922.txt",
+    ".agent/gates/verified-remediacao-integral-rem-029-aggregate-20260922.json",
+    ".agent/gates/verified-remediacao-integral-rem-029-aggregate-revalidation-20260922.json",
+    "docs/engineering/complexity-hotspots.json",
+    "packages/modules/reports/src/index.ts",
+    "apps/worker/src/runner.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "E7 e owners REPORTS/RUNTIME permanecem pendentes.",
+    "CI/OCI, target, provider real, UAT, browser/visual/a11y, release e go/no-go permanecem fora do claim."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM029-AGG-EXTERNAL",
+      "description": "Manter REM-029 como DONE apenas local e reabrir se qualquer boundary, source, manifesto ou evidência sofrer drift.",
+      "non_blocking": true,
+      "impact": "A condição não bloqueia a próxima preparação local, mas impede aceite organizacional ou release.",
+      "owner": "lead",
+      "due_or_trigger": "Drift de sources/rendering/persistence, complexidade, claims, leases, tenant ou evidência.",
+      "verification_method": "Gate agregado superseding com regressão proporcional e crítica quando disponível.",
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "revalidação local do aggregate REM-029",
+    "decision": "A instrução autoriza revalidação local; REM-030 e as fronteiras externas continuam sem autorização.",
+    "evidence_ref": ".agent/evidence/rem-029-aggregate-revalidation-20260922.txt",
+    "expires_or_revalidates": "Revalidar quando houver drift ou antes de qualquer claim de release."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-030:WAIT-AUTHORITY",
+  "revalidation_triggers": [
+    "Alterar qualquer boundary worker/reports ou o manifesto de complexidade.",
+    "Executar target, migration, rollback, provider, UAT, release ou go/no-go sem autorização/gate próprio."
+  ],
+  "supersedes": ".agent/gates/verified-remediacao-integral-rem-029-aggregate-20260922.json"
+}

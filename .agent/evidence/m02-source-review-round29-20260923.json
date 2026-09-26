@@ -1,0 +1,113 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND29-20260923",
+  "recorded_at": "2026-09-23T09:59:43Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "packages/contracts/src/integration.ts",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "fc5969b8eb50e6b3349c8832f36be13004fd19bee2c6160052b9fa2a5ee8245f",
+      "current_sha256": "fc5969b8eb50e6b3349c8832f36be13004fd19bee2c6160052b9fa2a5ee8245f",
+      "sha_matches_inventory": true,
+      "scope_classification": "WORKSPACE_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Candidate-relative diff changes the exam-order response schema from z.any() to z.unknown(), removing implicit any while preserving an intentionally opaque response boundary."
+    },
+    {
+      "path": "packages/contracts/src/__tests__/integration.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "5ff4516bc7c40d258426a29933e40b655d202008b0a2708ee556ddd74fe24574",
+      "current_sha256": "5ff4516bc7c40d258426a29933e40b655d202008b0a2708ee556ddd74fe24574",
+      "sha_matches_inventory": true,
+      "scope_classification": "WORKSPACE_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": false,
+      "review_notes": "Supporting test was already part of the reviewed union; this reread confirms it explicitly accepts both an object and a string, so runtime payloads remain unvalidated."
+    }
+  ],
+  "candidate_relative_change": {
+    "integration_contract": "The only source delta changes responses[201] for createExamOrderFromEncounter from z.any() to z.unknown(). The TypeScript contract no longer leaks any into consumers, while runtime acceptance remains permissive.",
+    "supporting_test": "The existing dirty test explicitly accepts both an arbitrary provider-like object and a plain string. It documents an opaque response boundary rather than validating a stable DTO."
+  },
+  "verification": {
+    "unit_config_attempt": {
+      "command": "pnpm exec vitest run --config vitest.unit.config.ts packages/contracts/src/__tests__/integration.test.ts",
+      "result": "NO_TEST_FILES",
+      "exit_status": 1,
+      "reason": "Root unit config only includes tests/unit/**/*.test.ts; the package test is outside that glob. No test executed."
+    },
+    "package_test": {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm --dir packages/contracts exec vitest run --config vitest.config.ts src/__tests__/integration.test.ts",
+      "result": "PASS",
+      "exit_status": 0,
+      "summary": "1 file passed; 1 test passed. Package config uses Node with no setup/globalSetup."
+    },
+    "typecheck": {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm --dir packages/contracts typecheck",
+      "result": "PASS",
+      "exit_status": 0,
+      "summary": "tsc --noEmit passed for the contracts package."
+    },
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0; Vitest 4.1.11."
+  },
+  "boundary_review": {
+    "runtime": "Test only calls Zod safeParse on in-memory values; no API server, database, provider or network runs.",
+    "type_safety": "The source change tightens inference to unknown. Package typecheck passes, but there is no downstream consumer type-level assertion in the reviewed test."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-EXAM-ORDER-RESPONSE-REMAINS-OPAQUE",
+      "classification": "HOLD_RESPONSE_CONTRACT",
+      "observation": "z.unknown() removes implicit any but accepts every runtime value. The test deliberately accepts both object and string; the external/provider response has no validated shape or stable response DTO."
+    },
+    {
+      "id": "M02-UNKNOWN-TYPE-BENEFIT-NOT-RUNTIME-TESTED",
+      "classification": "TYPE_BOUNDARY_ONLY",
+      "observation": "The package tsc check passes, but the runtime test cannot distinguish z.unknown() from z.any() because both accept the sample values. No consumer compile-time assertion exercises the narrower inferred type."
+    }
+  ],
+  "candidate_actions": [
+    "Keep z.unknown() if the intended contract is an opaque provider payload and consumers must narrow before use.",
+    "Define a stable schema only after the provider response contract is approved; do not present this as runtime response validation.",
+    "Use the contracts package-specific Node config for this path; the root unit config excludes package test directories."
+  ],
+  "limitations": [
+    "Only one previously pending original source path was newly reviewed; its supporting test had already been counted in an earlier round.",
+    "No route/provider integration, database, network, candidate overlay, frozen SHA or CI run occurred.",
+    "Self-review only; 36 original inventory paths remain pending and independent M-02 critique is open."
+  ],
+  "checkpoint_validation": {
+    "docs_validate": {
+      "result": "PASS",
+      "command": "pnpm docs:validate"
+    },
+    "json_and_jsonl_parse": {
+      "result": "PASS",
+      "scope": "state, backlog, content-scope, round-29 evidence, execution log and verification log"
+    },
+    "git_diff_check": {
+      "result": "PASS",
+      "command": "git diff --check"
+    },
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 28; no new REM-010/M-02 finding and no gate-v2 finding. The global controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T10:01:14Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 292,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 418,
+    "status_sha256": "a3330eb3fbc3532e3abf44c8b2e34509a553c5639ce839d82fdef1329b8ec771",
+    "note": "Read-only porcelain status after M-02 round 29 and checkpoint validation; original 386-path denominator unchanged. Round-29 evidence is the thirty-second post-inventory artifact."
+  }
+}

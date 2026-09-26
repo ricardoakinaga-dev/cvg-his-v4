@@ -1,0 +1,122 @@
+{
+  "evidence_id": "M21-ENCOUNTER-READ-ROUTES-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T08:17:46Z",
+  "scope": "M-21/M-23 extraction of authenticated encounter detail and summary GET handling from server.ts.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to this dirty worktree at the recorded HEAD; it is not candidate or release evidence."
+  },
+  "extraction": {
+    "source_path": "apps/api/src/server.ts",
+    "server_lines_before": 4390,
+    "server_lines_after": 4335,
+    "server_line_delta": -55,
+    "server_line_reduction_since_7943": 3608,
+    "server_line_reduction_since_8332": 3997,
+    "dispatch_placement": "The delegated handler remains after marketing routes and before encounter DELETE, at the original encounter GET position. The earlier encounter timeline handler is unchanged.",
+    "path_behavior_preserved": [
+      "pathname.startsWith('/encounters/') GET match",
+      "encounter ID parsed from pathname.split('/')[2]",
+      "pathname.endsWith('/summary') selects summary response"
+    ],
+    "summary_behavior_preserved": [
+      "encounters.read permission check precedes ID validation and account guard",
+      "account-scoped guard precedes service calls",
+      "timeline, diagnostic orders, then financial summary call order",
+      "financial summary errors are caught and serialized as null",
+      "audit follows summary service calls and response fields are unchanged"
+    ],
+    "dependency_boundary": "Encounter, diagnostics, and financial service methods, principal authorization, encounter account guard, and audit callback are injected; repository dependencies remain outside the route module."
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/routes/encounter-read-routes.ts",
+      "sha256": "965c49f97505a58d581ddecd39328a526c7a4962b7ded825c9c4775f52e865db",
+      "physical_lines": 117
+    },
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "72b6c6227374c33c248990a1ce827136c91c7677f49371dd01a1bf7d8db59c6f",
+      "physical_lines": 4335
+    },
+    {
+      "path": "apps/api/src/server.test.ts",
+      "sha256": "34b10faaed6bc11edd20f267b6f0c5cc082d8d20aec756bbc485bc6ff0900ff6",
+      "physical_lines": 6391
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "7589861f72982d461a3d3959e78d39448681032e6ba1f52409d36a7b02439eb3",
+      "server_budget": {
+        "current_lines": 4335,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test pnpm exec tsx --test --test-reporter=dot --test-name-pattern='diagnostic summaries and attachments preserve the authenticated account|diagnostic summaries, orders and attachments fail closed across authenticated accounts|triage validation does not transition a reception encounter before persistence' apps/api/src/server.test.ts",
+      "result": "PASS before and after extraction; three focused in-process HTTP tests each run.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsc -p apps/api/tsconfig.json --noEmit",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; server.ts=4,335, cap=8,323, previous max=8,335.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/routes/encounter-read-routes.ts apps/api/src/routes/triage-read-routes.ts apps/api/src/server.ts apps/api/src/server.test.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check -- apps/api/src/routes/encounter-read-routes.ts apps/api/src/routes/triage-read-routes.ts apps/api/src/server.ts apps/api/src/server.test.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    }
+  ],
+  "independent_review": {
+    "result": "PASS",
+    "critic_id": "critic_m21_encounter_reads_i1",
+    "independence": "Fresh I1 context fork; read-only source comparison and focused test rerun.",
+    "reviewed_sha256": [
+      {
+        "path": "apps/api/src/routes/encounter-read-routes.ts",
+        "sha256": "965c49f97505a58d581ddecd39328a526c7a4962b7ded825c9c4775f52e865db"
+      },
+      {
+        "path": "apps/api/src/server.ts",
+        "sha256": "72b6c6227374c33c248990a1ce827136c91c7677f49371dd01a1bf7d8db59c6f"
+      },
+      {
+        "path": "apps/api/src/server.test.ts",
+        "sha256": "34b10faaed6bc11edd20f267b6f0c5cc082d8d20aec756bbc485bc6ff0900ff6"
+      },
+      {
+        "path": "docs/engineering/complexity-hotspots.json",
+        "sha256": "7589861f72982d461a3d3959e78d39448681032e6ba1f52409d36a7b02439eb3"
+      }
+    ],
+    "result_summary": "PASS; broad matching, ID parsing, dispatch position, permission/account guard order, service ordering, financial catch-to-null behavior, audit timing and response fields match the inline branch.",
+    "reviewer_test_result": "Three focused in-process HTTP tests passed; API typecheck passed.",
+    "coverage_limits": [
+      "No test forces a financial-summary exception; catch-to-null was source-compared.",
+      "No database-backed adapter or PostgreSQL RLS verification."
+    ],
+    "intermediate_failure": "The reviewer first ran a focused test command without NODE_ENV=test and hit fixture login failure; rerun with NODE_ENV=test passed all three tests.",
+    "mutated_files": false
+  },
+  "limitations": [
+    "This is a local M-21/M-23 slice against a dirty worktree; no candidate SHA or release state is established.",
+    "Database-backed persistence/RLS, broader API composition, and full PROD-041 acceptance remain open.",
+    "No database, service, listener, or port was started or used."
+  ]
+}

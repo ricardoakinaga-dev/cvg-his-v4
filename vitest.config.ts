@@ -19,7 +19,9 @@ const commonTestExcludes = [
   'e2e/**',
   // This package test is intentionally executed by Node's native test runner;
   // keep it out of the browser-oriented global Vitest sweep.
-  'packages/modules/feature-flags/src/repositories/database-feature-flag.repository.test.ts'
+  'packages/modules/feature-flags/src/repositories/database-feature-flag.repository.test.ts',
+  // Backend/Dados-owned node:test suite; Vitest cannot bundle node:test builtins.
+  'packages/db/src/database-preflight.test.ts'
 ];
 const coverageSourceFiles = [
   'apps/api/src/**/*.ts',
@@ -90,28 +92,14 @@ export default defineConfig({
         'packages/shared/config/src/index.ts',
         'packages/shared/contracts/src/index.ts',
         'packages/shared/types/src/index.ts',
-        'packages/modules/api-keys/src/**',
-        'packages/modules/access-control/src/**',
-        'packages/modules/attachments/src/**',
-        'packages/modules/auth/src/**',
         'packages/modules/billing/src/**',
         'packages/modules/cash/src/**',
-        'packages/modules/discharges/src/**',
         'packages/modules/event-bus/src/**',
         'packages/modules/feature-flags/src/**',
         'packages/modules/inpatient/src/**',
-        'packages/modules/medical-records/src/**',
         'packages/modules/notifications-whatsapp/src/**',
-        'packages/modules/notifications/src/**',
         'packages/modules/pix/src/**',
-        'packages/modules/prescription-executions/src/**',
-        'packages/modules/prescriptions/src/**',
-        'packages/modules/products/src/**',
         'packages/modules/quotes/src/**',
-        'packages/modules/services/src/**',
-        'packages/modules/soc2/src/**',
-        'packages/modules/surgery/src/**',
-        'packages/modules/webhooks/src/**',
         'packages/shared/errors/src/index.ts',
         'packages/shared/feature-flags/src/database-provider.ts',
         'packages/shared/rate-limiter/src/index.ts',

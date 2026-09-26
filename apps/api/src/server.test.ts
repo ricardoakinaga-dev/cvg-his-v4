@@ -1,13 +1,11 @@
 import assert from 'node:assert/strict';
 import { AsyncLocalStorage } from 'node:async_hooks';
-import { createHmac } from 'node:crypto';
+import { createHash, createHmac } from 'node:crypto';
 import { request as httpRequest } from 'node:http';
-import { Readable, Writable } from 'node:stream';
 import test from 'node:test';
 
 import { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { ChaosEngine } from '@cvg-his-v2/chaos';
-import { WorkflowTaskService } from '@cvg-his-v2/module-workflows';
 import type { PersistedSessionRecord, SessionRepository } from '@cvg-his-v2/module-auth';
 import {
   DatabaseEncounterRepository,
@@ -40,13 +38,20 @@ import {
   assertDistributedStateReadiness,
   assertProductionProviderReadiness,
   buildAuthenticatedActorAttributes,
-  createApiServer,
   decodeAttachmentContent
 } from './server.js';
 import { applySecurityHeaders, isSecureRequest } from './http/security-headers.js';
 import { bootstrapServices } from './bootstrap.js';
 import { createInMemoryRuntimeRepositories } from './runtime-repositories.js';
 import { InMemoryLaboratoryResultImportRepository } from './laboratory-result-import-repository.js';
+import { createAttachmentDownloadToken } from './helpers/attachment-download-token.js';
+import {
+  createServerUnderTest,
+  login,
+  MockResponse,
+  performRequest,
+  type ApiTestServer
+} from './server-test-support.js';
 
 function createTestPrincipal() {
   return {
@@ -80,164 +85,6 @@ test('ABAC actor branches cannot be supplied by an HTTP request header', () => {
   assert.deepEqual(actor.sectorIds, ['sector-1']);
   assert.deepEqual(actor.sectorCodes, ['reception']);
 });
-
-class MockRequest extends Readable {
-  public readonly method: string;
-  public readonly url: string;
-  public readonly headers: Record<string, string>;
-  public readonly socket: { remoteAddress: string; encrypted: boolean };
-  readonly #body: Buffer;
-  #sent = false;
-
-  constructor(input: {
-    method: string;
-    url: string;
-    headers?: Record<string, string>;
-    body?: string;
-  }) {
-    super();
-    this.method = input.method;
-    this.url = input.url;
-    this.headers = input.headers ?? {};
-    this.socket = {
-      remoteAddress: '127.0.0.1',
-      encrypted: this.headers['x-forwarded-proto'] === 'https'
-    };
-    this.#body = Buffer.from(input.body ?? '', 'utf8');
-  }
-
-  _read(): void {
-    if (this.#sent) {
-      this.push(null);
-      return;
-    }
-
-    this.#sent = true;
-    if (this.#body.length > 0) {
-      this.push(this.#body);
-    }
-    this.push(null);
-  }
-}
-
-class MockResponse extends Writable {
-  public statusCode = 200;
-  public readonly headers = new Map<string, string>();
-  readonly #chunks: Buffer[] = [];
-  readonly #finished: Promise<void>;
-  #resolveFinished!: () => void;
-
-  constructor() {
-    super();
-    this.#finished = new Promise<void>((resolve) => {
-      this.#resolveFinished = resolve;
-    });
-  }
-
-  _write(
-    chunk: string | Buffer,
-    _encoding: BufferEncoding,
-    callback: (error?: Error | null) => void
-  ): void {
-    this.#chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    callback();
-  }
-
-  setHeader(name: string, value: string): this {
-    this.headers.set(name.toLowerCase(), value);
-    return this;
-  }
-
-  getHeader(name: string): string | undefined {
-    return this.headers.get(name.toLowerCase());
-  }
-
-  writeHead(statusCode: number, headers?: Record<string, string>): this {
-    this.statusCode = statusCode;
-    if (headers) {
-      for (const [key, value] of Object.entries(headers)) {
-        this.setHeader(key, value);
-      }
-    }
-    return this;
-  }
-
-  override end(
-    chunk?: string | Buffer | (() => void),
-    encoding?: BufferEncoding | (() => void),
-    callback?: () => void
-  ): this {
-    const finalCallback =
-      typeof chunk === 'function' ? chunk : typeof encoding === 'function' ? encoding : callback;
-
-    if (chunk !== undefined && typeof chunk !== 'function') {
-      this.#chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-    }
-    this.#resolveFinished();
-    finalCallback?.();
-    return this;
-  }
-
-  async waitForEnd(): Promise<void> {
-    await this.#finished;
-  }
-
-  bodyText(): string {
-    return Buffer.concat(this.#chunks).toString('utf8');
-  }
-
-  bodyJson<T>(): T {
-    return JSON.parse(this.bodyText()) as T;
-  }
-}
-
-function createServerUnderTest(overrides: Partial<Parameters<typeof createApiServer>[0]> = {}) {
-  return createApiServer({
-    appName: 'api-test',
-    environment: 'test',
-    version: '0.1.0',
-    authSecret: 'test-secret',
-    metricsAuthToken: 'test-metrics-token',
-    accessTokenTtlSeconds: 900,
-    refreshTokenTtlSeconds: 604800,
-    workflowTaskService: new WorkflowTaskService(),
-    whatsappWebhookSecret: 'test-webhook-secret',
-    featureFlags: {
-      providerName: 'test',
-      enabledKeys: ['notifications.whatsapp.inbound_actions.enabled'],
-      decisions: {
-        'notifications.whatsapp.inbound_actions.enabled': {
-          key: 'notifications.whatsapp.inbound_actions.enabled',
-          enabled: true,
-          provider: 'test',
-          reason: 'test-default',
-          evaluatedAt: new Date('2026-04-15T00:00:00.000Z').toISOString(),
-          definition: {} as never,
-          context: { environment: 'test' } as never
-        }
-      },
-      authOidcEnabled: false,
-      authWebauthnEnabled: false,
-      runtimeDistributedStateEnabled: false,
-      fiscalBackofficeEnabled: false,
-      notificationsWhatsappRemindersEnabled: false,
-      notificationsWhatsappInboundActionsEnabled: true,
-      provider: {
-        name: 'test',
-        evaluate: async () => ({
-          key: 'notifications.whatsapp.inbound_actions.enabled',
-          enabled: true,
-          provider: 'test',
-          reason: 'test-default',
-          evaluatedAt: new Date('2026-04-15T00:00:00.000Z').toISOString(),
-          definition: {} as never,
-          context: { environment: 'test' } as never
-        })
-      }
-    } as never,
-    ...overrides
-  });
-}
 
 function createNonAdminAuditWriteRepositories() {
   const accountId = 'acc_reprocess_http';
@@ -314,7 +161,7 @@ class DurableLaboratoryResultImportTestRepository extends InMemoryLaboratoryResu
 }
 
 async function performRawHttpRequest(
-  server: ReturnType<typeof createApiServer>,
+  server: ApiTestServer,
   input: {
     readonly path: string;
     readonly headers: Record<string, string>;
@@ -483,49 +330,51 @@ function createDatabaseConflictEncounterRepository(): EncounterRepository {
   return new DatabaseEncounterRepository(databaseClient as never);
 }
 
-async function performRequest(
-  server: ReturnType<typeof createApiServer>,
-  input: {
-    method: string;
-    url: string;
-    headers?: Record<string, string>;
-    body?: Record<string, unknown>;
-  }
-) {
-  const request = new MockRequest({
-    method: input.method,
-    url: input.url,
-    headers: input.headers,
-    body: input.body ? JSON.stringify(input.body) : undefined
+async function assertAccountScopedCollectionVisibility(
+  server: ApiTestServer,
+  collectionUrl: string,
+  ownerAccessToken: string,
+  foreignAccessToken: string,
+  itemId: string
+): Promise<void> {
+  const listFor = async (accessToken: string) =>
+    performRequest(server, {
+      method: 'GET',
+      url: collectionUrl,
+      headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+    });
+  const [ownerResponse, foreignResponse] = await Promise.all([
+    listFor(ownerAccessToken),
+    listFor(foreignAccessToken)
+  ]);
+  assert.equal(ownerResponse.statusCode, 200, `${collectionUrl} owner list`);
+  assert.equal(foreignResponse.statusCode, 200, `${collectionUrl} foreign list`);
+  const ownerItems = ownerResponse.bodyJson<{ items: Array<{ id: string }> }>().items;
+  const foreignItems = foreignResponse.bodyJson<{ items: Array<{ id: string }> }>().items;
+  assert.ok(
+    ownerItems.some((item) => item.id === itemId),
+    `${collectionUrl} owner can list item`
+  );
+  assert.equal(
+    foreignItems.some((item) => item.id === itemId),
+    false,
+    `${collectionUrl} foreign account cannot list item`
+  );
+  const nestedPathResponse = await performRequest(server, {
+    method: 'GET',
+    url: `${collectionUrl}/${itemId}/extra`,
+    headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
   });
-  const response = new MockResponse();
-
-  server.emit('request', request as never, response as never);
-  await response.waitForEnd();
-
-  return response;
+  assert.equal(nestedPathResponse.statusCode, 404, `${collectionUrl} rejects nested item path`);
 }
 
-async function login(
-  server: ReturnType<typeof createApiServer>,
-  username: string,
-  password: string
+function createTwoAccountTriageServer(
+  options: {
+    readonly attachmentRepository?: unknown;
+    readonly fileStorage?: unknown;
+    readonly useInMemoryCatalogStores?: boolean;
+  } = {}
 ) {
-  const response = await performRequest(server, {
-    method: 'POST',
-    url: '/auth/login',
-    headers: {
-      'content-type': 'application/json',
-      host: 'localhost'
-    },
-    body: { username, password }
-  });
-
-  assert.equal(response.statusCode, 200);
-  return response.bodyJson<{ accessToken: string }>().accessToken;
-}
-
-function createTwoAccountTriageServer() {
   const accounts = ['acc_triage_http_a', 'acc_triage_http_b'];
   const createdAt = '2026-04-01T10:00:00.000Z';
   const users = accounts.map((accountId, index) => ({
@@ -698,9 +547,12 @@ function createTwoAccountTriageServer() {
       users: usersRepository,
       encounter: encounterRepository,
       triage: triageRepository,
-      diagnosticOrder: diagnosticOrderRepository
+      diagnosticOrder: diagnosticOrderRepository,
+      attachment: options.attachmentRepository
     } as never,
-    preserveSeedUsersWithRepository: true
+    preserveSeedUsersWithRepository: true,
+    fileStorage: options.fileStorage as never,
+    ...(options.useInMemoryCatalogStores ? { useDatabaseCatalogStores: false } : {})
   });
 }
 
@@ -1231,6 +1083,546 @@ test('catalog stores honor the in-memory persistence mode', async () => {
     payload.items.some((breed) => breed.name === 'Golden Retriever'),
     true
   );
+});
+
+test('animal reference item routes enforce account ownership over HTTP', async () => {
+  const server = createTwoAccountTriageServer({ useInMemoryCatalogStores: true });
+  await server.ready;
+  const ownerAccessToken = await login(server, 'triage_admin_0', 'seed_admin_0');
+  const foreignAccessToken = await login(server, 'triage_admin_1', 'seed_admin_1');
+  const catalogs = [
+    {
+      collection: '/breeds',
+      name: 'Account A Breed',
+      payload: { name: 'Account A Breed', code: 'ACCOUNT-A-BREED-001', species: 'canine' }
+    },
+    {
+      collection: '/species',
+      name: 'Account A Species',
+      payload: { name: 'Account A Species', code: 'ACCOUNT-A-SPECIES-001', systemCode: 'other' }
+    },
+    {
+      collection: '/coat-colors',
+      name: 'Account A Coat Color',
+      payload: {
+        name: 'Account A Coat Color',
+        code: 'ACCOUNT-A-COAT-001',
+        colorGroup: 'Solida',
+        hexColor: '#4b2e22'
+      }
+    }
+  ];
+
+  for (const catalog of catalogs) {
+    const createResponse = await performRequest(server, {
+      method: 'POST',
+      url: catalog.collection,
+      headers: {
+        authorization: `Bearer ${ownerAccessToken}`,
+        'content-type': 'application/json',
+        host: 'localhost'
+      },
+      body: catalog.payload
+    });
+    assert.equal(createResponse.statusCode, 201);
+    const created = createResponse.bodyJson<{ id: string; accountId: string; name: string }>();
+    assert.equal(created.accountId, 'acc_triage_http_a');
+    await assertAccountScopedCollectionVisibility(
+      server,
+      catalog.collection,
+      ownerAccessToken,
+      foreignAccessToken,
+      created.id
+    );
+
+    const ownerRead = await performRequest(server, {
+      method: 'GET',
+      url: `${catalog.collection}/${created.id}`,
+      headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
+    });
+    assert.equal(ownerRead.statusCode, 200);
+    assert.equal(ownerRead.bodyJson<{ id: string }>().id, created.id);
+
+    for (const method of ['GET', 'PATCH', 'DELETE'] as const) {
+      const foreignRequest = await performRequest(server, {
+        method,
+        url: `${catalog.collection}/${created.id}`,
+        headers: {
+          authorization: `Bearer ${foreignAccessToken}`,
+          host: 'localhost',
+          ...(method === 'PATCH' ? { 'content-type': 'application/json' } : {})
+        },
+        ...(method === 'PATCH' ? { body: { name: `Foreign ${catalog.name}` } } : {})
+      });
+      assert.equal(foreignRequest.statusCode, 401, `${catalog.collection} ${method}`);
+    }
+
+    const ownerReadAfterForeignRequests = await performRequest(server, {
+      method: 'GET',
+      url: `${catalog.collection}/${created.id}`,
+      headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
+    });
+    assert.equal(ownerReadAfterForeignRequests.statusCode, 200);
+    assert.equal(ownerReadAfterForeignRequests.bodyJson<{ name: string }>().name, catalog.name);
+  }
+});
+
+test('product and service item routes enforce account ownership over HTTP', async () => {
+  const server = createTwoAccountTriageServer({ useInMemoryCatalogStores: true });
+  await server.ready;
+  const ownerAccessToken = await login(server, 'triage_admin_0', 'seed_admin_0');
+  const foreignAccessToken = await login(server, 'triage_admin_1', 'seed_admin_1');
+
+  const createdProductResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/products',
+    headers: {
+      authorization: `Bearer ${ownerAccessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { name: 'Account A Product', code: 'ACCOUNT-A-PRODUCT-001', basePrice: 10 }
+  });
+  assert.equal(createdProductResponse.statusCode, 201);
+  const createdProduct = createdProductResponse.bodyJson<{
+    id: string;
+    accountId: string;
+    name: string;
+  }>();
+  assert.equal(createdProduct.accountId, 'acc_triage_http_a');
+  await assertAccountScopedCollectionVisibility(
+    server,
+    '/products',
+    ownerAccessToken,
+    foreignAccessToken,
+    createdProduct.id
+  );
+
+  const ownerProduct = await performRequest(server, {
+    method: 'GET',
+    url: `/products/${createdProduct.id}`,
+    headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
+  });
+  assert.equal(ownerProduct.statusCode, 200);
+  assert.equal(ownerProduct.bodyJson<{ id: string }>().id, createdProduct.id);
+
+  const ownerProductUpdate = await performRequest(server, {
+    method: 'PATCH',
+    url: `/products/${createdProduct.id}`,
+    headers: {
+      authorization: `Bearer ${ownerAccessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { name: 'Account A Product Updated' }
+  });
+  assert.equal(ownerProductUpdate.statusCode, 200);
+  assert.equal(ownerProductUpdate.bodyJson<{ name: string }>().name, 'Account A Product Updated');
+
+  const foreignProductRead = await performRequest(server, {
+    method: 'GET',
+    url: `/products/${createdProduct.id}`,
+    headers: { authorization: `Bearer ${foreignAccessToken}`, host: 'localhost' }
+  });
+  assert.equal(foreignProductRead.statusCode, 401);
+
+  const foreignProductUpdate = await performRequest(server, {
+    method: 'PATCH',
+    url: `/products/${createdProduct.id}`,
+    headers: {
+      authorization: `Bearer ${foreignAccessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { name: 'Foreign Product Update' }
+  });
+  assert.equal(foreignProductUpdate.statusCode, 401);
+
+  const unchangedProduct = await performRequest(server, {
+    method: 'GET',
+    url: `/products/${createdProduct.id}`,
+    headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
+  });
+  assert.equal(unchangedProduct.statusCode, 200);
+  assert.equal(unchangedProduct.bodyJson<{ name: string }>().name, 'Account A Product Updated');
+
+  const createdServiceResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/services',
+    headers: {
+      authorization: `Bearer ${ownerAccessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { name: 'Account A Service', code: 'ACCOUNT-A-SERVICE-001', basePrice: 20 }
+  });
+  assert.equal(createdServiceResponse.statusCode, 201);
+  const createdService = createdServiceResponse.bodyJson<{
+    id: string;
+    accountId: string;
+    name: string;
+  }>();
+  assert.equal(createdService.accountId, 'acc_triage_http_a');
+  await assertAccountScopedCollectionVisibility(
+    server,
+    '/services',
+    ownerAccessToken,
+    foreignAccessToken,
+    createdService.id
+  );
+
+  const ownerService = await performRequest(server, {
+    method: 'GET',
+    url: `/services/${createdService.id}`,
+    headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
+  });
+  assert.equal(ownerService.statusCode, 200);
+  assert.equal(ownerService.bodyJson<{ id: string }>().id, createdService.id);
+
+  const ownerServiceUpdate = await performRequest(server, {
+    method: 'PATCH',
+    url: `/services/${createdService.id}`,
+    headers: {
+      authorization: `Bearer ${ownerAccessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { name: 'Account A Service Updated' }
+  });
+  assert.equal(ownerServiceUpdate.statusCode, 200);
+  assert.equal(ownerServiceUpdate.bodyJson<{ name: string }>().name, 'Account A Service Updated');
+
+  const foreignServiceRead = await performRequest(server, {
+    method: 'GET',
+    url: `/services/${createdService.id}`,
+    headers: { authorization: `Bearer ${foreignAccessToken}`, host: 'localhost' }
+  });
+  assert.equal(foreignServiceRead.statusCode, 401);
+
+  const foreignServiceUpdate = await performRequest(server, {
+    method: 'PATCH',
+    url: `/services/${createdService.id}`,
+    headers: {
+      authorization: `Bearer ${foreignAccessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { name: 'Foreign Service Update' }
+  });
+  assert.equal(foreignServiceUpdate.statusCode, 401);
+
+  const unchangedService = await performRequest(server, {
+    method: 'GET',
+    url: `/services/${createdService.id}`,
+    headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
+  });
+  assert.equal(unchangedService.statusCode, 200);
+  assert.equal(unchangedService.bodyJson<{ name: string }>().name, 'Account A Service Updated');
+});
+
+test('customer group item routes enforce account ownership over HTTP', async () => {
+  const server = createTwoAccountTriageServer({ useInMemoryCatalogStores: true });
+  await server.ready;
+  const ownerAccessToken = await login(server, 'triage_admin_0', 'seed_admin_0');
+  const foreignAccessToken = await login(server, 'triage_admin_1', 'seed_admin_1');
+
+  const createdResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/customer-groups',
+    headers: {
+      authorization: `Bearer ${ownerAccessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      name: 'Account A Customer Group',
+      code: 'ACCOUNT-A-CUSTOMER-GROUP-001',
+      segment: 'Retail',
+      discountPercent: 5,
+      paymentTermDays: 7,
+      creditLimitAmount: 100
+    }
+  });
+  assert.equal(createdResponse.statusCode, 201);
+  const created = createdResponse.bodyJson<{ id: string; accountId: string; name: string }>();
+  assert.equal(created.accountId, 'acc_triage_http_a');
+  await assertAccountScopedCollectionVisibility(
+    server,
+    '/customer-groups',
+    ownerAccessToken,
+    foreignAccessToken,
+    created.id
+  );
+
+  const ownerRead = await performRequest(server, {
+    method: 'GET',
+    url: `/customer-groups/${created.id}`,
+    headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
+  });
+  assert.equal(ownerRead.statusCode, 200);
+
+  const ownerUpdate = await performRequest(server, {
+    method: 'PATCH',
+    url: `/customer-groups/${created.id}`,
+    headers: {
+      authorization: `Bearer ${ownerAccessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { name: 'Account A Customer Group Updated' }
+  });
+  assert.equal(ownerUpdate.statusCode, 200);
+  assert.equal(ownerUpdate.bodyJson<{ name: string }>().name, 'Account A Customer Group Updated');
+
+  for (const method of ['GET', 'PATCH', 'DELETE'] as const) {
+    const foreignRequest = await performRequest(server, {
+      method,
+      url: `/customer-groups/${created.id}`,
+      headers: {
+        authorization: `Bearer ${foreignAccessToken}`,
+        host: 'localhost',
+        ...(method === 'PATCH' ? { 'content-type': 'application/json' } : {})
+      },
+      ...(method === 'PATCH' ? { body: { name: 'Foreign Customer Group Update' } } : {})
+    });
+    assert.equal(foreignRequest.statusCode, 401, `customer-groups ${method}`);
+  }
+
+  const ownerReadAfterForeignRequests = await performRequest(server, {
+    method: 'GET',
+    url: `/customer-groups/${created.id}`,
+    headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
+  });
+  assert.equal(ownerReadAfterForeignRequests.statusCode, 200);
+  assert.equal(
+    ownerReadAfterForeignRequests.bodyJson<{ name: string }>().name,
+    'Account A Customer Group Updated'
+  );
+
+  const ownerDelete = await performRequest(server, {
+    method: 'DELETE',
+    url: `/customer-groups/${created.id}`,
+    headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
+  });
+  assert.equal(ownerDelete.statusCode, 204);
+});
+
+test('responsibility-term item routes enforce account ownership over HTTP', async () => {
+  const server = createTwoAccountTriageServer({ useInMemoryCatalogStores: true });
+  await server.ready;
+  const ownerAccessToken = await login(server, 'triage_admin_0', 'seed_admin_0');
+  const foreignAccessToken = await login(server, 'triage_admin_1', 'seed_admin_1');
+
+  const createdResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/responsibility-terms',
+    headers: {
+      authorization: `Bearer ${ownerAccessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      title: 'Account A Responsibility Term',
+      code: 'ACCOUNT-A-RESPONSIBILITY-001',
+      usageContext: 'internacao',
+      content: 'Account A responsibility terms test',
+      active: true,
+      requiresOwnerSignature: true,
+      requiresWitnessSignature: false
+    }
+  });
+  assert.equal(createdResponse.statusCode, 201);
+  const created = createdResponse.bodyJson<{ id: string; accountId: string; title: string }>();
+  assert.equal(created.accountId, 'acc_triage_http_a');
+  await assertAccountScopedCollectionVisibility(
+    server,
+    '/responsibility-terms',
+    ownerAccessToken,
+    foreignAccessToken,
+    created.id
+  );
+
+  const ownerRead = await performRequest(server, {
+    method: 'GET',
+    url: `/responsibility-terms/${created.id}`,
+    headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
+  });
+  assert.equal(ownerRead.statusCode, 200);
+
+  const ownerUpdate = await performRequest(server, {
+    method: 'PATCH',
+    url: `/responsibility-terms/${created.id}`,
+    headers: {
+      authorization: `Bearer ${ownerAccessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { title: 'Account A Responsibility Term Updated' }
+  });
+  assert.equal(ownerUpdate.statusCode, 200);
+  assert.equal(
+    ownerUpdate.bodyJson<{ title: string }>().title,
+    'Account A Responsibility Term Updated'
+  );
+
+  for (const method of ['GET', 'PATCH', 'DELETE'] as const) {
+    const foreignRequest = await performRequest(server, {
+      method,
+      url: `/responsibility-terms/${created.id}`,
+      headers: {
+        authorization: `Bearer ${foreignAccessToken}`,
+        host: 'localhost',
+        ...(method === 'PATCH' ? { 'content-type': 'application/json' } : {})
+      },
+      ...(method === 'PATCH' ? { body: { title: 'Foreign Responsibility Term Update' } } : {})
+    });
+    assert.equal(foreignRequest.statusCode, 401, `responsibility-terms ${method}`);
+  }
+
+  const ownerReadAfterForeignRequests = await performRequest(server, {
+    method: 'GET',
+    url: `/responsibility-terms/${created.id}`,
+    headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
+  });
+  assert.equal(ownerReadAfterForeignRequests.statusCode, 200);
+  assert.equal(
+    ownerReadAfterForeignRequests.bodyJson<{ title: string }>().title,
+    'Account A Responsibility Term Updated'
+  );
+
+  const ownerDelete = await performRequest(server, {
+    method: 'DELETE',
+    url: `/responsibility-terms/${created.id}`,
+    headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
+  });
+  assert.equal(ownerDelete.statusCode, 204);
+});
+
+test('preventive-event item routes enforce account ownership over HTTP', async () => {
+  const server = createTwoAccountTriageServer({ useInMemoryCatalogStores: true });
+  await server.ready;
+  const ownerAccessToken = await login(server, 'triage_admin_0', 'seed_admin_0');
+  const foreignAccessToken = await login(server, 'triage_admin_1', 'seed_admin_1');
+
+  const createdResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/vaccines-dewormers',
+    headers: {
+      authorization: `Bearer ${ownerAccessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      patientId: 'patient_triage_http_0',
+      ownerId: 'owner_triage_http_0',
+      clientName: 'Account A Client',
+      animalName: 'Account A Patient',
+      eventDate: '2026-06-10',
+      itemType: 'vaccine',
+      description: 'Account A Preventive Event'
+    }
+  });
+  assert.equal(createdResponse.statusCode, 201);
+  const created = createdResponse.bodyJson<{
+    id: string;
+    accountId: string;
+    description: string;
+  }>();
+  assert.equal(created.accountId, 'acc_triage_http_a');
+  await assertAccountScopedCollectionVisibility(
+    server,
+    '/vaccines-dewormers',
+    ownerAccessToken,
+    foreignAccessToken,
+    created.id
+  );
+
+  const ownerUpdate = await performRequest(server, {
+    method: 'PATCH',
+    url: `/vaccines-dewormers/${created.id}`,
+    headers: {
+      authorization: `Bearer ${ownerAccessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { description: 'Account A Preventive Event Updated' }
+  });
+  assert.equal(ownerUpdate.statusCode, 200);
+  assert.equal(
+    ownerUpdate.bodyJson<{ description: string }>().description,
+    'Account A Preventive Event Updated'
+  );
+
+  const foreignRequests = await Promise.all([
+    performRequest(server, {
+      method: 'GET',
+      url: `/vaccines-dewormers/${created.id}`,
+      headers: { authorization: `Bearer ${foreignAccessToken}`, host: 'localhost' }
+    }),
+    performRequest(server, {
+      method: 'PATCH',
+      url: `/vaccines-dewormers/${created.id}`,
+      headers: {
+        authorization: `Bearer ${foreignAccessToken}`,
+        'content-type': 'application/json',
+        host: 'localhost'
+      },
+      body: { description: 'Foreign Preventive Event Update' }
+    }),
+    performRequest(server, {
+      method: 'DELETE',
+      url: `/vaccines-dewormers/${created.id}`,
+      headers: { authorization: `Bearer ${foreignAccessToken}`, host: 'localhost' }
+    }),
+    performRequest(server, {
+      method: 'POST',
+      url: `/vaccines-dewormers/${created.id}/execute`,
+      headers: {
+        authorization: `Bearer ${foreignAccessToken}`,
+        'content-type': 'application/json',
+        host: 'localhost'
+      },
+      body: { observation: 'Foreign execution' }
+    }),
+    performRequest(server, {
+      method: 'POST',
+      url: `/vaccines-dewormers/${created.id}/email`,
+      headers: { authorization: `Bearer ${foreignAccessToken}`, host: 'localhost' }
+    })
+  ]);
+  for (const [index, response] of foreignRequests.entries()) {
+    assert.equal(response.statusCode, 401, `preventive event foreign request ${index}`);
+  }
+
+  const nestedActionPath = await performRequest(server, {
+    method: 'POST',
+    url: `/vaccines-dewormers/${created.id}/extra/execute`,
+    headers: {
+      authorization: `Bearer ${ownerAccessToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: { observation: 'Malformed execution path' }
+  });
+  assert.equal(nestedActionPath.statusCode, 404);
+
+  const ownerReadAfterForeignRequests = await performRequest(server, {
+    method: 'GET',
+    url: `/vaccines-dewormers/${created.id}`,
+    headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
+  });
+  assert.equal(ownerReadAfterForeignRequests.statusCode, 200);
+  assert.equal(
+    ownerReadAfterForeignRequests.bodyJson<{ description: string }>().description,
+    'Account A Preventive Event Updated'
+  );
+
+  const ownerDelete = await performRequest(server, {
+    method: 'DELETE',
+    url: `/vaccines-dewormers/${created.id}`,
+    headers: { authorization: `Bearer ${ownerAccessToken}`, host: 'localhost' }
+  });
+  assert.equal(ownerDelete.statusCode, 204);
 });
 
 test('tenant command envelope replays the complete HTTP response without repeating the mutation', async () => {
@@ -1948,22 +2340,54 @@ test('production-like API requires a healthy Redis distributed-state preflight',
   );
 });
 
-test('observability contract exposes request and trace correlation headers', async () => {
+test('observability contract exposes server-generated request and trace correlation headers', async () => {
   const server = createServerUnderTest();
+  const callerSelectedId = 'corr_abc123_0123456789abcdef01';
   const response = await performRequest(server, {
     method: 'GET',
     url: '/health',
     headers: {
-      'x-correlation-id': 'corr-obs-123',
+      'x-correlation-id': callerSelectedId,
       host: 'localhost'
     }
   });
 
   const traceparent = response.getHeader('traceparent');
   assert.ok(traceparent);
-  assert.equal(response.getHeader('x-correlation-id'), 'corr-obs-123');
-  assert.equal(response.getHeader('x-request-id'), 'corr-obs-123');
+  const correlationId = response.getHeader('x-correlation-id') ?? '';
+  assert.match(correlationId, /^api_[0-9a-z]+_[a-f0-9]{18}$/);
+  assert.notEqual(correlationId, callerSelectedId);
+  assert.equal(response.getHeader('x-request-id'), correlationId);
   assert.equal(response.getHeader('x-trace-id'), traceparent?.split('-')[1]);
+});
+
+test('caller correlation headers are not reflected in response headers or health bodies', async () => {
+  const server = createServerUnderTest();
+  const unsafeHeaders = [
+    '',
+    'patient@example.com',
+    'Patient Jane Doe',
+    'patient-jane-doe_abc123_aabbccddeeff001122',
+    'x'.repeat(256)
+  ];
+
+  for (const unsafeHeader of unsafeHeaders) {
+    for (const url of ['/health', '/live', '/ready']) {
+      const response = await performRequest(server, {
+        method: 'GET',
+        url,
+        headers: { 'x-correlation-id': unsafeHeader, host: 'localhost' }
+      });
+      const correlationId = response.getHeader('x-correlation-id') ?? '';
+
+      assert.match(correlationId, /^api_[0-9a-z]+_[a-f0-9]{18}$/);
+      assert.notEqual(correlationId, unsafeHeader);
+      assert.equal(response.getHeader('x-request-id'), correlationId);
+      if (url !== '/health') {
+        assert.equal(response.bodyJson<{ correlationId: string }>().correlationId, correlationId);
+      }
+    }
+  }
 });
 
 test('operational metrics classify forbidden responses and downloads by normalized route and role', async () => {
@@ -2224,7 +2648,10 @@ test('SLO endpoint accepts an authenticated operator session without collector c
   });
 
   assert.equal(response.statusCode, 200);
-  assert.equal(response.bodyJson<{ report: { overallStatus: string } }>().report.overallStatus, 'healthy');
+  assert.equal(
+    response.bodyJson<{ report: { overallStatus: string } }>().report.overallStatus,
+    'healthy'
+  );
 });
 
 test('chaos operations expose effective runtime state, runbooks and metrics', async () => {
@@ -2948,6 +3375,26 @@ test('bootstrap deletes encounters over HTTP semantics', async () => {
   assert.equal(encounterResponse.statusCode, 201);
   const encounter = encounterResponse.bodyJson<{ id: string }>();
 
+  const nestedDeleteResponse = await performRequest(server, {
+    method: 'DELETE',
+    url: `/encounters/${encounter.id}/nested`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(nestedDeleteResponse.statusCode, 404);
+
+  const preservedEncounterResponse = await performRequest(server, {
+    method: 'GET',
+    url: `/encounters/${encounter.id}`,
+    headers: {
+      authorization: `Bearer ${accessToken}`,
+      host: 'localhost'
+    }
+  });
+  assert.equal(preservedEncounterResponse.statusCode, 200);
+
   const deleteResponse = await performRequest(server, {
     method: 'DELETE',
     url: `/encounters/${encounter.id}`,
@@ -3006,6 +3453,168 @@ test('attachment HTTP boundary returns canonical 413 for a declared oversized bo
 
   assert.equal(response.statusCode, 413);
   assert.equal(response.bodyJson<{ code: string }>().code, 'PAYLOAD_TOO_LARGE');
+});
+
+test('attachment upload rejects mismatched content, hides storage failures, and audits only success', async () => {
+  const content = Buffer.from('M27 attachment upload acceptance probe', 'utf8');
+  const checksum = createHash('sha256').update(content).digest('hex');
+  let storageMode: 'fail' | 'cleanup-fail' | 'succeed' = 'fail';
+  let storageWrites = 0;
+  const stored = new Map<string, Buffer>();
+  const server = createServerUnderTest({
+    fileStorage: {
+      async store(accountId, linkedEntityId, fileName, bytes) {
+        storageWrites += 1;
+        if (storageMode === 'fail') {
+          throw new Error('private-storage-endpoint-and-credential-marker');
+        }
+        const storageKey = `${accountId}/${linkedEntityId}/uploads/${fileName}`;
+        stored.set(storageKey, Buffer.from(bytes));
+        return {
+          storageKey,
+          checksum:
+            storageMode === 'cleanup-fail'
+              ? 'provider-checksum-mismatch'
+              : createHash('sha256').update(bytes).digest('hex'),
+          sizeBytes: bytes.length
+        };
+      },
+      async retrieve(_accountId, storageKey) {
+        return stored.get(storageKey) ?? null;
+      },
+      async delete(_accountId, storageKey) {
+        if (storageMode === 'cleanup-fail') {
+          throw new Error('private-storage-cleanup-object-key-marker');
+        }
+        return stored.delete(storageKey);
+      },
+      async exists(_accountId, storageKey) {
+        return stored.has(storageKey);
+      }
+    }
+  });
+  const accessToken = await login(server, 'admin', 'seed_admin');
+  const authenticatedHeaders = {
+    authorization: `Bearer ${accessToken}`,
+    'content-type': 'application/json',
+    host: 'localhost'
+  };
+  const encounterResponse = await performRequest(server, {
+    method: 'POST',
+    url: '/encounters',
+    headers: authenticatedHeaders,
+    body: {
+      patientId: 'patient_luna',
+      ownerId: 'owner_maria_silva',
+      visitType: 'walk_in',
+      origin: 'reception',
+      reason: 'M27 upload boundary'
+    }
+  });
+  assert.equal(encounterResponse.statusCode, 201);
+  const encounterId = encounterResponse.bodyJson<{ id: string }>().id;
+  const receptionToken = await login(server, 'reception', 'seed_reception');
+  const forbiddenUpload = await performRequest(server, {
+    method: 'POST',
+    url: '/attachments',
+    headers: {
+      authorization: `Bearer ${receptionToken}`,
+      'content-type': 'application/json',
+      host: 'localhost'
+    },
+    body: {
+      linkedEntityType: 'encounter',
+      linkedEntityId: encounterId,
+      category: 'lab',
+      fileName: 'resultado.txt',
+      mimeType: 'text/plain',
+      checksum,
+      contentBase64: content.toString('base64')
+    }
+  });
+  assert.equal(forbiddenUpload.statusCode, 403);
+  assert.equal(forbiddenUpload.bodyJson<{ code: string }>().code, 'FORBIDDEN');
+  assert.equal(storageWrites, 0, 'a principal without upload permission must not reach storage');
+
+  const upload = (mimeType: string) =>
+    performRequest(server, {
+      method: 'POST',
+      url: '/attachments',
+      headers: authenticatedHeaders,
+      body: {
+        linkedEntityType: 'encounter',
+        linkedEntityId: encounterId,
+        category: 'lab',
+        fileName: 'resultado.txt',
+        mimeType,
+        checksum,
+        contentBase64: content.toString('base64')
+      }
+    });
+  const assertGenericStorageFailure = (response: MockResponse) => {
+    assert.equal(response.statusCode, 500);
+    const error = response.bodyJson<{ code: string; message: string }>();
+    assert.equal(error.code, 'INTERNAL_ERROR');
+    assert.equal(error.message, 'Unexpected error');
+  };
+
+  const invalidType = await upload('image/png');
+  assert.equal(invalidType.statusCode, 400);
+  assert.equal(invalidType.bodyJson<{ code: string }>().code, 'VALIDATION_ERROR');
+  assert.equal(storageWrites, 0, 'invalid content must be rejected before storage access');
+
+  const storageFailure = await upload('text/plain');
+  assert.equal(storageFailure.statusCode, 500);
+  assertGenericStorageFailure(storageFailure);
+  assert.doesNotMatch(storageFailure.bodyText(), /private-storage-endpoint-and-credential-marker/);
+
+  storageMode = 'cleanup-fail';
+  const cleanupFailure = await upload('text/plain');
+  assertGenericStorageFailure(cleanupFailure);
+  assert.doesNotMatch(cleanupFailure.bodyText(), /private-storage-cleanup-object-key-marker/);
+
+  storageMode = 'succeed';
+  const successfulUpload = await upload('text/plain');
+  assert.equal(successfulUpload.statusCode, 201);
+  const createdAttachment = successfulUpload.bodyJson<{ id: string }>();
+
+  const listedAttachments = await performRequest(server, {
+    method: 'GET',
+    url: `/attachments?linkedEntityType=encounter&linkedEntityId=${encounterId}`,
+    headers: authenticatedHeaders
+  });
+  assert.equal(listedAttachments.statusCode, 200);
+  assert.deepEqual(
+    listedAttachments.bodyJson<{ items: Array<{ id: string }> }>().items.map(({ id }) => id),
+    [createdAttachment.id]
+  );
+
+  const auditEvents = await performRequest(server, {
+    method: 'GET',
+    url: '/audit/events?module=attachments&limit=100',
+    headers: authenticatedHeaders
+  });
+  assert.equal(auditEvents.statusCode, 200);
+  const uploadEvents = auditEvents
+    .bodyJson<{
+      items: Array<{ action: string; entityId: string; entityType: string; module: string }>;
+    }>()
+    .items.filter((event) => event.action === 'upload');
+  assert.equal(uploadEvents.length, 1);
+  assert.deepEqual(
+    {
+      action: uploadEvents[0]?.action,
+      entityId: uploadEvents[0]?.entityId,
+      entityType: uploadEvents[0]?.entityType,
+      module: uploadEvents[0]?.module
+    },
+    {
+      action: 'upload',
+      entityId: createdAttachment.id,
+      entityType: 'attachment',
+      module: 'attachments'
+    }
+  );
 });
 
 test('diagnostic summaries and attachments preserve the authenticated account over HTTP', async () => {
@@ -3556,6 +4165,13 @@ test('triage HTTP collections and history remain isolated across authenticated a
   });
   assert.equal(ownHistory.statusCode, 200);
   assert.equal(ownHistory.bodyJson<{ items: unknown[] }>().items.length, 1);
+
+  const nestedHistoryPath = await performRequest(server, {
+    method: 'GET',
+    url: '/triage/triage_http_1/extra/history',
+    headers: { authorization: `Bearer ${accessTokenB}`, host: 'localhost' }
+  });
+  assert.equal(nestedHistoryPath.statusCode, 404);
 });
 
 test('diagnostic summaries, orders and attachments fail closed across authenticated accounts', async () => {
@@ -3948,6 +4564,19 @@ test('medical-record HTTP collections, timeline and mutations fail closed across
   assert.equal(ownListBItems[0]?.record.id, 'medical_record_http_1');
   assert.equal(ownListBItems[0]?.entryCount, 1);
 
+  const emptyEncounterFilterList = await performRequest(server, {
+    method: 'GET',
+    url: '/medical-records?encounterId=',
+    headers: { authorization: `Bearer ${accessTokenA}`, host: 'localhost' }
+  });
+  assert.equal(emptyEncounterFilterList.statusCode, 200);
+  assert.deepEqual(
+    emptyEncounterFilterList
+      .bodyJson<{ items: Array<{ record: { id: string } }> }>()
+      .items.map((item) => item.record.id),
+    ['medical_record_http_0']
+  );
+
   const foreignRequests = await Promise.all([
     performRequest(server, {
       method: 'GET',
@@ -4107,6 +4736,189 @@ test('medical-record attachment collections filter contaminated repository rows 
     response.bodyJson<{ items: Array<{ id: string }> }>().items.map((item) => item.id),
     ['attachment_medical_http_own']
   );
+});
+
+test('cross-account attachment download requests return opaque 404 while the owner can retrieve content', async () => {
+  const createdAt = '2026-04-01T10:00:00.000Z';
+  const attachment = {
+    id: 'attachment_triage_http_owner',
+    accountId: 'acc_triage_http_b',
+    linkedEntityType: 'diagnostic_order',
+    linkedEntityId: 'diagnostic_http_1',
+    category: 'document',
+    fileName: 'owner.txt',
+    storageKey: 'local/acc_triage_http_b/diagnostic_http_1/owner.txt',
+    mimeType: 'text/plain',
+    checksum: 'owner-checksum',
+    sizeBytes: Buffer.byteLength('private attachment content'),
+    source: 'upload',
+    scanStatus: 'available',
+    uploadedByUserId: 'user_triage_http_1',
+    createdAt
+  };
+  const pendingAttachment = {
+    ...attachment,
+    id: 'attachment_triage_http_pending',
+    scanStatus: 'pending' as const
+  };
+  const content = Buffer.from('private attachment content', 'utf8');
+  const fileRetrievals: string[] = [];
+  const server = createTwoAccountTriageServer({
+    attachmentRepository: {
+      async create() {},
+      // Deliberately return the row by ID regardless of the requested account so
+      // the service's account check also guards against contaminated repositories.
+      async findById(_accountId: string, id: string) {
+        return id === attachment.id
+          ? attachment
+          : id === pendingAttachment.id
+            ? pendingAttachment
+            : null;
+      },
+      async findByLinkedEntity() {
+        return [attachment];
+      },
+      async deleteById() {
+        return true;
+      }
+    },
+    fileStorage: {
+      async retrieve(accountId: string, storageKey: string) {
+        fileRetrievals.push(`${accountId}:${storageKey}`);
+        return accountId === attachment.accountId && storageKey === attachment.storageKey
+          ? content
+          : null;
+      }
+    }
+  });
+  await server.ready;
+  const foreignToken = await login(server, 'triage_admin_0', 'seed_admin_0');
+  const ownerToken = await login(server, 'triage_admin_1', 'seed_admin_1');
+  const attachmentPath = `/attachments/${attachment.id}`;
+  const expectOpaqueNotFound = (response: MockResponse, requestedAttachmentId: string) => {
+    assert.equal(response.statusCode, 404);
+    const body = response.bodyJson<{
+      code: string;
+      message: string;
+      details?: Record<string, unknown>;
+      correlationId: string;
+    }>();
+    assert.equal(body.code, 'NOT_FOUND');
+    assert.equal(body.message, 'Attachment not found');
+    assert.deepEqual(body.details, { attachmentId: requestedAttachmentId });
+    return {
+      code: body.code,
+      message: body.message,
+      detailFields: Object.keys(body.details ?? {}).sort()
+    };
+  };
+
+  const foreignDownloadUrl = await performRequest(server, {
+    method: 'POST',
+    url: `${attachmentPath}/download-url`,
+    headers: { authorization: `Bearer ${foreignToken}`, host: 'localhost' }
+  });
+
+  const foreignContent = await performRequest(server, {
+    method: 'GET',
+    url: `${attachmentPath}/content`,
+    headers: { authorization: `Bearer ${foreignToken}`, host: 'localhost' }
+  });
+
+  const missingDownloadUrl = await performRequest(server, {
+    method: 'POST',
+    url: '/attachments/attachment_missing/download-url',
+    headers: { authorization: `Bearer ${foreignToken}`, host: 'localhost' }
+  });
+  const missingContent = await performRequest(server, {
+    method: 'GET',
+    url: '/attachments/attachment_missing/content',
+    headers: { authorization: `Bearer ${foreignToken}`, host: 'localhost' }
+  });
+
+  assert.deepEqual(
+    expectOpaqueNotFound(foreignDownloadUrl, attachment.id),
+    expectOpaqueNotFound(missingDownloadUrl, 'attachment_missing')
+  );
+  assert.deepEqual(
+    expectOpaqueNotFound(foreignContent, attachment.id),
+    expectOpaqueNotFound(missingContent, 'attachment_missing')
+  );
+  assert.deepEqual(fileRetrievals, []);
+
+  const ownerContent = await performRequest(server, {
+    method: 'GET',
+    url: `${attachmentPath}/content`,
+    headers: { authorization: `Bearer ${ownerToken}`, host: 'localhost' }
+  });
+  assert.equal(ownerContent.statusCode, 200);
+  assert.equal(ownerContent.bodyText(), content.toString('utf8'));
+
+  const ownerDownloadUrl = await performRequest(server, {
+    method: 'POST',
+    url: `${attachmentPath}/download-url`,
+    headers: { authorization: `Bearer ${ownerToken}`, host: 'localhost' }
+  });
+  assert.equal(ownerDownloadUrl.statusCode, 200);
+  const signedDownload = ownerDownloadUrl.bodyJson<{ url: string }>();
+  const signedContent = await performRequest(server, {
+    method: 'GET',
+    url: signedDownload.url,
+    headers: { host: 'localhost' }
+  });
+  assert.equal(signedContent.statusCode, 200);
+  assert.equal(signedContent.bodyText(), content.toString('utf8'));
+
+  const invalidSignedContent = await performRequest(server, {
+    method: 'GET',
+    url: `/attachments/${attachment.id}/content?token=invalid`,
+    headers: { host: 'localhost' }
+  });
+  assert.equal(invalidSignedContent.statusCode, 401);
+
+  const expiredToken = createAttachmentDownloadToken('test-secret', {
+    attachmentId: attachment.id,
+    accountId: attachment.accountId,
+    expiresAt: Date.now() - 1
+  });
+  const expiredSignedContent = await performRequest(server, {
+    method: 'GET',
+    url: `/attachments/${attachment.id}/content?token=${expiredToken}`,
+    headers: { host: 'localhost' }
+  });
+  assert.equal(expiredSignedContent.statusCode, 401);
+
+  const mismatchedToken = createAttachmentDownloadToken('test-secret', {
+    attachmentId: 'attachment_other',
+    accountId: attachment.accountId,
+    expiresAt: Date.now() + 60_000
+  });
+  const mismatchedSignedContent = await performRequest(server, {
+    method: 'GET',
+    url: `/attachments/${attachment.id}/content?token=${mismatchedToken}`,
+    headers: { host: 'localhost' }
+  });
+  assert.equal(mismatchedSignedContent.statusCode, 404);
+
+  assert.deepEqual(fileRetrievals, [
+    `${attachment.accountId}:${attachment.storageKey}`,
+    `${attachment.accountId}:${attachment.storageKey}`
+  ]);
+
+  const pendingDownloadUrl = await performRequest(server, {
+    method: 'POST',
+    url: `/attachments/${pendingAttachment.id}/download-url`,
+    headers: { authorization: `Bearer ${ownerToken}`, host: 'localhost' }
+  });
+  assert.equal(pendingDownloadUrl.statusCode, 409);
+  const pendingBody = pendingDownloadUrl.bodyJson<{
+    code: string;
+    details?: { scanStatus?: string };
+    correlationId?: string;
+  }>();
+  assert.equal(pendingBody.code, 'ATTACHMENT_NOT_AVAILABLE');
+  assert.equal(pendingBody.details?.scanStatus, 'pending');
+  assert.ok(pendingBody.correlationId);
 });
 
 test('bootstrap in-memory attachment deletes preserve the principal account scope', async () => {
@@ -4369,7 +5181,7 @@ test('medical-record HTTP mutation refreshes its cache after ambient transaction
 });
 
 test('catalog endpoints respect frontend search filters over HTTP semantics', async () => {
-  const server = createServerUnderTest();
+  const server = createServerUnderTest({ useDatabaseCatalogStores: false });
   const accessToken = await login(server, 'admin', 'seed_admin');
 
   const seededBreedsResponse = await performRequest(server, {
@@ -4765,6 +5577,19 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
     true
   );
 
+  const pelagensAliasResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/pelagens?colorGroup=Solida',
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+  assert.equal(pelagensAliasResponse.statusCode, 200);
+  assert.equal(
+    pelagensAliasResponse
+      .bodyJson<{ items: Array<{ code: string | null }> }>()
+      .items.some((item) => item.code === 'COAT-CHOCOLATE-001'),
+    true
+  );
+
   const updateCoatColorResponse = await performRequest(server, {
     method: 'PATCH',
     url: `/coat-colors/${createdCoatColor.id}`,
@@ -4844,6 +5669,19 @@ test('catalog endpoints respect frontend search filters over HTTP semantics', as
   }>();
   assert.equal(
     vetusAliasCustomerGroups.items.some((item) => item.code === 'CUSTOMER-GROUP-001'),
+    true
+  );
+
+  const customerGroupAliasResponse = await performRequest(server, {
+    method: 'GET',
+    url: '/customer-group?segment=Convenio',
+    headers: { authorization: `Bearer ${accessToken}`, host: 'localhost' }
+  });
+  assert.equal(customerGroupAliasResponse.statusCode, 200);
+  assert.equal(
+    customerGroupAliasResponse
+      .bodyJson<{ items: Array<{ code: string | null }> }>()
+      .items.some((item) => item.code === 'CUSTOMER-GROUP-001'),
     true
   );
 
@@ -5588,13 +6426,19 @@ test('security headers fail closed and add HSTS only for secure production-like 
   applySecurityHeaders(insecureRequest, secureResponse as never, 'production');
   assert.equal(secureResponse.getHeader('x-content-type-options'), 'nosniff');
   assert.equal(secureResponse.getHeader('x-frame-options'), 'DENY');
-  assert.equal(secureResponse.getHeader('content-security-policy'), "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'");
+  assert.equal(
+    secureResponse.getHeader('content-security-policy'),
+    "default-src 'none'; frame-ancestors 'none'; base-uri 'none'; form-action 'none'"
+  );
   assert.equal(secureResponse.getHeader('strict-transport-security'), undefined);
 
   for (const environment of ['production', 'staging', 'prod', 'stage']) {
     const response = new MockResponse();
     applySecurityHeaders(encryptedRequest, response as never, environment);
-    assert.equal(response.getHeader('strict-transport-security'), 'max-age=31536000; includeSubDomains; preload');
+    assert.equal(
+      response.getHeader('strict-transport-security'),
+      'max-age=31536000; includeSubDomains; preload'
+    );
   }
 
   const nonProductionResponse = new MockResponse();

@@ -1,0 +1,102 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND24-20260923",
+  "recorded_at": "2026-09-23T09:36:52Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": ".gitignore",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "d8039ee1a5924bb539735541a7eea2af0523e7a305ec8894ed50d4c9bccbe4f5",
+      "current_sha256": "d8039ee1a5924bb539735541a7eea2af0523e7a305ec8894ed50d4c9bccbe4f5",
+      "sha_matches_inventory": true,
+      "scope_classification": "GIT_POLICY",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "The only candidate-relative change removes the pnpm-lock.yaml ignore rule and replaces it with an explanatory comment. origin/main tracks pnpm-lock.yaml; the shared checkout also tracks it. The policy makes new/modified pnpm lockfiles visible in an isolated checkout."
+    },
+    {
+      "path": "tests/unit/infra/lockfile-gitignore.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "bb3a562e3b33655de501e0c4f3650b65b3e6fe534eaa9ae350390a2b775f9b7e",
+      "current_sha256": "bb3a562e3b33655de501e0c4f3650b65b3e6fe534eaa9ae350390a2b775f9b7e",
+      "sha_matches_inventory": true,
+      "scope_classification": "TEST_OR_QUALITY_CONTRACT",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "The Vitest contract asserts the root lockfile is tracked, copies the current ignore file into a temporary repository, verifies a new lockfile appears as untracked and is not ignored, then verifies an edited tracked lockfile appears modified. All temporary repository operations are under os.tmpdir() and rmSync(..., {recursive:true, force:true}) runs in finally."
+    }
+  ],
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config vitest.unit.config.ts tests/unit/infra/lockfile-gitignore.test.ts",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "1 test file passed; 1 test passed. Node environment; no setup files or global setup; the focused test used Git only in a temporary repository and cleaned it in finally.",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0; Vitest 4.1.11."
+  },
+  "candidate_relative_change": {
+    "origin_main_tracks_pnpm_lock_yaml": true,
+    "shared_index_tracks_pnpm_lock_yaml": true,
+    "ignore_file_change": "Remove the pnpm-lock.yaml ignore pattern; retain the canonical lockfile as a tracked repository artifact.",
+    "new_test_disposition": "The test is an untracked original-inventory path; no candidate overlay was performed."
+  },
+  "boundary_review": {
+    "repository_side_effects": "The test reads root .gitignore and the Git index, then initializes/commits/modifies a synthetic lockfile only inside a fresh temporary repository; finally removes that directory.",
+    "network_or_database": "None; only local Git subprocesses are invoked.",
+    "portability_limit": "The temporary repository does not override inherited global Git excludes or hook configuration, and subprocesses have no explicit timeout. A user-level core.excludesFile or core.hooksPath could make the fixture environment-dependent; none affected this run."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-LOCKFILE-POLICY-FOCUSED-CONTRACT-PASSES",
+      "classification": "LOCAL_POLICY_EVIDENCE",
+      "observation": "The focused contract passed and checks the two important Git states: a new lockfile is visible as untracked, and a changed tracked lockfile is visible as modified."
+    },
+    {
+      "id": "M02-LOCKFILE-POLICY-TEST-INHERITS-GIT-ENVIRONMENT",
+      "classification": "HOLD_TEST_PORTABILITY",
+      "observation": "The scratch repository inherits global Git excludes and hooks instead of explicitly disabling them. The current run passed, but the fixture is not fully hermetic across developer machines."
+    }
+  ],
+  "candidate_actions": [
+    "Keep the pnpm lockfile visible to Git and preserve its tracked state.",
+    "If this contract is used as a portable gate across developer environments, isolate global excludes/hooks and consider bounded Git subprocess execution.",
+    "Do not infer complete M-02 classification or candidate approval from this two-path review."
+  ],
+  "limitations": [
+    "Only .gitignore and the focused lockfile policy test were reviewed in this round; 46 of the original 386 paths remain pending content review.",
+    "Only the focused unit test was run; no workspace-wide test, CI, candidate checkout, overlay, frozen SHA, DB, external target or network action was used.",
+    "The review is self-authored; independent M-02 critique and sensitivity/provenance review remain open."
+  ],
+  "checkpoint_validation": {
+    "docs_validate": {
+      "result": "PASS",
+      "command": "pnpm docs:validate"
+    },
+    "json_and_jsonl_parse": {
+      "result": "PASS",
+      "scope": "state, backlog, content-scope, round-24 evidence, execution log and verification log"
+    },
+    "git_diff_check": {
+      "result": "PASS",
+      "command": "git diff --check"
+    },
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from the prior checkpoint; no new REM-010/M-02 finding and no gate-v2 finding. The global controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T09:39:46Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 287,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 413,
+    "status_sha256": "00947a44e91ab28d901dfe3aa9195324bf5d16f9f52f456fad987063d5294a3a",
+    "note": "Read-only porcelain status after M-02 round 24 and checkpoint validation; original 386-path denominator unchanged. Round-24 evidence is the twenty-seventh post-inventory artifact. The round-23 snapshot field had incorrectly placed the 286 untracked paths in staged_paths; Git porcelain showed zero staged paths, now corrected."
+  }
+}

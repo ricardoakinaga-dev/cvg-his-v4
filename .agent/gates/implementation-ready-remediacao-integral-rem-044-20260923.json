@@ -1,0 +1,117 @@
+{
+  "record_id": "GATE-REM-044-IMPLEMENTATION-READY-PREPARE-20260923",
+  "timestamp": "2026-09-23T00:43:40.000000Z",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "preparação candidate-bound para retenção segura de refs/objetos Git no repositório local, preservando rollback e sem executar limpeza destrutiva",
+  "scope_ref": "REM-044",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "A superfície Git, refs protegidos, estado do worktree, armazenamento e objetos candidatos foram inventariados com o candidate remoto separado do checkout local.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-044-preparation-20260923.txt",
+        "docs/operations/REM_044_GIT_OBJECT_RETENTION_RUNBOOK.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A fotografia é local; ownership e prazo de retenção para refs não protegidos ainda não foram fornecidos."
+    },
+    {
+      "id": "IR-002",
+      "description": "Invariantes de rollback, alcance de refs, limite de blob, dry-run, stop conditions e comportamento fail-closed foram definidos antes de qualquer prune/gc/reflog expiration.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-044-preparation-20260923.txt",
+        "docs/operations/REM_044_GIT_OBJECT_RETENTION_RUNBOOK.md",
+        "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/SHA256SUMS",
+        "/home/ricardo/cvg-his-v4-backups/20260923-remediacao-integral-rem002/rem-002-rewritten.bundle"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A versão instalada do Git não oferece gc/repack dry-run; esses comandos foram rejeitados por opção desconhecida e não foram substituídos por execução destrutiva."
+    },
+    {
+      "id": "IR-003",
+      "description": "A fatia segura está preparada e a próxima rota exige autoridade humana explícita para refs/objetos exatos, retenção aprovada e owner de rollback.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-044-preparation-20260923.txt",
+        "docs/operations/REM_044_GIT_OBJECT_RETENTION_RUNBOOK.md",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Nenhuma autoridade para remoção, expiração de reflog, prune, gc ou repack foi inferida da autorização anterior de REM-002."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-044-preparation-20260923.txt",
+    "docs/operations/REM_044_GIT_OBJECT_RETENTION_RUNBOOK.md",
+    ".agent/backlog.json",
+    ".agent/state.json",
+    "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/SHA256SUMS",
+    "/home/ricardo/cvg-his-v4-backups/20260923-remediacao-integral-rem002/rem-002-rewritten.bundle"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "No named retention owner, approved retention period or exact deletion set was supplied.",
+    "The shared checkout remains dirty on the pre-rewrite local tip and cannot be cleaned or moved by this task.",
+    "No destructive cleanup, reflog expiration, prune, gc, repack or ref deletion was executed."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-044-DESTRUCTIVE-AUTHORITY",
+      "description": "Obtain explicit human authority naming the exact refs/objects, approved retention period, rollback owner and allowed Git operation before any deletion or expiration.",
+      "non_blocking": true,
+      "impact": "Preparation may close, but the destructive execution remains blocked and must not be inferred from REM-002 authority.",
+      "owner": "Release/Platform/Repository owner",
+      "due_or_trigger": "Before REM-044:EXECUTE-RETENTION",
+      "due_at": "2026-09-30T23:59:59.000000Z",
+      "verification_method": "Confirmed authority record bound to a superseding REM-044 gate with exact scope and evidence reference.",
+      "evidence_refs": [
+        ".agent/evidence/rem-044-preparation-20260923.txt",
+        "docs/operations/REM_044_GIT_OBJECT_RETENTION_RUNBOOK.md"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "PENDING"
+    },
+    {
+      "id": "COND-REM-044-FRESH-ROLLBACK-FREEZE",
+      "description": "Immediately before any approved cleanup, create and verify a fresh all-refs bundle and recovery clone, then revalidate the exact refs and object inventory.",
+      "non_blocking": true,
+      "impact": "No cleanup command may start if the fresh freeze or recovery check fails.",
+      "owner": "Codex acting under the approved repository owner",
+      "due_or_trigger": "Immediately before REM-044:EXECUTE-RETENTION",
+      "due_at": "2026-09-30T23:59:59.000000Z",
+      "verification_method": "Bundle verify, SHA-256 manifest, fresh clone, ref/object inventory and post-action recovery comparison.",
+      "evidence_refs": [
+        ".agent/evidence/rem-044-preparation-20260923.txt",
+        "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/SHA256SUMS"
+      ],
+      "status": "OPEN",
+      "residual_risk": "LOW",
+      "authority_state": "PENDING"
+    }
+  ],
+  "authority": {
+    "required": true,
+    "state": "PENDING",
+    "actor": "named repository/retention authority not yet supplied",
+    "scope": "REM-044 ref/object expiration and Git garbage-collection/pruning for the local repository; exact refs, objects, retention period and rollback owner must be approved.",
+    "decision": "Await explicit CONFIRMED authority before any destructive retention action.",
+    "evidence_ref": ".agent/authority.jsonl",
+    "expires_or_revalidates": "Revalidate immediately after a new authority decision, source/control mutation, remote ref change or backup mutation."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-044:WAIT-AUTHORITY",
+  "revalidation_triggers": [
+    "A ref, tag, remote, worktree or backup changes.",
+    "A confirmed authority record names a different retention set or period.",
+    "Any cleanup command fails, lacks a trustworthy dry-run or changes the protected rollback inventory."
+  ],
+  "supersedes": null
+}

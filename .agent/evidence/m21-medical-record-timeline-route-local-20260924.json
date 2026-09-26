@@ -1,0 +1,106 @@
+{
+  "evidence_id": "M21-MEDICAL-RECORD-TIMELINE-ROUTE-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T08:46:17Z",
+  "scope": "M-21/M-23 extraction of the authenticated medical-record timeline GET handler from server.ts.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to this dirty worktree at the recorded HEAD; it is not candidate or release evidence."
+  },
+  "extraction": {
+    "source_path": "apps/api/src/server.ts",
+    "server_lines_before": 4179,
+    "server_lines_after": 4170,
+    "server_line_delta": -9,
+    "dispatch_placement": "The extracted handler is invoked at the original inline branch location between the medical-record entry routes and attachment routes.",
+    "path_behavior_preserved": [
+      "pathname === '/medical-records/timeline'",
+      "GET method requirement",
+      "required encounterId from the URL query"
+    ],
+    "call_order_preserved": [
+      "requirePrincipal(request, 'medical-records.read')",
+      "requireNonEmptyString(url.searchParams.get('encounterId'), 'encounterId')",
+      "requireEncounterForAccount(encounterId, principal.user.accountId)",
+      "appendAudit for high-risk read_timeline",
+      "medicalRecords.listTimelineByEncounterAsync(accountId, encounterId)",
+      "HTTP 200 with { items }"
+    ],
+    "dependency_boundary": "The medical-record timeline read method, principal authorization, encounter account guard, and audit callback are injected."
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/routes/medical-record-read-routes.ts",
+      "sha256": "0244293f84edf29aa2211875d8261d71ea7947ec2990c99b51d34ca2ab0d779f",
+      "physical_lines": 162
+    },
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "23b5521299ee3d2746b9d16a1da767a9c8ab34cc0d9179cb8edd6ed237f093eb",
+      "physical_lines": 4170
+    },
+    {
+      "path": "apps/api/src/server.test.ts",
+      "sha256": "8367deeaca3556ffe1dff6a6267513504b81b647c07d101a9f4addfab943ae9e",
+      "physical_lines": 6448
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "d6c724a3642c9a2e623e6bb31dbdcb6a1b539101868b718e6d0c8a9f0d0ccdc5",
+      "server_budget": {
+        "current_lines": 4170,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test pnpm exec tsx --test --test-reporter=dot --test-name-pattern='medical-record HTTP collections, timeline and mutations fail closed across accounts' apps/api/src/server.test.ts",
+      "result": "PASS locally and independently under I1; one focused in-process HTTP test.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsc -p apps/api/tsconfig.json --noEmit",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; server.ts=4,170, cap=8,323, previous maximum=8,335.",
+      "exit_code": 0
+    },
+    {
+      "command": "PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/routes/medical-record-read-routes.ts apps/api/src/server.ts docs/engineering/complexity-hotspots.json && git diff --check -- apps/api/src/routes/medical-record-read-routes.ts apps/api/src/server.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    }
+  ],
+  "independent_review": {
+    "result": "PASS",
+    "critic_id": "critic_m21_medical_timeline_i1",
+    "independence": "Fresh I1 context fork; read-only source comparison and focused in-process HTTP test rerun.",
+    "reviewed_sha256": [
+      {
+        "path": "apps/api/src/routes/medical-record-read-routes.ts",
+        "sha256": "0244293f84edf29aa2211875d8261d71ea7947ec2990c99b51d34ca2ab0d779f"
+      },
+      {
+        "path": "apps/api/src/server.ts",
+        "sha256": "23b5521299ee3d2746b9d16a1da767a9c8ab34cc0d9179cb8edd6ed237f093eb"
+      },
+      {
+        "path": "docs/engineering/complexity-hotspots.json",
+        "sha256": "d6c724a3642c9a2e623e6bb31dbdcb6a1b539101868b718e6d0c8a9f0d0ccdc5"
+      }
+    ],
+    "findings": "No behavior delta. Exact GET path and original dispatch position were confirmed; missing, empty, and whitespace-only encounterId values retain the same HTTP 400 validation behavior."
+  },
+  "limitations": [
+    "This slice does not prove PostgreSQL/RLS behavior, explicit role-denial behavior, or persisted audit records.",
+    "The selected account-isolation test covers an owner read and cross-account rejection but not every permission/audit matrix case.",
+    "The worktree remains dirty and no candidate SHA, CI, target, UAT, or release acceptance is asserted.",
+    "No database, listener, service, container, or port was started."
+  ]
+}

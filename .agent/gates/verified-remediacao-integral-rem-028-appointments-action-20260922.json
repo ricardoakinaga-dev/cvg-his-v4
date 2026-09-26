@@ -1,0 +1,122 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-028-APPOINTMENTS-ACTION-20260922",
+  "timestamp": "2026-09-22T05:31:00.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "implementação candidate-bound do controller de ações da agenda e regressão local proporcional",
+  "scope_ref": "REM-028",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-043",
+      "description": "AppointmentActionController implementa guards, concorrência, actionGeneration/invalidate, payloads de check-in, branch queue-aware de no-show, cancelamento e refresh/error stale com dependências tipadas injetadas.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-ACTION-20260922",
+        ".agent/evidence/rem-028-appointments-action-implementation-20260922.txt",
+        "apps/spa/src/pages/appointments/appointmentActionController.ts",
+        "apps/spa/src/pages/appointments/__tests__/AppointmentActionController.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A auditoria é local e não substitui browser, UAT ou prova externa dos endpoints."
+    },
+    {
+      "id": "V-044",
+      "description": "AppointmentsListPage reteve permission source, overview/server state, stale-response, query/contexto, router e openEncounter; focal, typecheck, lint, build, diff e boundary audit passaram.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-ACTION-20260922",
+        ".agent/evidence/rem-028-appointments-action-implementation-20260922.txt",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+        "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A suíte SPA integral pós-seam permanece separada."
+    },
+    {
+      "id": "V-045",
+      "description": "Browser/visual/a11y do action seam permanece explicitamente condicionado ao runtime E2E saudável; snapshots não foram atualizados.",
+      "required": true,
+      "status": "CONDITION",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-ACTION-20260922",
+        ".agent/evidence/rem-028-appointments-action-implementation-20260922.txt",
+        "playwright-spa.config.ts",
+        "e2e/spa/visual/visual-regression.spec.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "API local em 127.0.0.1:3111 não aceitou conexão (`health_http=000`); sem pixel diff, foco real, dark/mobile ou screen reader."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-028-appointments-action-implementation-20260922.txt",
+    ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-ACTION-20260922",
+    "apps/spa/src/pages/appointments/appointmentActionController.ts",
+    "apps/spa/src/pages/appointments/__tests__/AppointmentActionController.test.ts",
+    "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+    "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Browser/visual/a11y atual não executado por API local indisponível.",
+    "Suíte SPA integral pós-seam, crítica E7 e revisão de owners continuam abertas.",
+    "Seams de overview/query e create flow da agenda permanecem não extraídos."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-028-APPOINTMENTS-ACTION-BROWSER",
+      "description": "Reexecutar browser/visual com API saudável, incluindo estado loading de ação, erro, recovery, teclado/foco, dark/mobile e reduced-motion.",
+      "non_blocking": true,
+      "impact": "Bloqueia claim visual/a11y e fechamento integral de REM-028, mas não a implementação local reversível.",
+      "owner": "frontend/design",
+      "due_or_trigger": "Antes do VERIFIED integral de REM-028 ou atualização de baseline visual.",
+      "verification_method": "Playwright focal/interação e inspeção de artefatos atuais.",
+      "due_at": "2026-09-23T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-action-implementation-20260922.txt",
+        "playwright-spa.config.ts"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-028-APPOINTMENTS-ACTION-OWNER",
+      "description": "O contrato do controller e sua integração de workflow aguardam revisão identificada dos owners de scheduling/frontend/design.",
+      "non_blocking": true,
+      "impact": "Não bloqueia implementação local reversível; bloqueia aceite organizacional do contrato.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de promover o controller a compromisso de roadmap ou aceitar mudança de workflow.",
+      "verification_method": "Registrar revisão/decisão do owner e superseder a condição.",
+      "due_at": "2026-09-24T12:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-action-implementation-20260922.txt",
+        "docs/engineering/OWNERSHIP_AND_COMPLEXITY.md"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "extração local reversível do controller candidate-bound de ações da agenda",
+    "decision": "A instrução autoriza implementação e verificação local; não autoriza UAT, target, release, push, deploy ou aceite visual humano.",
+    "evidence_ref": ".agent/evidence/rem-028-appointments-action-implementation-20260922.txt",
+    "expires_or_revalidates": "Revalidar quando os handlers mudarem, os services mudarem ou o browser E2E ficar saudável."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-028:PREPARE-APPOINTMENTS-OVERVIEW-SEAM",
+  "revalidation_triggers": [
+    "Mover permission source, overview/server state, query, router ou openEncounter para o controller.",
+    "Alterar contratos de check-in/no-show/cancelamento sem atualizar teste focal e typecheck.",
+    "Remover generation invalidation, bloqueio de concorrência, refresh/stale ou branch queue-aware.",
+    "Atualizar snapshots enquanto a API/health E2E estiver indisponível.",
+    "Promover o seam local a aceite integral sem concluir overview/query, create flow, browser, E7 e owners."
+  ],
+  "supersedes": ".agent/gates/implementation-ready-remediacao-integral-rem-028-appointments-action-20260922.json"
+}

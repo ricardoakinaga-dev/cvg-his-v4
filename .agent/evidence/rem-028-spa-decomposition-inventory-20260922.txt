@@ -1,0 +1,279 @@
+REM-028 — inventário de decomposição da SPA por domínio/estado
+Data: 2026-09-22
+Escopo: preparação local, candidate-bound, sem mutação de código da SPA
+Evidência: E1 (inspeção estática reproduzível); nenhum claim E4/E5/E7
+Status: PASS_WITH_CONDITIONS para IMPLEMENTATION_READY
+
+## 1. Autoridade e limite
+
+A instrução da sessão autoriza inspeção e implementação local reversível no worktree
+compartilhado. Não autoriza publicação, CI remoto, target, UAT, release, aprovação
+organizacional, alteração de credenciais ou limpeza de mudanças preexistentes.
+O worktree estava deliberadamente dirty e foi preservado.
+
+Este registro não declara que a tela renderiza corretamente, que a navegação foi
+testada em navegador, que a acessibilidade é utilizável ou que qualquer owner aceitou
+a ordem de decomposição. Esses claims exigem a validação E4/E5/E7 descrita ao final.
+
+## 2. Proveniência reproduzível
+
+Ambiente da inspeção: Linux local, Node v22.23.2, pnpm 10.33.0, commit observado
+ad2f0373, sem banco/provider/target externo. A medição física foi feita com
+`wc -l`, `find`, `rg` e um script Node read-only sob o runtime oficial.
+
+Inventário global observado:
+
+- 219 arquivos `.vue` em `apps/spa/src`;
+- 201 páginas `.vue` em `apps/spa/src/pages`;
+- 208 arquivos `.test.ts` em `apps/spa/src`;
+- `apps/spa/src/router/routes.ts`: 2.920 linhas e 211 ocorrências de `import(`;
+- a rota privada é carregada de forma lazy e os filhos privados convergem para
+  `apps/spa/src/layouts/AppLayout.vue`;
+- `apps/spa/src/router/index.ts` mantém rotas públicas, um catch-all privado
+  diferido, guards de autenticação/setup/MFA/permissão e a atualização de
+  `recentRoutes` após navegação.
+
+Medição física dos sete alvos:
+
+| superfície | linhas | serviços importados | refs/reactives | computed | watchers | teste focal | linhas do teste |
+| --- | ---: | ---: | ---: | ---: | ---: | --- | ---: |
+| `PatientDetailPage.vue` | 4.075 | 13 | 9 | 72 | 1 | `patients/__tests__/PatientDetailPage.test.ts` | 1.223 |
+| `CounterSalesPage.vue` | 3.468 | 9 | 28 | 30 | 0 | `sales/__tests__/CounterSalesPage.test.ts` | 925 |
+| `MedicalRecordsDetailPage.vue` | 3.393 | 9 | 22 | 27 | 1 | `medical-records/__tests__/MedicalRecordsDetailPage.test.ts` | 1.534 |
+| `ReportWorkbenchPage.vue` | 3.142 | 6 | 10 | 40 | 1 | `reports/__tests__/ReportWorkbenchPage.test.ts` | 3.044 |
+| `AppointmentsListPage.vue` | 3.082 | 6 | 11 | 22 | 3 | `appointments/__tests__/AppointmentsListPage.test.ts` | 995 |
+| `DashboardPage.vue` | 2.860 | 7 | 0 | 22 | 0 | `pages/__tests__/DashboardPage.test.ts` | 812 |
+| `AppLayout.vue` | 2.717 | 1 | 9 | 19 | 6 | shared `useRouteFocus`/`useUnsavedChanges`/router tests | 533/113/957 |
+
+As contagens são sinais de concentração, não critério mecânico de extração. A
+decisão deve seguir ownership, contrato público, semântica, risco de estado, foco,
+responsividade, testabilidade e custo de renderização.
+
+## 3. Topologia, design system e fronteiras atuais
+
+`apps/spa/src/router/routes.ts` usa imports lazy e um helper
+`reportWorkbenchRoute(...)` para várias identidades de relatório que chegam ao
+mesmo `ReportWorkbenchPage.vue` com `props: { reportKey }`. A divisão correta para
+reports é por spec/adapter/runtime de dados e não por duplicação de uma página para
+cada alias.
+
+`apps/spa/src/main.ts` importa os tokens de
+`packages/design-system/src/tokens/variables.css` antes de `apps/spa/src/styles/main.css`.
+Os tokens observados cobrem cor semântica (cyan/mint/coral/neutros), superfície
+light/dark, spacing de grade de 4px, raios, sombras, tipografia, motion e foco;
+`main.css` define o reset, o focus ring tokenizado, controles de no mínimo 44px e
+regras `prefers-reduced-motion`. A decomposição deve reutilizar essas fronteiras;
+não deve introduzir uma paleta, escala de spacing, focus ring ou breakpoint paralelo.
+
+Componentes reutilizáveis já presentes incluem `AppPageHeader`, `DataTable`,
+`DsAlert`, `DsButton`, `DsCard`, `DsInput`, `DsModal`, `DsSidebarNav`, `DsSkeleton`,
+`DsStatCard` e `DsTabs`. O fato de um bloco possuir muitas linhas não autoriza
+extrair um wrapper sem ownership ou contrato semântico próprio.
+
+## 4. Classificação de estado e ownership
+
+| classe | owner permitido | exemplos observados | regra para extração |
+| --- | --- | --- | --- |
+| identidade de navegação/URL | router, props e adapters explícitos | `:id` de paciente/prontuário, `reportKey`, data/view/filtros da agenda, contexto de venda | serializar e ler uma vez; preservar links, back/forward e deep-link; não mover para store global |
+| estado de servidor | services/query adapters e página-orquestradora | patient/owner/encounters, sale/catalog/payment, record/timeline/attachments, reports/export, scheduling overview, dashboard APIs | cache/refresh/cancelamento devem ser explícitos; server é source of truth |
+| UI efêmera local | componente dono do comportamento | acordeões, tabs, drawer/modal, seleção, busca local, command palette, sidebar compacta | manter junto da interação; extrair somente com contrato de eventos/slots/refs |
+| workflow/mutação | controller/composable da fatia de domínio | clinical-history save/re-read/idempotency, close/cancel/reopen sale, unsaved changes, pending export/reconcile, appointment actions | estados `idle/loading/success/error/pending/retry` e guards não podem ser apagados na extração |
+| sessão/persistência transversal | Pinia/store existente e guards | auth em memória + cookie HttpOnly de refresh, tema, sidebar/recentes/favoritos, widgets por papel | somente dados realmente cross-tree; não transformar server state de uma página em store universal |
+
+## 5. Jornadas e seams selecionados
+
+### 5.1 Patient cockpit — `apps/spa/src/pages/patients/PatientDetailPage.vue`
+
+O template combina identidade do paciente, tutor/relacionamento, encontros,
+anamnese, prevenção, agenda, cobrança, exames, internação, prescrições, peso,
+imagens e história clínica. A página importa os composables
+`usePatientCards`, `usePatientWeightHistory` e `usePatientRelationship`, treze
+services e faz carregamentos parciais com `Promise.allSettled`; a história clínica
+usa idempotency key, re-leitura e guarda de geração para resposta stale
+(`PatientDetailPage.vue:2.402`, `:2.559`, `:2.807-2.815`). O template já expõe
+acordeões com `aria-expanded`, `aria-controls` e handler de teclado.
+
+Seams aprovados para implementação incremental:
+
+- `PatientIdentityAndContext`: somente apresentação e eventos de navegação;
+- `PatientClinicalHistory`: draft, save/re-read e estado read-only permanecem num
+  controller/composable clínico explícito;
+- `PatientTimelineAndAlerts`: recebe dados normalizados do orquestrador e não chama
+  services diretamente;
+- `PatientCommercialAndRelationship`: mantém owner/billing/quotes como domínio
+  comercial, sem contaminar o store de patient.
+
+Primeira extração segura: um módulo semântico de apresentação da timeline/alertas,
+com props tipadas e eventos, deixando o carregamento/orquestração no page boundary.
+Não extrair primeiro a mutação clínica nem criar um `usePatientStore` global.
+
+### 5.2 Counter sales — `apps/spa/src/pages/sales/CounterSalesPage.vue`
+
+A página cruza dashboard executivo, filtros/lista, venda selecionada, catálogo,
+barcode, itens/ajustes, pagamento, fechamento/cancelamento/reabertura, conversão
+de quote, owner/patient/encounter/medical record e impressão. `loadPage`,
+`selectSale`, adição por catálogo/barcode, transições e impressão estão na mesma
+unidade (`CounterSalesPage.vue:1.702-2.418`). Há estados de loading/disabled/alerta
+e contexto de recepção.
+
+Seams: `CounterSalesSummary`, `CounterSaleList`, `CounterSaleDetail`,
+`CounterSalePaymentWorkflow`, `CounterSaleContextPanel`, `CounterSalePrintArtifact`.
+O page continua dono da seleção, do contexto URL (`ownerId`, `patientId`,
+`encounterId`, `queueEntryId`) e da coordenação dos services; componentes filhos não
+devem reimplementar transições financeiras, idempotência ou source of truth.
+
+### 5.3 Medical record — `apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue`
+
+A página tem shell clínico, tabs/stepper `role="tablist"`, folha clínica, drafts,
+anexos, timeline, entradas create/edit/archive e confirmação de alterações não
+salvas. Usa `useEntityCache` e `useUnsavedChanges`, controla geração/sequence de
+attachments e chaves de idempotência (`MedicalRecordsDetailPage.vue:1.097`,
+`:1.199`, `:1.308`, `:1.798-1.826`).
+
+Seams: `ClinicalRecordHeaderContext`, `ClinicalStepNavigator`,
+`ClinicalSheetEditor`, `ClinicalEntriesHistory`, `ClinicalAttachmentsTimeline`.
+O `ClinicalSheetEditor` deve receber snapshot/dirty/save state e devolver eventos;
+o guard de unsaved changes, read-only de prontuário fechado, foco de tabs
+Home/End/Arrow e re-leitura pós-mutação são contratos obrigatórios.
+
+### 5.4 Reports — `ReportWorkbenchPage.vue` + `routes.ts`
+
+Uma página serve muitas rotas/aliases com `reportKey`. O runtime mantém filtros
+server-side na URL, execução, `DataTable`, estados de erro/empty, exportação,
+timeout, retry/reconcile e equality entre dados exibidos e exportados. O helper de
+rota e o `reportKey` formam a identidade pública; não se deve perder a rota, filtro
+ou escopo ao extrair.
+
+Seams: `ReportSpecRegistry`/decoders, `useReportQuery`, `ReportWorkbenchShell`,
+`ReportResultTable`, `ReportExportWorkflow` e adapters por domínio. O registry
+deve ser data/spec-driven, o adapter valida linhas e a shell não conhece regras de
+cada relatório. `ReportWorkbenchPage.test.ts` cobre 66 `it`/3.044 linhas; o teste
+deve continuar sendo o contrato focal do export, stale response, empty/error e
+alias routing.
+
+### 5.5 Agenda — `AppointmentsListPage.vue`
+
+A agenda combina list/day/week/month, contexto persistido, query params
+(`agendaDate`, `agendaView`, filtros), overview, enriquecimento opcional, seleção,
+check-in/no-show/cancel e criação. O source implementa geração para impedir
+respostas stale, permission fail-closed, fallback/partial integration e CSS com
+breakpoint de 720px; o teste focal cobre URL, corrida, acesso, modal e teclado.
+
+Seams: `AgendaUrlContextAdapter`, `useAppointmentsOverview`, `AgendaCalendarOrList`,
+`AppointmentActionController`, `AppointmentCreateFlow`. O adapter de URL continua
+no router/context; texto livre não deve virar query sem decisão explícita; a
+resposta primária não pode esperar o enriquecimento opcional.
+
+### 5.6 Dashboard — `DashboardPage.vue`
+
+O dashboard carrega sessão/permissions/roles, tiles, comandas abertas, SLO/audit,
+overview de negócio, aniversários, recentes/favoritos e guia por papel. Usa
+carregamentos paralelos/all-settled e geração para rejeitar refresh stale
+(`DashboardPage.vue:1.226-1.253`); o widget store persiste visibilidade/ordem por
+role.
+
+Seams: `DashboardAccessGate`, adapters de tiles/overview, `EnterpriseOverview`,
+`PremiumBusinessOverview`, `RolePriorityGuide` e `DashboardShortcuts`. O dashboard
+fica como composição; permission gating, distinção unavailable versus zero e
+fallback parcial permanecem observáveis.
+
+### 5.7 Shell — `AppLayout.vue`, router, stores e navigation
+
+O layout possui topbar/sidebar/breadcrumb/workspace, command palette, recentes,
+favoritos, tema, logout e responsive sidebar. Importa `useRouteFocus`, coordena
+`useUnsavedChanges`, fornece `agendaContext`, aplica permission-aware navigation,
+teclas Ctrl/Cmd+K, `/`, `?`, Escape e setas, restaura foco no mobile e respeita
+`prefers-reduced-motion` (`AppLayout.vue:538-598`, `:962+`).
+
+Seams: `AppShellFrame`, `PermissionAwareNavigationModel`, `CommandPalette`,
+`SidebarResponsiveController` e `RouteFocus/UnsavedChangesCoordinator`. O layout
+continua owner semântico de foco/saída; `router/index.ts` continua owner da
+navegação e `app.ts`/`theme.ts` dos estados persistidos. Não duplicar permission
+filtering em cada página.
+
+## 6. Ordem por risco e candidato mínimo
+
+1. Patient cockpit e medical record: maior risco clínico, stale response,
+   idempotência, dirty state e teclado; começar por apresentação read-only com
+   dados já normalizados.
+2. Counter sales e reports: risco financeiro/exportação; separar apresentação e
+   spec/controller antes de tocar em mutações.
+3. Agenda: risco médio-alto de URL, corrida e responsive; extrair adapter/query
+   antes de alterar CSS ou calendário.
+4. Dashboard e AppLayout: cross-cutting permission/focus/persistência; só depois
+   de contratos compartilhados estarem explícitos.
+
+Baseline selecionado: manter cada route page como composição/orquestração e extrair
+somente boundaries semânticas com props/emits/composables tipados. Isso minimiza
+mudança visual e mantém ownership explícito.
+
+Alternativas rejeitadas:
+
+- dividir por contagem de linhas ou por `<section>` sem contrato;
+- criar Pinia/Context universal para todos os dados server-side;
+- duplicar uma página por cada `reportKey`/alias;
+- mover URL/contexto para estado global ou remover geração/idempotência para reduzir
+  código;
+- trocar tokens/breakpoints/focus ring durante a decomposição;
+- aceitar snapshots existentes como prova de renderização atual.
+
+## 7. Known-bad e contratos de implementação
+
+Os seguintes candidatos devem reprovar a implementação ou a verificação focal:
+
+- extrair um componente sem props/emits/ownership testável e deixar a página
+  duplicar a mesma fonte de verdade;
+- mover dados de serviço para store global sem necessidade cross-tree;
+- perder `reportKey`, query da agenda ou parâmetros de contexto em deep-link/back;
+- aceitar resposta de uma rota anterior, perder re-read/idempotency ou permitir
+  ação duplicada;
+- remover dirty guard, tab keyboard/focus restoration, permission fail-closed,
+  loading/empty/error/partial state ou `prefers-reduced-motion`;
+- atualizar snapshot sem execução real do browser ou alegar visual PASS a partir
+  de source/static inspection.
+
+O teste focal por superfície, `vue-tsc`, lint semântico, `git diff --check` e
+targeted browser/visual deverão ser executados após cada seam. A composição deve
+ser verificada na boundary pública real, não apenas pelo import do novo arquivo.
+
+## 8. Matriz de testes e visual
+
+Testes unit/component já existentes:
+
+- paciente: 10 `it`, incluindo cockpit, erro, accordion keyboard, partial/empty,
+  save/re-read e route race;
+- vendas: 12 `it`, incluindo item/payment, close/cancel/reopen, print, barcode,
+  modal e contexto;
+- prontuário: 49 `it`, incluindo tabs, attachments, draft dirty/reload,
+  read-only, modal, stale route e id mismatch;
+- reports: 66 `it`, incluindo aliases, row validation, export, erro e stale;
+- agenda: 35 `it`, incluindo URL/context, views, failure, race, access, modal e
+  keyboard;
+- dashboard: 9 `it`, incluindo permission, stale refresh, unavailable versus zero
+  e role priority;
+- shared: `useRouteFocus.test.ts` (533 linhas), `useUnsavedChanges.test.ts`
+  (113 linhas) e `router/routes.test.ts` (957 linhas).
+
+O contrato browser pendente inclui pelo menos: light/dark, desktop 1280x720,
+mobile 390x844 e uma largura intermediária explicitamente escolhida; loading,
+empty, error/partial, modal/drawer, read-only/dirty, teclado/foco e reduced motion.
+O comando canônico é `pnpm test:visual`; a configuração usa API/SPA locais em
+3111/3112, Chromium 1280x720 e snapshots em
+`e2e/spa/snapshots/visual/visual-regression.spec.ts/`.
+
+Existem snapshots de repositório para dashboard, patient detail, medical record,
+appointments e counter sales, inclusive alguns mobile/dark. Eles são baseline
+histórico/documental e não foram executados nesta preparação; portanto não são
+prova E4 do estado atual e não autorizam atualização automática.
+
+## 9. Próximo gate
+
+O inventário é suficiente para abrir `REM-028:IMPLEMENT` localmente com uma
+primeira extração read-only/presentation-bound de risco controlado. O gate deve
+permanecer `PASS_WITH_CONDITIONS`: a implementação ainda precisa preservar os
+contratos acima, executar os testes focais e obter renderização/teclado/foco/visual
+real antes de qualquer claim de UX/a11y ou aceite VERIFIED.
+
+Condições abertas: validação browser/visual E4, revisão adversarial independente
+E7, owners de domínio/UX e qualquer aprovação humana ou fronteira externa. Nenhuma
+dessas condições foi inferida nesta preparação.

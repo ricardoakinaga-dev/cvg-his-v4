@@ -1,0 +1,31 @@
+{
+  "integration_assertion_excerpts": [
+    {
+      "run": "integration-results.json",
+      "file": "tests/integration/process/public-api-worker-event-chain.test.ts",
+      "case": "public API to durable outbox to real worker event chain proves public billing mutation, durable outbox processing and restart idempotency",
+      "diagnostic_excerpt": [
+        "AssertionError: expected { code: 1, signal: null } to deeply equal { code: +0, signal: null }\n    at /home/ricardo/cvg-his-v4/tests/integration/process/public-api-worker-event-chain.test.ts:502:23"
+      ]
+    },
+    {
+      "run": "integration-chain-retry-results.json",
+      "file": "tests/integration/process/public-api-worker-event-chain.test.ts",
+      "case": "public API to durable outbox to real worker event chain proves public billing mutation, durable outbox processing and restart idempotency",
+      "diagnostic_excerpt": [
+        "AssertionError: expected { code: 1, signal: null } to deeply equal { code: +0, signal: null }\n    at /home/ricardo/cvg-his-v4/tests/integration/process/public-api-worker-event-chain.test.ts:502:23"
+      ]
+    }
+  ],
+  "browser": {
+    "source": "browser-retry-results.json; browser-results.json",
+    "test": "e2e/spa/deleted-sales-report-flow.spec.ts",
+    "observation": "The click on the compact sidebar close toggle times out in both runs.",
+    "static_explanation": "The toggle is inside an inert topbar; Escape remains implemented.",
+    "source_references": [
+      "apps/spa/src/layouts/AppLayout.vue:18",
+      "apps/spa/src/layouts/AppLayout.vue:36"
+    ]
+  },
+  "raw_evidence_location": "/tmp/cvg-audit-20260925; raw logs/traces were not copied into this sanitized bundle."
+}

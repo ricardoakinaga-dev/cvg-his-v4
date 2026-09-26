@@ -1,0 +1,59 @@
+REM-028 — preparação do seam de ações da agenda
+Data: 2026-09-22T05:22:00.000000Z
+Escopo: inspeção E1 e contrato de implementação local reversível para check-in, no-show, cancelamento e navegação para atendimento
+Status: PASS_WITH_CONDITIONS para IMPLEMENTATION_READY
+
+## Autoridade e limite
+
+A instrução autoriza inspeção e implementação local reversível no worktree compartilhado.
+Não autoriza CI remoto, target, UAT, release, credenciais ou aceite de owner. O worktree
+dirty foi preservado.
+
+## Topologia e contratos observados
+
+- `AppointmentsListPage.vue` mantém `canReadScheduling`/`canManageScheduling`, `overviewRequest`, `disposed`, `loadOverview`, `invalidateOverview`, `router` e a composição dos drawers/calendar.
+- A superfície de mutações atual está concentrada no bloco de ações da page: `canCheckIn`, `canCancelFromAgenda`, `canMarkNoShow`, `beginAppointmentAction`, `finishAppointmentAction`, `checkIn`, `markNoShow` e `cancelAppointmentFromAgenda`.
+- `checkInQueue` exige `appointmentId`, `patientId`, `ownerId`, `reason` e aceita `priority`; `noShowQueueEntry` recebe `queueEntryId`; cancelamento usa `appointmentService.cancel(id, reason)`.
+- Os testes focais já cobrem cancelamento pelo drawer, bloqueio de no-show concorrente durante check-in e seleção do contrato de no-show da fila.
+- `openEncounter` só traduz `encounterId` em navegação via router e não deve entrar no controller de mutações.
+
+## Decisão de seam
+
+O próximo corte é `apps/spa/src/pages/appointments/appointmentActionController.ts`, um
+controller candidate-bound, sem store universal e sem imports de router, services ou API.
+Ele receberá por injeção:
+
+- predicate de permissão `canManageScheduling`;
+- `loadOverview` como refresh sob ownership da page;
+- setter de erro da page;
+- funções tipadas de `checkInQueue`, `noShowQueueEntry` e `appointmentService.cancel`.
+
+O controller será dono somente do workflow de mutação e do estado reativo local
+`actionLoadingId`/`actionKind`/`actionGeneration`: uma ação por vez, erro apenas se a
+geração ainda for corrente, refresh após sucesso e `invalidate()` chamado pela page em
+perda de sessão, mudança de contexto ou unmount. A page continuará dona da origem da
+permissão, overview/server state, stale-response, query/contexto, router e composição
+dos componentes; `AgendaCalendarOrList` e `AppointmentDetailsDrawer` continuarão apenas
+emitindo intents.
+
+## Known-bads e contrato de verificação
+
+- Não mover `canReadScheduling`, `overviewRequest`, `loadOverview`, query/router, drawer,
+  `openEncounter` ou permission fetch para o controller.
+- Não importar services/API/router/store no controller; dependências de mutação ficam
+  explícitas e testáveis por injeção.
+- Não permitir ações quando a permissão ou o status operacional não forem elegíveis;
+  não permitir concorrência; no-show de item vinculado à fila deve usar o contrato da fila.
+- Preservar refresh/stale e invalidar erros tardios após `invalidate()`.
+- Verificação esperada: teste focal do controller + `AppointmentsListPage.test.ts`,
+  `vue-tsc`, lint, build, `git diff --check` e auditoria estática do boundary.
+  Browser/visual/foco real, E7, owners e suíte SPA integral permanecem condições abertas;
+  snapshots não devem ser atualizados enquanto `/health` estiver unhealthy.
+
+## Evidência reproduzível
+
+- `nl -ba apps/spa/src/pages/appointments/AppointmentsListPage.vue | sed -n '843,1067p'`
+- `nl -ba apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts | sed -n '745,825p'`
+- `sed -n '71,85p;168,183p' apps/spa/src/services/scheduling.ts`
+- `sed -n '97,101p' apps/spa/src/services/appointment.ts`
+- `rg -n "useRouter|useRoute|from '@/router|router\\." apps/spa/src/pages/appointments/appointmentActionController.ts` (após implementação)

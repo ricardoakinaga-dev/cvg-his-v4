@@ -1,0 +1,260 @@
+{
+  "evidence_id": "M02-POSTINVENTORY-REVIEW-A-20260923",
+  "recorded_at_utc": "2026-09-23T12:45:54Z",
+  "review_scope": "Read-only review of lexicographic indices 0–21 from the M02_POST_INVENTORY_EVIDENCE class in the reconciliation artifact.",
+  "selection": {
+    "source_path": ".agent/evidence/m02-worktree-reconciliation-20260923.json",
+    "source_sha256_at_selection": "3daba1b775f9a8c44eeac662fb0c8032d72491d9bf2cb72cf32067628b696515",
+    "source_sha256_at_finalization": "3daba1b775f9a8c44eeac662fb0c8032d72491d9bf2cb72cf32067628b696515",
+    "source_changed_during_review": false,
+    "selection_membership_unchanged_at_finalization": true,
+    "filter": "scope_classification == M02_POST_INVENTORY_EVIDENCE",
+    "sort": "repository-relative path, lexicographic",
+    "class_count_at_selection": 44,
+    "first_index": 0,
+    "last_index": 21,
+    "selected_count": 22,
+    "ordered_path_and_snapshot_sha256_manifest": "3e0544cbc2d83c231729fbb59b6e793c187b8ea751efe9d8223f034466a997ff",
+    "ordered_path_and_current_sha256_manifest": "9e028ef624ca8848369ff11d17db8c079efe25d713903e18b3ba41eb38498b91"
+  },
+  "review_method": {
+    "read_full_selected_sources": true,
+    "sha256_current_and_second_read_stability_checked": true,
+    "json_jsonl_structural_parse": {
+      "valid_files": 22,
+      "invalid_files": 0,
+      "jsonl_record_count": 387
+    },
+    "matched_values_written_or_emitted": false
+  },
+  "aggregate_pattern_counts_only": {
+    "email_shape": 0,
+    "url_shape": 1,
+    "database_url_shape": 1,
+    "url_userinfo_shape": 0,
+    "local_home_path_shape": 63,
+    "temporary_path_shape": 2,
+    "cpf_explicit_dotted_shape": 0,
+    "cpf_explicit_spaced_shape": 0,
+    "private_key_marker": 0,
+    "github_token_shape": 0,
+    "aws_key_shape": 0,
+    "jwt_shape": 0,
+    "bearer_token_shape": 0,
+    "credential_assignment_shape": 0,
+    "person_name_field_label_shape": 0,
+    "unformatted_checksum_valid_cpf_shape": 0
+  },
+  "aggregate_files_with_pattern": {
+    "email_shape": 0,
+    "url_shape": 1,
+    "database_url_shape": 1,
+    "url_userinfo_shape": 0,
+    "local_home_path_shape": 22,
+    "temporary_path_shape": 2,
+    "cpf_explicit_dotted_shape": 0,
+    "cpf_explicit_spaced_shape": 0,
+    "private_key_marker": 0,
+    "github_token_shape": 0,
+    "aws_key_shape": 0,
+    "jwt_shape": 0,
+    "bearer_token_shape": 0,
+    "credential_assignment_shape": 0,
+    "person_name_field_label_shape": 0,
+    "unformatted_checksum_valid_cpf_shape": 0
+  },
+  "cpf_scan": "Strict dotted/spaced formats plus unformatted 11-digit values passing checksum validation, after excluding long hexadecimal hashes. No values retained.",
+  "name_scan_limitation": "Narrow field-label pattern only; not a reliable generic person-name detector. A zero count does not prove absence of names.",
+  "decision_summary": {
+    "HOLD": 22,
+    "EXCLUDE": 0,
+    "INCLUDE": 0,
+    "candidate_approval": false,
+    "overlay_conclusion": "All selected files are internal M02 control evidence and are not product overlay payload; HOLD is used where sensitivity/freshness provenance needs review."
+  },
+  "limitations": [
+    "Pattern scanning can produce false positives and false negatives.",
+    "URL shapes are not fetched or validated; no network access was used.",
+    "No .env files, databases, tests, or installations were accessed.",
+    "No candidate is assembled or approved."
+  ],
+  "snapshot_artifact_note": "This report was created after the reconciliation snapshot and is not included in the snapshot; a later worktree refresh must add this report itself.",
+  "paths": [
+    {
+      "path": ".agent/evidence/m02-content-scope-review-20260923.json",
+      "sha256_current": "64341765122112ddde9e646e45829a0731e264deebb8c45a57d8a0afe7995d0e",
+      "scope_classification": "M02 aggregate content-scope and review-coverage control record",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-inventory-20260923.jsonl",
+      "sha256_current": "018197e6eac004ba6d40a0ab53b720c86c7b0196ca10fdf6c1f9e6333c4d29ae",
+      "scope_classification": "M02 original per-path inventory manifest",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata; temporary-path-shaped metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-readme-correction-round30-20260923.json",
+      "sha256_current": "c4c8289a4e0c05d58dd0b85b4a3e0dfb84d8c62701369ba51a5241a6334ab37f",
+      "scope_classification": "M02 documentation-review correction record",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round1-20260923.json",
+      "sha256_current": "7fcfd8a9c8826fda70bfc73c59536f09145e49f976d8282dfaaece22fa26bfd1",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round10-20260923.json",
+      "sha256_current": "05ee190047f67f3d4c45a173c8980c6866083d7ae1a87967e69c797353a814ce",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round11-20260923.json",
+      "sha256_current": "f009d83ea423a35e5ed6ee9e953f14fe3eed8815509edb62462dd434d31b4eed",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round12-20260923.json",
+      "sha256_current": "d4d3582cbd52c067f93a58dce37765cddbadbef0f84d0e70394c010df655df43",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round13-20260923.json",
+      "sha256_current": "73b7bc7ab83b8f0f18590599dfe97aa31c0e6f02dfd6ecd3e7384415e117fec5",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round14-20260923.json",
+      "sha256_current": "1d099ed951edfb35855a4c986feb56d5a817038d4f790f16e31d066a3c6d5ce9",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round15-20260923.json",
+      "sha256_current": "71dab45565b0e981da4ab98234df9882b52d27712e3012ebe1f0746002001285",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round16-20260923.json",
+      "sha256_current": "acd55cc2181f1b1b3e781d4c7fdce5fc4a85a29f8d8542742bf817de2b3ded37",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round17-20260923.json",
+      "sha256_current": "ad88865b946501846a4ddd0168ad380dfb6129cda9fd25fc988004b9ba5d24aa",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round18-20260923.json",
+      "sha256_current": "c41e7f934364625d6464cc29656b3188f30c0c2eebcd597b155863f2cc402fc8",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata; URL-shaped content; database connection-string-shaped content. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round19-20260923.json",
+      "sha256_current": "13d346cc555123199587cb603a8a6152ee62ffb5b4c79622e1f01181c5fda62f",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round2-20260923.json",
+      "sha256_current": "f1a5a54b4b08ddda9a571f481d4876a9866473ebc17d7e5667d25bfb7eddab2c",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round20-20260923.json",
+      "sha256_current": "3d19f18cc7739ab0d74a751f61149e6461f9400a5492d6d4d68c345d01e4306d",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata; temporary-path-shaped metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round21-20260923.json",
+      "sha256_current": "b12139ab19aa0499231105f4d3cf1dd9bcdb3861f2d56cc5778eac06c059b485",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round22-20260923.json",
+      "sha256_current": "f4a8b4a66fa9972c89fd6d763a691717131d46181bddc39170f3ebba7a12aff1",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round23-20260923.json",
+      "sha256_current": "eff8e7cc34dbdb1731e9d95026eedce4a05a3a05a0b9926ad5208d746909f4c7",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round24-20260923.json",
+      "sha256_current": "533e46e2b90efc81d8a56b9da57558be5bd705456ec772eb7d65ad5bf0241dc1",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round25-20260923.json",
+      "sha256_current": "5aace5fc0a4ed9a4314a9c90495cfbe2dae77e6a1e42593fde639e4218fec963",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round26-20260923.json",
+      "sha256_current": "166636809afc01109b7f9c87a248a2e0921cf06583fd24d8e6e7856cb68fb0f3",
+      "scope_classification": "M02 per-path source-review round evidence",
+      "overlay_relevance": "M02 audit/control evidence only; no product, package, or runtime payload",
+      "decision": "HOLD",
+      "sanitized_reason": "Hold: this internal M02 record is outside product overlay; local path-shaped environment metadata. Matched values are suppressed."
+    }
+  ]
+}

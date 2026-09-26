@@ -1,0 +1,70 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND17-20260923",
+  "recorded_at": "2026-09-23T08:38:56Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "docs/engineering/test-skip-policy.json",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "7bfe08709e00c36ccc64948ace24d2b84394fcdb6e0c18109ab3678e822394e9",
+      "current_sha256": "7bfe08709e00c36ccc64948ace24d2b84394fcdb6e0c18109ab3678e822394e9",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "content_review": "REVIEWED_WITH_VALIDATOR_CROSSCHECK_AND_COVERAGE_HOLD",
+      "review_notes": "The policy fails closed for unapproved skip occurrences (schemaVersion=1, unapprovedSkipAction=fail), defines 23 unique exact path/kind/callee/condition/count/shard entries representing 36 current occurrences, and seven required runner shards covering 19 path associations. The current CLI/test contract passes these inputs. Current CI also contains the Windows runner job cited by platform skip reasons. The validator does not bind the playwright-postgresql runner label to the critical coverage manifest; that relation is only checked by generic file/allowlist and raw workflow text/environment matching. The critical-coverage-scope.json input remains a separate pending inventory path.",
+      "candidate_overlay_decision": "HOLD_PENDING_CRITICAL_SCOPE_MANIFEST_AND_RUNNER_ENFORCEMENT_REVIEW"
+    }
+  ],
+  "policy_shape": {
+    "schema_version": 1,
+    "unapproved_skip_action": "fail",
+    "allowlist_entries": 23,
+    "unique_allowlist_keys": 23,
+    "allowlisted_skip_occurrences": 36,
+    "required_shards": 7,
+    "required_shard_path_associations": 19,
+    "policy_reasons_present": 23
+  },
+  "cross_checks": {
+    "filesystem_validator": "PASS: 36 allowlisted occurrences; no unapproved/ambiguous skips or count mismatch",
+    "focused_contract": "PASS 3/3 under standalone SPA config, recorded in round 16",
+    "platform_job": "Read-only workflow search confirms ci.yml contains runs-on: windows-2022 and executes critical-process-suite-windows-contract.test.mjs.",
+    "runner_branch_gap": "Validator has explicit branches for vitest-integration, critical-process, vitest-postgresql-process-aux, and test:redis, but none for playwright-postgresql. The nine E2E paths therefore receive generic path existence/allowlist and raw workflow-text/env checks without critical coverage manifest membership/classification."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-TEST-SKIP-E2E-SHARD-MANIFEST-BINDING",
+      "classification": "HOLD_ENFORCEMENT_GAP",
+      "observation": "The policy declares an e2e-postgresql required shard with runner=playwright-postgresql, but validateRequiredShards has no branch for that runner. It does not verify those paths appear in the coverage manifest or receive critical test classification; generic workflow substrings can pass while the manifest relationship drifts.",
+      "required_followup": "Add explicit Playwright runner validation against the E2E/critical manifest and test removed/misclassified path mutations."
+    },
+    {
+      "id": "M02-TEST-SKIP-HUMAN-REASON-VALIDATION",
+      "classification": "KNOWN_POLICY_LIMIT",
+      "observation": "Every allowlist row currently has a reason, but the validator does not require or validate that field; explanations can disappear or become stale without test failure.",
+      "required_followup": "Decide whether reason text is a required governance field and enforce it if needed."
+    },
+    {
+      "id": "M02-TEST-SKIP-COVERAGE-MANIFEST-PENDING",
+      "classification": "HOLD_SEPARATE_PATH",
+      "observation": "critical-coverage-scope.json is a separate large original inventory path and its complete path/hash/provenance topology has not been reviewed in this round.",
+      "required_followup": "Review it as its own evidence/config path before closing the validator configuration boundary."
+    }
+  ],
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "hold_reason": "The skip policy file is stable and internally consistent with the current static validator, but the validator leaves the Playwright runner unbound to the critical coverage manifest and that manifest is still pending."
+  },
+  "limitations": [
+    "Policy review is not independent inclusion approval.",
+    "Current CLI output verifies occurrence inventory, not whether every allowlisted test runs in the intended CI environment at runtime.",
+    "No candidate-bound CI run was performed."
+  ]
+}

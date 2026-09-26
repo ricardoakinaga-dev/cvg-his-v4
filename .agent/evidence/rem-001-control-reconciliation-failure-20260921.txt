@@ -1,0 +1,8 @@
+REM-001 control-plane reconciliation first check
+timestamp: 2026-09-21T16:26:00Z
+command: python3 /home/ricardo/.agents/skills/engineering-framework/scripts/check_state.py /home/ricardo/cvg-his-v4
+result: FAIL
+exit_status: 1
+observed: the first reconciliation exposed missing canonical ExecPlan headings/timestamped progress, invalid PLAN next_action enum values, absolute verification artifact paths, and BLOCKED REM transition records.
+resolution: repair the living plan, use INSPECT for preparatory TODO actions, bind evidence through a repository-relative manifest, and append declared BLOCK transitions before rerunning the checker.
+scope: control-plane schema only; no product or history rewrite action.

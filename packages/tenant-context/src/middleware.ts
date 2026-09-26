@@ -21,7 +21,10 @@ export function resolveTenantFromRequest(
   request: IncomingMessage,
   options: TenantMiddlewareOptions = {}
 ): TenantContext {
-  const correlationId = (request.headers['x-correlation-id'] as string) ?? 'unknown';
+  const canonicalCorrelationId = (request as IncomingMessage & { readonly correlationId?: unknown })
+    .correlationId;
+  const correlationId =
+    typeof canonicalCorrelationId === 'string' ? canonicalCorrelationId : 'unknown';
   const allowHeaderIdentity = options.allowHeaderIdentity === true;
 
   const headerTenantId = allowHeaderIdentity

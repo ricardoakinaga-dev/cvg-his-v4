@@ -1,0 +1,23 @@
+
+ RUN  v4.1.11 /home/ricardo/cvg-his-v4
+
+ ✓ packages/db/src/migration-preflight.test.ts > migration preflight assessment > rejects invalid PostgreSQL server_version_num 0 2ms
+ ✓ packages/db/src/migration-preflight.test.ts > migration preflight assessment > rejects invalid PostgreSQL server_version_num -1 0ms
+ ✓ packages/db/src/migration-preflight.test.ts > migration preflight assessment > rejects invalid PostgreSQL server_version_num NaN 0ms
+ ✓ packages/db/src/migration-preflight.test.ts > migration preflight assessment > rejects invalid PostgreSQL server_version_num Infinity 0ms
+ ✓ packages/db/src/migration-preflight.test.ts > migration preflight assessment > rejects invalid PostgreSQL server_version_num 1.5 0ms
+ ✓ packages/db/src/migration-preflight.test.ts > migration preflight assessment > reports ready when all applied migrations match the local checksums 1ms
+ ✓ packages/db/src/migration-preflight.test.ts > migration preflight assessment > reports pending migrations in local release order 0ms
+ ✓ packages/db/src/migration-preflight.test.ts > migration preflight assessment > reports a missing ledger and treats every local migration as pending 0ms
+ ✓ packages/db/src/migration-preflight.test.ts > migration preflight assessment > rejects applied records when the ledger is reported missing 0ms
+ ✓ packages/db/src/migration-preflight.test.ts > migration preflight assessment > fails closed when an applied migration checksum no longer matches 0ms
+ ✓ packages/db/src/migration-preflight.test.ts > migration preflight assessment > fails closed when the ledger contains an unknown migration 0ms
+ ✓ packages/db/src/migration-preflight.test.ts > migration preflight assessment > fails closed when an applied checksum is malformed 0ms
+ ✓ packages/db/src/migration-preflight.test.ts > migration preflight assessment > fails closed when a local migration checksum is malformed 0ms
+ ✓ packages/db/src/migration-preflight.test.ts > migration preflight assessment > does not mutate the local migrations or applied records 0ms
+
+ Test Files  1 passed (1)
+      Tests  14 passed (14)
+   Start at  23:28:21
+   Duration  921ms (transform 39ms, setup 0ms, import 53ms, tests 7ms, environment 713ms)
+

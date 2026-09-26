@@ -1,0 +1,96 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-017-20260921",
+  "timestamp": "2026-09-21T22:44:20.000000+00:00",
+  "gate_id": "VERIFIED",
+  "scope": "validação local de supply chain com imutabilidade de actions/imagens, pipeline candidate-bound de SBOM/scan/digest/attestation e known-bads de substituição/rebuild para REM-017",
+  "scope_ref": "REM-017",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-ACCEPTANCE-EVIDENCE",
+      "description": "O validador local passou com 132 actions, 14 imagens de workflow, 15 Compose, 6 bases Docker e 4 imagens runtime imutáveis; a política de dependências passou com 69 manifests ativos.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-017-SUPPLY-CHAIN-20260921",
+        ".agent/evidence/rem-017-supply-chain-validation-20260921.txt"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Aceite limitado à inspeção local; não houve publicação ou verificação externa de artefato."
+    },
+    {
+      "id": "V-002-REGRESSION-RISK",
+      "description": "A matriz passou 17/17 sem skip/todo e rejeita referências mutable, imagem trocada, digest cruzado, scanner desacoplado, OCI reorder e rebuild silencioso; o comando público termina exit 0.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-017-SUPPLY-CHAIN-20260921",
+        ".agent/evidence/rem-017-supply-chain-validation-20260921.txt",
+        "scripts/validate-supply-chain.test.mjs"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A regressão é local e baseada em fixtures; não substitui scan real de imagem candidate."
+    },
+    {
+      "id": "V-003-LIMITATIONS-AUTHORITY",
+      "description": "A ausência de OCI publicado, SBOM/scan candidate real, assinatura/attestation OIDC, CI remoto, target, UAT e autoridade humana está explicitamente registrada.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-017-SUPPLY-CHAIN-20260921",
+        ".agent/evidence/rem-017-supply-chain-validation-20260921.txt",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Este gate não é assinatura, attestation externa, autorização de registry ou decisão de release."
+    }
+  ],
+  "evidence": [
+    ".agent/verification.jsonl#VER-REM-017-SUPPLY-CHAIN-20260921",
+    ".agent/evidence/rem-017-supply-chain-validation-20260921.txt",
+    "scripts/validate-supply-chain.mjs",
+    "scripts/validate-supply-chain.test.mjs",
+    "scripts/validate-dependency-policy.mjs",
+    ".github/workflows/release-artifacts.yml",
+    ".github/workflows/ci.yml"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-REM-017-OCI-ATTESTATION-BOUNDARY",
+      "description": "O fechamento prova apenas imutabilidade e encadeamento local fail-closed; OCI publicado, SBOM/scan de candidate real, assinatura/attestation OIDC, CI remoto e convergência candidate/release continuam não executados.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a conclusão local de REM-017; bloqueia qualquer claim de integridade externa, attestation verificada ou release readiness.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de qualquer publicação/consumo de OCI, attestation, release candidate ou gate integrado externo",
+      "due_at": "2026-09-22T12:00:00.000000+00:00",
+      "verification_method": "Executar o workflow candidate-bound autorizado no SHA exato, anexar SBOM/scan/digest/attestation verificáveis e reconciliar manifest/ci_sha/release_sha antes de superseder esta condição.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-017-SUPPLY-CHAIN-20260921",
+        ".agent/evidence/rem-017-supply-chain-validation-20260921.txt"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "validação local de supply chain com imutabilidade de actions/imagens, pipeline candidate-bound de SBOM/scan/digest/attestation e known-bads de substituição/rebuild para REM-017",
+    "decision": "A instrução do usuário autoriza validações locais reversíveis; nenhuma publicação, assinatura externa, execução remota, target, UAT ou release está incluída.",
+    "evidence_ref": ".agent/plans/remediacao-integral-20260921.md",
+    "expires_or_revalidates": "Revalidar antes de OCI, attestation, target, UAT ou release."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-009:PREPARE",
+  "revalidation_triggers": [
+    "Validador, matriz de known-bads, workflow de release, pinagem, manifestos ou política de dependências mudarem.",
+    "Uma referência mutable passar, um known-bad deixar de falhar ou a política de dependências regressar.",
+    "O escopo avançar para OCI publicado, SBOM/scan/attestation real, CI remoto, target, UAT ou release."
+  ],
+  "supersedes": null
+}

@@ -1,0 +1,120 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-028-COUNTER-SALES-KPI-20260922",
+  "timestamp": "2026-09-22T03:07:12.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "quarto seam presentation-bound do shell de vendas, com resumo de KPIs da CounterSalesPage; sem aceite visual",
+  "scope_ref": "REM-028",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-010",
+      "description": "O CounterSalesKpiSummary possui props readonly tipadas e apresenta somente os quatro KPIs; a CounterSalesPage mantém estado financeiro, filtros, seleção, URL e efeitos externos.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-KPI-20260922",
+        ".agent/evidence/rem-028-counter-sales-kpi-implementation-20260922.txt",
+        "apps/spa/src/pages/sales/CounterSalesKpiSummary.vue",
+        "apps/spa/src/pages/sales/CounterSalesPage.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A preservação visual necessita execução E2E atual; fonte e component test não substituem observação renderizada."
+    },
+    {
+      "id": "V-011",
+      "description": "O KPI e a CounterSalesPage passaram teste focal, vue-tsc, lint semântico, build Vite/PWA e diff check.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-KPI-20260922",
+        ".agent/evidence/rem-028-counter-sales-kpi-implementation-20260922.txt",
+        "apps/spa/src/pages/sales/__tests__/CounterSalesKpiSummary.test.ts",
+        "apps/spa/src/pages/sales/__tests__/CounterSalesPage.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A suíte SPA integral não foi repetida após este seam; a regressão proporcional passou e as suítes anteriores permanecem evidência histórica, não prova de browser."
+    },
+    {
+      "id": "V-012",
+      "description": "A fronteira visual dos KPIs foi preservada com os mesmos valores de layout e sem atualização de snapshots.",
+      "required": true,
+      "status": "CONDITION",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-KPI-20260922",
+        ".agent/evidence/rem-028-counter-sales-kpi-implementation-20260922.txt",
+        "playwright-spa.config.ts",
+        "e2e/spa/visual/visual-regression.spec.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "O runtime visual local continua sem API saudável; pixel diff, foco real e dark/mobile não foram observados."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-028-counter-sales-kpi-implementation-20260922.txt",
+    ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-KPI-20260922",
+    "apps/spa/src/pages/sales/CounterSalesKpiSummary.vue",
+    "apps/spa/src/pages/sales/CounterSalesPage.vue",
+    "apps/spa/src/pages/sales/__tests__/CounterSalesKpiSummary.test.ts",
+    "apps/spa/src/pages/sales/__tests__/CounterSalesPage.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Browser/visual atual não executado por API local unhealthy.",
+    "Cards/lista de comandas, workbench, reports, agenda, dashboard e layout ainda estão abertos.",
+    "Nenhuma crítica adversarial independente E7 ou aprovação de owner foi obtida."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-028-COUNTER-SALES-KPI-BROWSER",
+      "description": "Reexecutar a superfície de vendas em browser com KPIs, estados de loading/empty/error, mobile/dark e foco quando o runtime E2E estiver saudável, sem atualizar snapshots automaticamente.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a continuidade local de implementação; bloqueia claim visual/a11y e fechamento integral de REM-028.",
+      "owner": "frontend/design",
+      "due_or_trigger": "Antes do VERIFIED integral de REM-028 ou de atualizar baseline visual.",
+      "verification_method": "Executar Playwright focal, inspeção de foco/teclado e diff atual com artefatos vinculados.",
+      "due_at": "2026-09-23T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-counter-sales-kpi-implementation-20260922.txt",
+        "playwright-spa.config.ts"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-028-REMAINING-SURFACES-4",
+      "description": "Este é o quarto seam; cards/lista de comandas, workbench e as demais superfícies REM-028 permanecem pendentes.",
+      "non_blocking": true,
+      "impact": "Impede marcar REM-028 como DONE; não invalida o resumo de KPIs localmente verificado.",
+      "owner": "lead",
+      "due_or_trigger": "Até concluir a matriz de superfícies e o gate integral.",
+      "verification_method": "Repetir evidence/gate por seam e consolidar regressão focal/full/browser antes do fechamento.",
+      "due_at": "2026-09-26T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "quarto seam reversível de apresentação de REM-028",
+    "decision": "A instrução autoriza implementação e verificação local; não autoriza aprovação visual humana, UAT, target, release ou atualização de snapshots como baseline aceita.",
+    "evidence_ref": ".agent/evidence/rem-028-counter-sales-kpi-implementation-20260922.txt",
+    "expires_or_revalidates": "Revalidar quando o runtime E2E ficar saudável, o seam mudar ou a implementação cruzar workflow financeiro."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-028:IMPLEMENT-SALES-CARDS",
+  "revalidation_triggers": [
+    "Mover server state, filtros, seleção, URL ou mutações para o componente de KPIs.",
+    "Alterar tokens, grade ou semântica do agrupamento sem teste focal e browser atual.",
+    "Tentar atualizar snapshots enquanto a API/health E2E estiver unhealthy.",
+    "Promover o seam a aceite integral de REM-028 sem concluir as demais superfícies."
+  ],
+  "supersedes": null
+}

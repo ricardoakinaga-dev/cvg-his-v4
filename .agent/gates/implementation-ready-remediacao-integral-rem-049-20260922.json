@@ -1,0 +1,99 @@
+{
+  "record_id": "GATE-IMPLEMENTATION-READY-REMEDIACAO-INTEGRAL-REM-049-20260922",
+  "timestamp": "2026-09-22T08:55:12.000000Z",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "preparação candidate-bound para remover o warning ESM do validador OpenAPI",
+  "scope_ref": "REM-049",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-REM049-001",
+      "description": "O known-bad foi reproduzido: o caminho `.js` com imports ESM passa a validação, mas gera MODULE_TYPELESS_PACKAGE_JSON no Node 24.20.0.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-049-openapi-esm-preparation-20260922.txt", "package.json", "scripts/validate-openapi.js"],
+      "confidence": "HIGH",
+      "limitations": "O warning não aparece no Node 22.23.2 oficial; a reprodução depende do runtime."
+    },
+    {
+      "id": "IR-REM049-002",
+      "description": "A superfície ativa e os consumidores foram mapeados: package script, testes de contrato e execution input do manifesto crítico.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-049-openapi-esm-preparation-20260922.txt", "tests/integration/openapi-runtime.test.ts", "docs/engineering/critical-coverage-scope.json"],
+      "confidence": "HIGH",
+      "limitations": "Referências históricas ao nome `.js` permanecem atendidas pelo shim de compatibilidade."
+    },
+    {
+      "id": "IR-REM049-003",
+      "description": "A mudança candidata é mínima e coerente: `.mjs` como implementação única, shim `.js` sem implementação duplicada e nenhuma alteração funcional do validador.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-049-openapi-esm-preparation-20260922.txt", "scripts/validate-openapi.mjs", "scripts/validate-openapi.js"],
+      "confidence": "HIGH",
+      "limitations": "A compatibilidade efetiva será confirmada no gate VERIFIED."
+    },
+    {
+      "id": "IR-REM049-004",
+      "description": "A reconciliação do manifesto crítico foi delimitada e executada pelo mecanismo oficial, incluindo o drift de inventário já presente no worktree e preservando o manifesto anterior.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-049-openapi-esm-preparation-20260922.txt", "docs/engineering/critical-coverage-scope.json", "artifacts/remediation/REM-049/critical-scope-refresh-20260922/critical-scope-before-a23022d837c251fc8809181de1318be4d35df0a199d9695e732324b02f8adc39.json"],
+      "confidence": "HIGH",
+      "limitations": "A reconciliação de inventário não equivale a executar coverage ou aprovar release."
+    },
+    {
+      "id": "IR-REM049-005",
+      "description": "A implementação local reversível está autorizada; nenhuma ação externa, destrutiva, de target, credential, UAT, push ou release faz parte do próximo passo.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-049-openapi-esm-preparation-20260922.txt", ".agent/state.json"],
+      "confidence": "HIGH",
+      "limitations": "A crítica independente fresca não está disponível no modo de agente único."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-049-openapi-esm-preparation-20260922.txt",
+    "package.json",
+    "scripts/validate-openapi.mjs",
+    "scripts/validate-openapi.js",
+    "tests/integration/openapi-runtime.test.ts",
+    "docs/engineering/critical-coverage-scope.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "A implementação/verificação focal ainda precisa ser selada em gate VERIFIED.",
+    "CI remoto, coverage autenticada, target, provider, UAT, browser/a11y, E7, owners, release e go/no-go permanecem fora do escopo."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM049-VERIFY",
+      "description": "Executar o entrypoint `.mjs`, o shim legado, o teste de contrato OpenAPI e os guards documentais/diff antes de concluir o item.",
+      "non_blocking": false,
+      "impact": "Sem essa regressão, a remoção do warning e a preservação do contrato não estão provadas.",
+      "owner": "lead",
+      "due_or_trigger": "REM-049:IMPLEMENT",
+      "verification_method": "Comandos e testes registrados em evidência current.",
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "mutação local reversível do entrypoint do validador OpenAPI",
+    "decision": "A instrução autoriza correção local e regressão; não autoriza target, provider, UAT, release ou go/no-go.",
+    "evidence_ref": ".agent/evidence/rem-049-openapi-esm-preparation-20260922.txt",
+    "expires_or_revalidates": "Revalidar se a implementação alterar a semântica do validador, o contrato OpenAPI ou a cobertura fora do entrypoint."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-049:IMPLEMENT",
+  "revalidation_triggers": [
+    "Alterar regras de validação OpenAPI, auth runtime, schema ou operaçãoId.",
+    "Remover o shim sem atualizar consumidores históricos e documentação.",
+    "Executar target, provider real, push, deploy, UAT, release ou decisão humana sem gate específico."
+  ]
+}

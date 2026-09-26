@@ -1,0 +1,69 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND7-20260923",
+  "recorded_at": "2026-09-23T07:23:56.137Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PARTIAL; report workbench parent page source reviewed; reference test passes; browser QA, retention contract, and independent critique remain open",
+  "paths_reviewed": [
+    {
+      "path": "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "e099b78f6ce034dc6a04d8fb75effd8199e4378b30f4e98b554056531672c547",
+      "current_sha256": "e099b78f6ce034dc6a04d8fb75effd8199e4378b30f4e98b554056531672c547",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_AND_RETENTION_HOLDS",
+      "review_notes": "Diff is primarily template/style extraction into seven child components plus typed prop/event wiring and relocation of the filter updater. Parent remains URL/filter/request/export state owner. Request and export lifecycle were inspected.",
+      "candidate_overlay_decision": "HOLD_PENDING_RETENTION_CONTRACT_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    }
+  ],
+  "reference_test": {
+    "path": "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+    "working_tree_status": "clean tracked, not a dirty inventory path",
+    "working_tree_sha256": "f8b14fb313e04be3c2e126bbefa19c5cf1a83a83e6592d5a64c92bfd702f42b6",
+    "origin_main_diff": "byte-identical to origin/main",
+    "used_as": "Focused page behavior evidence; not counted in the original 386 dirty-path denominator."
+  },
+  "source_diff": {
+    "baseline": "origin/main:apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "numstat": "83\t475\tapps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "assessment": "83 insertions and 475 deletions. The deleted regions correspond mainly to extracted toolbar/filter/status/result/summary/recovery templates and styles. The new page wiring keeps state in the page and sends props plus typed intent events to the extracted components."
+  },
+  "test_execution": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config vitest.config.ts src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+    "working_directory": "apps/spa",
+    "started_at_utc": "2026-09-23T07:22:37.152Z",
+    "finished_at_utc": "2026-09-23T07:22:41.518Z",
+    "test_files_passed": 1,
+    "tests_passed": 79,
+    "tests_failed": 0,
+    "environment": "Standalone SPA Vitest/JSDOM config with mocked service modules; no globalSetup/database connection. Tests stub browser URL object creation for export paths.",
+    "observed_output": "17 JSDOM notices: “Not implemented: navigation to another Document” while the production anchor-click download helper was exercised. Download/navigation requires browser-level validation."
+  },
+  "architecture_observations": [
+    "ReportWorkbenchPage remains the owner of URL-backed filters, report/request state, errors/loading, server execution identity, and export recovery. Children receive props and emit semantic user intents.",
+    "loadReport increments reportRequestId and guards result application after awaits; onBeforeUnmount invalidates the id. The request itself is not aborted, so a superseded server execution may still complete and persist even though its response is ignored.",
+    "Server export uses a stable execution-scoped key `report-export:<executionId>:csv`. On known execution timeout, the page preserves the execution id in component memory and can reconcile or retry with that key.",
+    "pendingExport is held only in page memory and is cleared on reportKey change; refresh/reload does not demonstrate durable recovery of a pending export.",
+    "Filter edits do not mutate displayed server rows; `serverFiltersChanged` disables export and the status note directs the user to apply before querying/exporting, keeping displayed execution identity distinct from draft filters.",
+    "Tests exercise stale hub response suppression, switch-to-packages behavior, server snapshot alignment, timeout then artifact reconciliation, and report-specific rows/filters. They use mocks and do not prove database persistence, tenant isolation, browser download, keyboard, screen-reader, responsive, or visual behavior.",
+    "No browser screenshot, viewport matrix, keyboard/focus, screen-reader, or visual review was performed."
+  ],
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "hold_reason": "Parent page hash is stable and its changed source was reviewed. Report execution/export retention remains a Product/Security-DPO contract hold; runtime database proof, browser download/accessibility/visual validation, independent critique, and remaining original inventory paths are not complete."
+  },
+  "limitations": [
+    "The 79 tests use mocked API/service modules in JSDOM; no database or provider was invoked.",
+    "JSDOM emits navigation notices on anchor.click; real browser download behavior is unverified.",
+    "The known-execution export recovery test does not establish recovery across reload because pendingExport is in memory.",
+    "The previous reports persistence review found execution expiry metadata not enforced in inspected read paths and no report export purge path; this page review does not resolve that contract.",
+    "Only ReportWorkbenchPage.vue is counted in this round; its clean baseline test is a reference path, not part of the 386 dirty paths.",
+    "Primary-operator review is not independent acceptance."
+  ]
+}

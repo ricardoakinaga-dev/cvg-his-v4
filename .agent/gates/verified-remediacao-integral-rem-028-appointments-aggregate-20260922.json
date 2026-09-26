@@ -1,0 +1,122 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-028-APPOINTMENTS-AGGREGATE-20260922",
+  "timestamp": "2026-09-22T06:10:00.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "revisão agregada local dos seams candidate-bound de appointments e seleção da próxima tarefa",
+  "scope_ref": "REM-028",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "AGG-APPT-001",
+      "description": "Os quatro seams de appointments têm gates VERIFIED locais: calendar/list, action controller, overview/query e create flow.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-aggregate-review-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-028-appointments-calendar-20260922.json",
+        ".agent/gates/verified-remediacao-integral-rem-028-appointments-action-20260922.json",
+        ".agent/gates/verified-remediacao-integral-rem-028-appointments-overview-20260922.json",
+        ".agent/gates/verified-remediacao-integral-rem-028-appointments-create-20260922.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Cada gate permanece condicionado a browser/visual e owners; este aggregate não os promove."
+    },
+    {
+      "id": "AGG-APPT-002",
+      "description": "Ownership page-bound foi preservado: URL/query, sessão/permissões, overview/server state, filtros, router, drawer, actions, refresh e selectedAppointment permanecem na page; mutation/availability/lookups permanecem no quick form.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-aggregate-review-20260922.txt",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+        "apps/spa/src/pages/appointments/AppointmentCreateFlow.vue",
+        "apps/spa/src/components/appointments/AppointmentQuickCreateForm.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Auditoria local estática/runtime; não substitui decisão de owner."
+    },
+    {
+      "id": "AGG-APPT-003",
+      "description": "Gaps e próxima tarefa estão explicitamente reconciliados: browser/visual/API health, E7, owners, suíte integral e fronteiras externas permanecem abertas; REM-029:PREPARE é o próximo cartão candidate-bound.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-aggregate-review-20260922.txt",
+        "docs/2026-09-21-backlog-remediacao-integral.md",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A seleção de REM-029 não autoriza implementação, providers, target, UAT ou release."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-028-appointments-aggregate-review-20260922.txt",
+    ".agent/verification.jsonl#VER-REM-028-APPOINTMENTS-AGGREGATE-20260922",
+    "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+    "apps/spa/src/pages/appointments/AgendaCalendarOrList.vue",
+    "apps/spa/src/pages/appointments/appointmentActionController.ts",
+    "apps/spa/src/pages/appointments/useAppointmentsOverview.ts",
+    "apps/spa/src/pages/appointments/AppointmentCreateFlow.vue"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Browser/visual/a11y continua não executado porque /health retornou health_http=000.",
+    "Crítica adversarial E7, revisão de owners e suíte SPA integral pós-seam continuam abertas.",
+    "REM-029 ainda requer preparação própria antes de qualquer implementação."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-028-APPOINTMENTS-AGGREGATE-BROWSER",
+      "description": "Reexecutar browser/visual/a11y da agenda com API saudável e verificar selector, create, actions, loading/error/empty, foco e responsividade.",
+      "non_blocking": true,
+      "impact": "Bloqueia aceite visual e fechamento integral de REM-028, mas não o fechamento local da decomposição candidate-bound.",
+      "owner": "frontend/design",
+      "due_or_trigger": "Antes do VERIFIED integral de REM-028 ou atualização de snapshots.",
+      "verification_method": "Playwright focal e inspeção dos artefatos atuais.",
+      "due_at": "2026-09-23T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-aggregate-review-20260922.txt",
+        "playwright-spa.config.ts"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-028-APPOINTMENTS-AGGREGATE-OWNER",
+      "description": "Owners de scheduling/frontend/design ainda precisam revisar o conjunto de boundaries e seus limites de responsabilidade.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a preparação do próximo cartão local; bloqueia aceite organizacional do contrato.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de promover a decomposição a compromisso de roadmap ou aceitar o resultado como UX final.",
+      "verification_method": "Registrar revisão/decisão dos owners e superseder a condição.",
+      "due_at": "2026-09-24T12:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-aggregate-review-20260922.txt",
+        "docs/engineering/OWNERSHIP_AND_COMPLEXITY.md"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "revisão agregada local dos seams de appointments",
+    "decision": "A instrução autoriza reconciliação local e abertura da próxima preparação; não autoriza aceite visual humano, target, UAT, release ou autoridade externa.",
+    "evidence_ref": ".agent/evidence/rem-028-appointments-aggregate-review-20260922.txt",
+    "expires_or_revalidates": "Revalidar se qualquer seam, ownership, runtime health ou contrato de appointments mudar."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-029:PREPARE",
+  "revalidation_triggers": [
+    "Alterar ownership de URL/query, permission source, server state, actions, mutation, refresh ou selectedAppointment.",
+    "Executar browser saudável ou atualizar snapshots sem reabrir a condição visual.",
+    "Promover REM-028 a aceite integral sem E7, owners, UAT e fronteiras externas.",
+    "Iniciar REM-029 sem registrar preparação de concorrência, retry, contratos públicos e known-bads."
+  ],
+  "supersedes": ".agent/gates/verified-remediacao-integral-rem-028-appointments-create-20260922.json"
+}

@@ -1,0 +1,88 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND41-20260923",
+  "recorded_at": "2026-09-23T11:05:32Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "tests/integration/database/fk.test.ts",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "eaf83add18a3ca680f7836c5133d4a903082ab72672a4c3b3466be0c80e75bc0",
+      "current_sha256": "eaf83add18a3ca680f7836c5133d4a903082ab72672a4c3b3466be0c80e75bc0",
+      "sha_matches_inventory": true,
+      "scope_classification": "TEST_OR_QUALITY_CONTRACT",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "The test fixes REM-051 naming by explicitly creating one it() per FK instead of unresolved it.each placeholders. Thirty-seven “existence” cases query information_schema.table_constraints using table_name and a constraint-name LIKE on column; refTable is interpolated only in the test title, so the query does not prove the exact referenced table/column or exact constraint column. Five enforcement cases insert invalid references in a transaction rolled back in finally; the helper accepts any caught error whose message contains “foreign key” instead of checking PostgreSQL SQLSTATE 23503. Fixtures use generated UUIDs and synthetic example.test identity. The code connects through getTestPool; setup behavior depends on explicit integration-test environment. The REM-051 artifact reports a historical 42/42 PASS against an ephemeral database, but no DB suite was rerun for this review."
+    }
+  ],
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "Documentation links/governance and current Triple-A snapshot validators passed after the static FK source review. No database test was run.",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-FK-REM051-NAMING-CHANGE",
+      "classification": "REVIEWED_TEST_SCOPE",
+      "observation": "The loop creates concrete table/column/reference names in individual test descriptions, removing the prior undefined-placeholder diagnostic defect recorded by REM-051."
+    },
+    {
+      "id": "M02-FK-EXISTENCE-QUERY-DOES-NOT-PROVE-REFERENCE",
+      "classification": "HOLD_TEST_ASSERTION_SCOPE",
+      "observation": "The 37-case metadata query filters table_name and a wildcard constraint_name containing column; it does not assert key_column_usage.column_name or referenced_table_name/referenced_column_name. refTable is used only in the title. These tests can pass without proving the stated FK target."
+    },
+    {
+      "id": "M02-FK-ENFORCEMENT-ERROR-IS-WEAKLY-TYPED",
+      "classification": "HOLD_TEST_ASSERTION_SCOPE",
+      "observation": "The five negative cases only assert that a caught error message contains “foreign key”; SQLSTATE 23503 is not asserted, and no positive insert confirms the expected valid relation."
+    },
+    {
+      "id": "M02-FK-DB-HARNESS-NOT-RERUN",
+      "classification": "SCOPE_LIMIT",
+      "observation": "The test uses getTestPool and transaction/rollback fixtures; integration setup can create/migrate/drop a database based on environment. REM-051 records 42/42 against a named ephemeral DB on 22/09, but this review did not rerun setup or tests to avoid crossing a PostgreSQL boundary."
+    },
+    {
+      "id": "M02-FK-SYNTHETIC-FIXTURES",
+      "classification": "SCOPE_LIMIT",
+      "observation": "Test records use random UUIDs, fixed synthetic labels and an example.test address; no real patient/user or provider data is supplied."
+    }
+  ],
+  "candidate_actions": [
+    "Count this original path reviewed for inventory/source-content scope; do not infer full FK schema correctness from its current assertions.",
+    "Retain the REM-051 42/42 claim as historical ephemeral-run evidence only; any fresh integration run must use an explicitly disposable test database and cleanup boundary.",
+    "No test, migration, DB connection, provider, CI, target or release operation was performed during this review."
+  ],
+  "limitations": [
+    "Static source review only; no integration setup or PostgreSQL connection was opened.",
+    "Referenced REM-051 command/result was read as historical evidence, not rerun or bound to a newly frozen candidate.",
+    "Reviewer is not independent; no candidate, overlay or frozen SHA exists."
+  ],
+  "checkpoint_validation": {
+    "json_and_jsonl_parse": "PASS (185 JSON and 8 JSONL files under .agent; docs/document-governance.json also parsed)",
+    "git_diff_check": "PASS",
+    "docs_validate": "PASS",
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 40 after correcting the newly appended evidence_kind. Exact REM-010 and gate-v2 searches return no finding; controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T11:06:38Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 304,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 430,
+    "status_sha256": "61cf175e4cc62a82e480311b82f853d7d598061457c0c6486e87ee0b2625a3cb",
+    "note": "Read-only porcelain snapshot after M-02 round 41 and checkpoint validation; all 386 original paths have source/content review. The round-41 review artifact is the forty-fourth post-inventory path. No candidate, overlay or frozen SHA exists."
+  },
+  "verification_record_correction": "The newly appended verification row first used a noncanonical evidence_kind; the controller rejected it. It was corrected to COMMAND because the PASS applies only to pnpm docs:validate. The FK source review remains static and no DB test ran; no earlier verification row changed."
+}

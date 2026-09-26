@@ -1,0 +1,120 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND5-20260923",
+  "recorded_at": "2026-09-23T07:10:01.443Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PARTIAL; counter-sales extracted components and tests reviewed; parent page/business workflow and browser QA remain pending",
+  "paths_reviewed": [
+    {
+      "path": "apps/spa/src/pages/sales/CounterSalesCard.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "433e77ef1f3f3a169497856e377629ba5747e8b0c9811834325d481980feb4a9",
+      "current_sha256": "433e77ef1f3f3a169497856e377629ba5747e8b0c9811834325d481980feb4a9",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_PARENT_WORKFLOW_AND_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed source contract and corresponding focused test. This path participates in a parent-owned counter-sales workflow; no candidate inclusion is inferred by the component test. See architecture observations and limitations.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_COUNTER_SALES_PAGE_AND_WORKFLOW_REVIEW"
+    },
+    {
+      "path": "apps/spa/src/pages/sales/CounterSalesCardList.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "a2177871e7e5188c709442a40be73181cb76b2c2d5a0cf848a8096694af9d5d7",
+      "current_sha256": "a2177871e7e5188c709442a40be73181cb76b2c2d5a0cf848a8096694af9d5d7",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_PARENT_WORKFLOW_AND_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed source contract and corresponding focused test. This path participates in a parent-owned counter-sales workflow; no candidate inclusion is inferred by the component test. See architecture observations and limitations.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_COUNTER_SALES_PAGE_AND_WORKFLOW_REVIEW"
+    },
+    {
+      "path": "apps/spa/src/pages/sales/CounterSalesKpiSummary.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "33a18dd2a4bcceae986ff1f17a85bbe0e5023062cce20142241508e00415472a",
+      "current_sha256": "33a18dd2a4bcceae986ff1f17a85bbe0e5023062cce20142241508e00415472a",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_PARENT_WORKFLOW_AND_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed source contract and corresponding focused test. This path participates in a parent-owned counter-sales workflow; no candidate inclusion is inferred by the component test. See architecture observations and limitations.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_COUNTER_SALES_PAGE_AND_WORKFLOW_REVIEW"
+    },
+    {
+      "path": "apps/spa/src/pages/sales/CounterSalesWorkbench.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "dc7f85528e167b73d643ab79561dfc023b0463ca52e83819674c13871a0aa8ef",
+      "current_sha256": "dc7f85528e167b73d643ab79561dfc023b0463ca52e83819674c13871a0aa8ef",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_PARENT_WORKFLOW_AND_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed source contract and corresponding focused test. This path participates in a parent-owned counter-sales workflow; no candidate inclusion is inferred by the component test. See architecture observations and limitations.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_COUNTER_SALES_PAGE_AND_WORKFLOW_REVIEW"
+    },
+    {
+      "path": "apps/spa/src/pages/sales/__tests__/CounterSalesCardList.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "aa16e1a611d1c6f68c1fbba87ddf169607163dd538805be84f2286f25017f5fc",
+      "current_sha256": "aa16e1a611d1c6f68c1fbba87ddf169607163dd538805be84f2286f25017f5fc",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_PARENT_WORKFLOW_AND_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed source contract and corresponding focused test. This path participates in a parent-owned counter-sales workflow; no candidate inclusion is inferred by the component test. See architecture observations and limitations.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_COUNTER_SALES_PAGE_AND_WORKFLOW_REVIEW"
+    },
+    {
+      "path": "apps/spa/src/pages/sales/__tests__/CounterSalesKpiSummary.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "4685927b2cafdb490373f50d2ce9867e7aecd7bd033b4a642fcbc5d4771b8d01",
+      "current_sha256": "4685927b2cafdb490373f50d2ce9867e7aecd7bd033b4a642fcbc5d4771b8d01",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_PARENT_WORKFLOW_AND_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed source contract and corresponding focused test. This path participates in a parent-owned counter-sales workflow; no candidate inclusion is inferred by the component test. See architecture observations and limitations.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_COUNTER_SALES_PAGE_AND_WORKFLOW_REVIEW"
+    },
+    {
+      "path": "apps/spa/src/pages/sales/__tests__/CounterSalesWorkbench.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "924f1b95ffe81ef871dc151282e36960972e10e2921368a4ec08c3c91cf65ef2",
+      "current_sha256": "924f1b95ffe81ef871dc151282e36960972e10e2921368a4ec08c3c91cf65ef2",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_PARENT_WORKFLOW_AND_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed source contract and corresponding focused test. This path participates in a parent-owned counter-sales workflow; no candidate inclusion is inferred by the component test. See architecture observations and limitations.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_COUNTER_SALES_PAGE_AND_WORKFLOW_REVIEW"
+    }
+  ],
+  "test_execution": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config vitest.config.ts src/pages/sales/__tests__/CounterSalesCardList.test.ts src/pages/sales/__tests__/CounterSalesKpiSummary.test.ts src/pages/sales/__tests__/CounterSalesWorkbench.test.ts",
+    "working_directory": "apps/spa",
+    "started_at_utc": "2026-09-23T07:08:41.919Z",
+    "finished_at_utc": "2026-09-23T07:08:43.738Z",
+    "test_files_passed": 3,
+    "tests_passed": 5,
+    "tests_failed": 0,
+    "environment": "Standalone apps/spa/vitest.config.ts using JSDOM and Vue Test Utils; no globalSetup; the selected tests import presentation components and fixture types, with no direct database/provider/network call found."
+  },
+  "architecture_observations": [
+    "CounterSalesPage.vue remains the owner of selected sale, forms, loading state, service calls, and workflow transitions. It passes presentation data and action handlers to the extracted children.",
+    "CounterSalesWorkbench.vue imports only design-system components and types; its props are read-only view data and its methods forward typed user intents through emits. It contains no service calls or independent workflow state.",
+    "CounterSalesWorkbench exposes typed field update events and workflow intents including catalog/barcode actions, quantity/discount changes, payment, close/cancel/reopen, quote conversion, printing, and clearing selection. The parent validates numeric form changes and owns service operations.",
+    "CounterSalesCard.vue accepts a read-only presentation model and emits the sale id from selection buttons; CounterSalesCardList owns loading/empty/list rendering and forwards selection. The card is exercised through the list test rather than a separate test file.",
+    "CounterSalesKpiSummary renders four parent-provided labels under a named section; its test checks the four-card count and values.",
+    "Native details/summary disclosures are used for sale details and contacts. CSS includes a 1100px workbench collapse and card header reflow; no browser viewport or visual comparison was run.",
+    "The focused tests cover five cases: list selection/loading/empty, KPI labels, workbench sale rendering, add-catalog/payment/back intents, and empty histories. They do not cover the remaining workbench events or parent service mutations."
+  ],
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "hold_reason": "CounterSalesPage.vue and CounterSalesPage.test.ts are not counted in this round and retain the service/workflow boundary. Candidate inclusion also requires independent critique, browser interaction/accessibility/viewport review, and completed provenance/sensitivity review."
+  },
+  "limitations": [
+    "This round adds only four extracted component source paths and three corresponding component tests to the original 386-path content-review denominator; the tracked parent page, page test, and service tests remain pending.",
+    "JSDOM component tests establish the exercised props/render/emits only. Payment, sale lifecycle, persistence, inventory, patient context, and route behavior were not integration-tested in this round.",
+    "No browser-based download, responsive viewport, keyboard/focus, screen-reader, or visual QA was performed; CSS presence alone does not prove visual behavior.",
+    "All seven paths remain held from overlay pending parent workflow review, independent critique, candidate-bound inventory, and applicable browser QA."
+  ]
+}

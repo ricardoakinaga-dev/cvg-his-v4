@@ -4,6 +4,7 @@ import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { EncountersService } from '@cvg-his-v2/module-encounters';
 import type { OwnersService } from '@cvg-his-v2/module-owners';
 import type { PatientsService } from '@cvg-his-v2/module-patients';
+import type { PatientListResponse } from '@cvg-his-v2/shared-contracts';
 import type { AuthenticatedPrincipal, MasterSearchOwnerResult } from '@cvg-his-v2/shared-types';
 import { NotFoundError } from '@cvg-his-v2/shared-errors';
 
@@ -16,7 +17,7 @@ import {
   parseUpdateOwnerPatientLinkRequest,
   parseUpdatePatientRequest
 } from '../registry-request-boundaries.js';
-import { parseListPagination } from '../request-boundaries.js';
+import { parseListPagination, parsePatientListStatus } from '../request-boundaries.js';
 
 export interface PatientsRoutesHandlers {
   patients: PatientsService;
@@ -141,7 +142,7 @@ export async function handlePatientsRoutes(
     const query = url.searchParams.get('q') ?? undefined;
     const ownerId = url.searchParams.get('ownerId') ?? undefined;
     const species = url.searchParams.get('species') ?? undefined;
-    const status = url.searchParams.get('status') ?? undefined;
+    const status = parsePatientListStatus(url.searchParams.get('status'));
 
     let items = patients
       .list(query)
@@ -161,9 +162,19 @@ export async function handlePatientsRoutes(
 
     const total = items.length;
     const pagination = parseListPagination(url);
+    let payload: PatientListResponse;
     if (pagination) {
       const start = (pagination.page - 1) * pagination.pageSize;
       items = items.slice(start, start + pagination.pageSize);
+      payload = {
+        items,
+        page: pagination.page,
+        pageSize: pagination.pageSize,
+        total,
+        totalPages: Math.max(1, Math.ceil(total / pagination.pageSize))
+      };
+    } else {
+      payload = { items };
     }
 
     appendAudit(audit, {
@@ -178,11 +189,7 @@ export async function handlePatientsRoutes(
       correlationId
     });
 
-    return json(
-      response,
-      200,
-      pagination ? { items, page: pagination.page, pageSize: pagination.pageSize, total } : { items }
-    );
+    return json(response, 200, payload);
   }
 
   // POST /patients - Create patient

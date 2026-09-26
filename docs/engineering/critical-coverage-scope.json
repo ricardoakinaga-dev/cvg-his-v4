@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "db07cd025b639a17a3666baa49f6c1252031d5b9",
+  "head": "ad2f0373f68635f2579253b013a4382219906921",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -50,7 +50,9 @@
       "apps/api/src/consumers/payments.consumer.test.ts",
       "apps/api/src/db-persistence.test.ts",
       "apps/api/src/email-gateway.test.ts",
+      "apps/api/src/fatal-runtime.test.ts",
       "apps/api/src/health.test.ts",
+      "apps/api/src/helpers/api-server-boundaries.test.ts",
       "apps/api/src/helpers/attachment-download-token.test.ts",
       "apps/api/src/helpers/auth-helpers.test.ts",
       "apps/api/src/helpers/common.test.ts",
@@ -125,12 +127,16 @@
       "apps/worker/src/bootstrap.test.ts",
       "apps/worker/src/cancellation-history-report.test.ts",
       "apps/worker/src/consumer-composition.test.ts",
+      "apps/worker/src/fatal-runtime.test.ts",
       "apps/worker/src/feature-flags.test.ts",
+      "apps/worker/src/health.test.ts",
       "apps/worker/src/jobs/pix-provider-settlement-consumer.test.ts",
       "apps/worker/src/jobs/scheduled-report-job.test.ts",
       "apps/worker/src/report-delivery-provider.test.ts",
       "apps/worker/src/runner.test.ts",
+      "apps/worker/src/runtime-lifecycle.test.ts",
       "apps/worker/src/scheduled-report-filters.test.ts",
+      "apps/worker/src/scheduled-report-sources.test.ts",
       "apps/worker/src/worker-metrics.test.ts",
       "apps/worker/src/worker-report-identity.test.ts",
       "apps/worker/src/workflow-task-runner.test.ts"
@@ -731,7 +737,7 @@
     },
     {
       "path": "apps/api/src/routes/health-routes.ts",
-      "sha256": "cdac12dc866be862fc85e3bed217b7aebf5aba35b01edba1172172a8f1d86a47",
+      "sha256": "df4bcb2ba25f7642eed3e0fc9fd5b6577a5d460e342ba9b46d277622626a4bd8",
       "components": [
         "http-routes"
       ],
@@ -979,7 +985,7 @@
     },
     {
       "path": "apps/api/src/routes/setup-routes.ts",
-      "sha256": "6e8b382ac6b5b9001e22c55908736ae402b83322b92d5b94652001003cefa767",
+      "sha256": "47e3df8fef325ae06e7eca1db4ea92b946c21f9199018dbfa90e5021e5abf74c",
       "components": [
         "http-routes"
       ],
@@ -1070,7 +1076,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "737b9fc32fdaa45939c6d46d43f77df91d9d2465772a18732306a3e693f7f923",
+      "sha256": "6b102f8ef01cc77c8acedef6ad2d429507c985ad00a78698457c94e5c39cb319",
       "components": [
         "http-routes"
       ],
@@ -1270,7 +1276,7 @@
     },
     {
       "path": "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue",
-      "sha256": "8039f1ebf96457ec86fbce7976ff399984b27b5c7e2bffa155e7635446750f0a",
+      "sha256": "a94dc2c8c0ad9c94bda1e40029f5925ca90cc82ce039d0ce441b88fdb53aa6a5",
       "components": [
         "records"
       ],
@@ -1580,7 +1586,7 @@
     },
     {
       "path": "apps/worker/src/jobs/local-pix-payment-dispatch-provider.ts",
-      "sha256": "5b63afdea63f6c8a16f5560982caea3af4900c773babdde2a16b2bd44699272f",
+      "sha256": "b104112cfad6685bed62ec86d47207dde82a546d7e8d1a9a0fe92010871a4239",
       "components": [
         "pix"
       ],
@@ -1611,7 +1617,7 @@
     },
     {
       "path": "apps/worker/src/jobs/pix-provider-settlement-consumer.ts",
-      "sha256": "9df1bd19e651c6081a9eebb593f7dafcfa4e962f98d9234ebbe6c4eb039316f9",
+      "sha256": "dbb518412423f4ab815a428d29f3039c9220744e408e5e7382d5ddaed8826dd6",
       "components": [
         "pix"
       ],
@@ -6218,7 +6224,8 @@
     "tests/unit/api/billing-routes-validation.test.ts",
     "tests/unit/api/security-headers.test.ts",
     "packages/modules/auth/src/database-session.repository.test.ts",
-    "tests/integration/database/runtime-timeline-immutability.test.ts"
+    "tests/integration/database/runtime-timeline-immutability.test.ts",
+    "tests/unit/infra/api-server-boundaries.test.ts"
   ],
   "executionInputs": [
     ".eslintrc.cjs",
@@ -8049,7 +8056,7 @@
     "scripts/usability-evidence-archive.test.mjs",
     "scripts/usability-test-inventory.test.mjs",
     "scripts/validate-documentation.mjs",
-    "scripts/validate-openapi.js",
+    "scripts/validate-openapi.mjs",
     "scripts/validate-rls-coverage.ts",
     "scripts/validate-usability-manual-evidence.mjs",
     "scripts/validate-usability-playwright-evidence.mjs",
@@ -8429,7 +8436,14 @@
     "tests/unit/infra/k6-check-results.test.ts",
     "scripts/lib/security-evidence-attestation.mjs",
     "tests/unit/infra/security-evidence-attestation.test.ts",
-    "tests/integration/database/runtime-timeline-immutability.test.ts"
+    "tests/integration/database/runtime-timeline-immutability.test.ts",
+    "apps/api/src/fatal-runtime.test.ts",
+    "apps/api/src/helpers/api-server-boundaries.test.ts",
+    "apps/worker/src/fatal-runtime.test.ts",
+    "apps/worker/src/health.test.ts",
+    "apps/worker/src/runtime-lifecycle.test.ts",
+    "apps/worker/src/scheduled-report-sources.test.ts",
+    "tests/unit/infra/api-server-boundaries.test.ts"
   ],
   "scopeHistory": [
     {
@@ -11988,6 +12002,92 @@
       "added": [],
       "removed": [],
       "changed": []
+    },
+    {
+      "manifestRevision": 89,
+      "observedAt": "2026-09-22T09:01:42.029Z",
+      "collectionCommit": "ad2f0373f68635f2579253b013a4382219906921",
+      "previousManifestSha256": "a23022d837c251fc8809181de1318be4d35df0a199d9695e732324b02f8adc39",
+      "preservedManifest": "artifacts/remediation/REM-049/critical-scope-refresh-20260922/critical-scope-before-a23022d837c251fc8809181de1318be4d35df0a199d9695e732324b02f8adc39.json",
+      "previousSourceSetSha256": "ff0875f00939cceecb58d30e17c5b1ca0175b004279f977cb2bbec1053181faa",
+      "sourceSetSha256": "ff696e9e39cafc11f9ea537977074ff584cdf1ad3a61cda3bde93f4ccf3f28be",
+      "reason": "REM-049: tornar o validador OpenAPI ESM explícito por extensão, reconciliar o inventário crítico atual e atualizar sua entrada de execução",
+      "added": [],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/routes/health-routes.ts",
+          "before": "cdac12dc866be862fc85e3bed217b7aebf5aba35b01edba1172172a8f1d86a47",
+          "after": "df4bcb2ba25f7642eed3e0fc9fd5b6577a5d460e342ba9b46d277622626a4bd8"
+        },
+        {
+          "path": "apps/api/src/routes/setup-routes.ts",
+          "before": "6e8b382ac6b5b9001e22c55908736ae402b83322b92d5b94652001003cefa767",
+          "after": "47e3df8fef325ae06e7eca1db4ea92b946c21f9199018dbfa90e5021e5abf74c"
+        },
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "737b9fc32fdaa45939c6d46d43f77df91d9d2465772a18732306a3e693f7f923",
+          "after": "6b102f8ef01cc77c8acedef6ad2d429507c985ad00a78698457c94e5c39cb319"
+        },
+        {
+          "path": "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue",
+          "before": "8039f1ebf96457ec86fbce7976ff399984b27b5c7e2bffa155e7635446750f0a",
+          "after": "a94dc2c8c0ad9c94bda1e40029f5925ca90cc82ce039d0ce441b88fdb53aa6a5"
+        },
+        {
+          "path": "apps/worker/src/jobs/local-pix-payment-dispatch-provider.ts",
+          "before": "5b63afdea63f6c8a16f5560982caea3af4900c773babdde2a16b2bd44699272f",
+          "after": "b104112cfad6685bed62ec86d47207dde82a546d7e8d1a9a0fe92010871a4239"
+        },
+        {
+          "path": "apps/worker/src/jobs/pix-provider-settlement-consumer.ts",
+          "before": "9df1bd19e651c6081a9eebb593f7dafcfa4e962f98d9234ebbe6c4eb039316f9",
+          "after": "dbb518412423f4ab815a428d29f3039c9220744e408e5e7382d5ddaed8826dd6"
+        }
+      ],
+      "inputsReplaced": [
+        {
+          "from": "scripts/validate-openapi.js",
+          "to": "scripts/validate-openapi.mjs"
+        }
+      ],
+      "inputsAdded": [
+        "apps/api/src/fatal-runtime.test.ts",
+        "apps/api/src/helpers/api-server-boundaries.test.ts",
+        "apps/worker/src/fatal-runtime.test.ts",
+        "apps/worker/src/health.test.ts",
+        "apps/worker/src/runtime-lifecycle.test.ts",
+        "apps/worker/src/scheduled-report-sources.test.ts",
+        "tests/unit/infra/api-server-boundaries.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "9cc2349da64e59f9fbc88833baf7f460326dfa384a6fc1440dd6e591230f1b60",
+      "executionInputsSha256": "efa160d6805ac84048e5851a39638a716b875792ccad501f29c5fb40b7def546",
+      "nativeChanged": [
+        {
+          "shard": "native-api",
+          "added": [
+            "apps/api/src/fatal-runtime.test.ts",
+            "apps/api/src/helpers/api-server-boundaries.test.ts"
+          ],
+          "removed": []
+        },
+        {
+          "shard": "native-worker",
+          "added": [
+            "apps/worker/src/fatal-runtime.test.ts",
+            "apps/worker/src/health.test.ts",
+            "apps/worker/src/runtime-lifecycle.test.ts",
+            "apps/worker/src/scheduled-report-sources.test.ts"
+          ],
+          "removed": []
+        }
+      ],
+      "vitestAdded": [
+        "tests/unit/infra/api-server-boundaries.test.ts"
+      ],
+      "vitestRemoved": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -12921,9 +13021,9 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 88,
-  "sourceSetSha256": "ff0875f00939cceecb58d30e17c5b1ca0175b004279f977cb2bbec1053181faa",
-  "executionInputsSha256": "9cc2349da64e59f9fbc88833baf7f460326dfa384a6fc1440dd6e591230f1b60",
+  "manifestRevision": 89,
+  "sourceSetSha256": "ff696e9e39cafc11f9ea537977074ff584cdf1ad3a61cda3bde93f4ccf3f28be",
+  "executionInputsSha256": "efa160d6805ac84048e5851a39638a716b875792ccad501f29c5fb40b7def546",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,

@@ -56,6 +56,7 @@ function createHandlers(options: {
   readonly captureCalls?: number[];
   readonly confirmCalls?: number[];
   readonly eventCalls?: number[];
+  readonly publishedEvents?: Record<string, unknown>[];
   readonly cardTransactions?: InMemoryCardTransactionRepository;
   readonly pixTransactions?: PixTransactionRepository;
 }) {
@@ -65,6 +66,7 @@ function createHandlers(options: {
     captureCalls,
     confirmCalls,
     eventCalls,
+    publishedEvents,
     pixTransactions = new InMemoryPixTransactionRepository()
   } = options;
   const cardGateway = {
@@ -86,9 +88,13 @@ function createHandlers(options: {
 
   return {
     eventBus: {
-      async publish() {
+      async publish(input: Record<string, unknown>) {
         eventCalls?.push(1);
-        return { id: 'evt_payment_test', correlationId: 'corr_payment_test' };
+        publishedEvents?.push(input);
+        return {
+          id: 'evt_payment_test',
+          correlationId: String(input.correlationId ?? 'corr_payment_test')
+        };
       }
     },
     paymentGateway: cardGateway,
@@ -128,6 +134,44 @@ function createHandlers(options: {
     }
   };
 }
+
+test('payment event publication preserves request correlation and trace context without adding PII to metadata', async () => {
+  const gateway = new LocalPixPaymentGateway();
+  const publishedEvents: Record<string, unknown>[] = [];
+  const handlers = createHandlers({ paymentGateway: gateway, publishedEvents });
+  const request = {
+    ...createRequest({ amount: 125, description: 'Consulta' }),
+    span: {
+      context: {
+        traceId: '11111111111111111111111111111111',
+        spanId: '2222222222222222',
+        traceFlags: 1
+      }
+    }
+  };
+  const { response, state } = createResponse();
+
+  await handlePaymentsRoutes(
+    '/payments/pix/intents',
+    request as never,
+    response as never,
+    'corr-payment-request-42',
+    handlers as never
+  );
+
+  assert.equal(state.statusCode, 201);
+  assert.equal(publishedEvents.length, 1);
+  const event = publishedEvents[0];
+  assert.equal(event.correlationId, 'corr-payment-request-42');
+  const payload = event.payload as Record<string, unknown>;
+  const meta = payload._meta as Record<string, unknown>;
+  assert.deepEqual(meta, {
+    correlationId: 'corr-payment-request-42',
+    sourceService: 'cvg-his-v2-api',
+    traceparent: '00-11111111111111111111111111111111-2222222222222222-01'
+  });
+  assert.equal(Object.hasOwn(meta, 'customerEmail'), false);
+});
 
 test('legacy PIX confirmation returns 410 for attempt-linked transactions before gateway or event', async () => {
   const gateway = new LocalPixPaymentGateway();
@@ -544,4 +588,46 @@ test('creation replay reuses durable identity for one billing reference', async 
  const record=await repository.findByTransactionId(intentId!);
  assert.equal(record?.providerChargeId,'charge_1');
  } finally { globalThis.fetch = originalFetch; }
+});
+
+test('PIX intent creation requires Idempotency-Key when the runtime demands it and forwards it to the gateway', async () => {
+  const received: Array<string | undefined> = [];
+  const gateway = new LocalPixPaymentGateway();
+  const originalCreate = gateway.createPixIntent.bind(gateway);
+  gateway.createPixIntent = async (input) => {
+    received.push(input.idempotencyKey);
+    return originalCreate(input);
+  };
+  const handlers = {
+    ...createHandlers({ paymentGateway: gateway, publishedEvents: [] }),
+    requirePixIdempotencyKey: true
+  };
+
+  await assert.rejects(
+    () =>
+      handlePaymentsRoutes(
+        '/payments/pix/intents',
+        createRequest({ amount: 125, description: 'Consulta' }) as never,
+        createResponse().response as never,
+        'corr-pix-no-key',
+        handlers as never
+      ) as Promise<boolean>,
+    /Idempotency-Key header is required/
+  );
+  assert.equal(received.length, 0);
+
+  const keyed = createRequest({ amount: 125, description: 'Consulta' }) as {
+    headers: Record<string, string>;
+  };
+  keyed.headers['idempotency-key'] = 'retry-key-1';
+  const { response, state } = createResponse();
+  await handlePaymentsRoutes(
+    '/payments/pix/intents',
+    keyed as never,
+    response as never,
+    'corr-pix-key',
+    handlers as never
+  );
+  assert.equal(state.statusCode, 201);
+  assert.deepEqual(received, ['retry-key-1']);
 });

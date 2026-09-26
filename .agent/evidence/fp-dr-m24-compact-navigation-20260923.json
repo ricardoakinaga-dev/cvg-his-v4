@@ -1,0 +1,457 @@
+{
+  "schema_version": "FP-DR-1",
+  "record_id": "M24-COMPACT-NAV-FOCUS-20260923",
+  "claim_type": "DECISION",
+  "evidence_status": "PROPOSED",
+  "confidence": "HIGH",
+  "problem": "At compact viewport sizes, opening the navigation sidebar moves focus into its search field but leaves keyboard focus able to reach the page behind the overlay.",
+  "desired_outcome": "The compact sidebar behaves as a named modal navigation drawer for keyboard and assistive technology users, while desktop navigation retains its current non-modal behavior.",
+  "user_journey": [
+    "A staff member activates the compact navigation button.",
+    "Focus moves to the navigation search field and remains in the open drawer while tabbing in either direction.",
+    "The staff member closes the drawer with Escape or the backdrop and focus returns to the opener.",
+    "On desktop, the sidebar remains normal page navigation without modal focus containment."
+  ],
+  "current_evidence": [
+    {
+      "id": "APP-LAYOUT-FOCUS",
+      "claim": "At the pre-change AppLayout SHA, the component focused the sidebar search on open, restored the invoking element on close, and handled Escape, but the open compact sidebar had no dialog semantics or Tab containment.",
+      "status": "CONFIRMED",
+      "source": "apps/spa/src/layouts/AppLayout.vue baseline SHA-256 03f2ee5c181e6703ff2a41304097653ae2c2449cea8ce4072b9a2749fe91917d"
+    },
+    {
+      "id": "DRAWER-FOCUS-REFERENCE",
+      "claim": "An existing appointment drawer test provides a local reference for wrapping Tab, recovering focus, restoring focus, and yielding to a nested dialog.",
+      "status": "CONFIRMED",
+      "source": "apps/spa/src/components/appointments/AppointmentDetailsDrawer.vue and apps/spa/tests/unit/AppointmentDetailsDrawer.test.ts"
+    },
+    {
+      "id": "BOOLEAN-INERT-ATTRIBUTE",
+      "claim": "The Boolean inert bindings omit the attribute when inactive; the focused component test asserts that the sidebar is not inert while open or on desktop and that the background is inert while the compact drawer is open.",
+      "status": "CONFIRMED",
+      "source": "apps/spa/tests/unit/AppLayoutCompactNavigation.test.ts"
+    },
+    {
+      "id": "E3-COMPACT-NAVIGATION",
+      "claim": "The focused AppLayout component suite passed all four cases. Assertions cover compact focus containment and restoration, reverse-Tab recovery from outside, exclusion of hidden and disabled targets including a CSS-hidden ancestor, backdrop and Escape close, desktop non-modal behavior, nested-dialog keyboard ownership, and the empty-controls fallback.",
+      "status": "CONFIRMED",
+      "source": "Node 22.23.2: pnpm --filter @cvg-his-v2/spa exec vitest run --config vitest.config.ts tests/unit/AppLayoutCompactNavigation.test.ts (4/4, exit 0)"
+    },
+    {
+      "id": "SPA-VUE-TSC",
+      "claim": "The SPA Vue and TypeScript project check passed after using typed Boolean inert states.",
+      "status": "CONFIRMED",
+      "source": "Node 22.23.2: pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit (exit 0)"
+    },
+    {
+      "id": "BROWSER-RUN-CONSTRAINT",
+      "claim": "The existing SPA Playwright config supports Chromium, Firefox, and WebKit but auto-starts API and SPA servers on ports 3111/3112 and binds database URLs.",
+      "status": "CONFIRMED",
+      "source": "playwright-spa.config.ts"
+    }
+  ],
+  "unknowns": [
+    {
+      "id": "UNK-NATIVE-INERT",
+      "question": "Do native browser sequential navigation and inert handling match the component-level behavior in all supported browser engines?",
+      "impact": "HIGH",
+      "falsification": "Run compact-width Tab/Shift+Tab and background-inert checks in the approved isolated browser environment."
+    },
+    {
+      "id": "UNK-ASSISTIVE-TECH",
+      "question": "Do the dialog name, modal announcement, and background isolation work with supported screen readers?",
+      "impact": "HIGH",
+      "falsification": "Complete manual assistive-technology review on the approved browser and screen-reader matrix."
+    }
+  ],
+  "constraints": [
+    "Keep navigation authorization and route ownership unchanged.",
+    "Add no dependencies and make no API, database, or network changes.",
+    "Preserve Escape, backdrop close, initial focus, desktop navigation, and focus restoration.",
+    "Do not start the Playwright runtime because its config opens dedicated API/SPA ports and may bind database services."
+  ],
+  "framework_runtime": {
+    "framework": "Vue",
+    "version": "3.5.x",
+    "router": "Vue Router 4.5.x",
+    "runtime": "Vite single-page application",
+    "status": "CONFIRMED"
+  },
+  "render_environment": {
+    "mode": "Client-rendered SPA",
+    "server": "Static SPA assets; application APIs remain outside this interaction change.",
+    "client": "AppLayout owns responsive drawer interaction and focus lifecycle.",
+    "hydration": "No SSR hydration boundary is used by this Vite SPA."
+  },
+  "browser_targets": [
+    "Existing Playwright SPA projects list Chromium, Firefox, and WebKit; they were not run in this constrained local round."
+  ],
+  "device_input_constraints": [
+    "Compact layout breakpoint is max-width 860px.",
+    "Keyboard input: Tab, Shift+Tab, Escape.",
+    "Pointer input: backdrop close remains available.",
+    "Screen-reader virtual navigation requires later browser and manual review."
+  ],
+  "ux_invariants": [
+    "Opening from compact layout focuses the sidebar search field.",
+    "Keyboard focus cannot tab into the background while the drawer is open.",
+    "Escape and backdrop close preserve current close behavior and restore the opener focus.",
+    "Desktop sidebar navigation is not exposed or handled as a modal dialog."
+  ],
+  "accessibility_invariants": [
+    "The open compact drawer has role dialog, aria-modal=true, and a stable accessible name.",
+    "Tab and Shift+Tab wrap over enabled, visible descendants of the sidebar.",
+    "The compact skip link, header, and workspace are inert while open; the backdrop is aria-hidden and removed from sequential focus while preserving pointer close.",
+    "A nested dialog retains ownership of its own keyboard handling."
+  ],
+  "data_invariants": [
+    "Sidebar permissions and route filtering are unchanged.",
+    "No clinical or business data is read, changed, or cached by this interaction."
+  ],
+  "state_classification": [
+    {
+      "kind": "persisted_browser",
+      "source_of_truth": "Pinia appStore.sidebarCollapsed, persisted through localStorage",
+      "owner": "AppLayout via useAppStore",
+      "scope": "application shell sidebar visibility",
+      "derivation": "Boolean persisted preference combined with compact viewport presentation",
+      "persistence": "Browser localStorage",
+      "sync_requirement": "Reactive Pinia state drives the DOM and the current viewport breakpoint."
+    },
+    {
+      "kind": "local_ui",
+      "source_of_truth": "AppLayout isCompactViewport and sidebarFocusReturnTarget",
+      "owner": "AppLayout component instance",
+      "scope": "one open/close drawer lifecycle",
+      "derivation": "Viewport media query and the active element captured on open",
+      "persistence": "Ephemeral; cleared when the drawer closes or component unmounts",
+      "sync_requirement": "DOM inertness, dialog semantics, and focus handling update with the compact-open state."
+    }
+  ],
+  "state_ownership": [
+    {
+      "state": "sidebarCollapsed",
+      "owner": "Pinia appStore",
+      "readers": [
+        "AppLayout sidebar visibility",
+        "topbar toggle label and aria-expanded"
+      ],
+      "writers": [
+        "topbar toggle",
+        "backdrop close",
+        "Escape close"
+      ],
+      "reset": "Existing persisted preference; no migration in this change."
+    },
+    {
+      "state": "sidebarFocusReturnTarget",
+      "owner": "AppLayout component instance",
+      "readers": [
+        "toggleSidebar close transition"
+      ],
+      "writers": [
+        "toggleSidebar open transition"
+      ],
+      "reset": "Set to null after close and ignored if disconnected."
+    }
+  ],
+  "data_ownership": {
+    "source": "Existing session API for navigation permissions; unchanged",
+    "client_projection": "Existing filtered navigation tree; unchanged",
+    "mutation_owner": "AppLayout changes only local sidebar UI state",
+    "staleness": "No data staleness behavior changes."
+  },
+  "server_client_boundary": {
+    "server_owned": [
+      "Authorization for API operations and route access"
+    ],
+    "client_drivers": [
+      "Viewport detection",
+      "keyboard focus",
+      "pointer backdrop",
+      "local drawer state"
+    ],
+    "serialization": "No new serialized data.",
+    "bundle_cost": "No library or dependency added.",
+    "hydration_cost": "No hydration boundary."
+  },
+  "trust_boundary": {
+    "browser_trust": "Browser drawer and navigation visibility are presentation only.",
+    "server_enforcement": "Existing API and route authorization remain authoritative.",
+    "untrusted_inputs": [
+      "Keyboard events",
+      "viewport media query"
+    ],
+    "sensitive_data": []
+  },
+  "candidates": [
+    {
+      "name": "Existing aside with conditional modal semantics, background inertness, and local Tab containment",
+      "complexity": "low",
+      "drivers": [
+        "Confirmed compact drawer focus escape",
+        "Existing AppLayout already owns focus open/close state"
+      ],
+      "benefits": [
+        "Small change at current owner",
+        "Preserves nav DOM and router integration",
+        "No new dependency"
+      ],
+      "costs": [
+        "Focus semantics remain hand-maintained",
+        "Browser and AT verification remains necessary"
+      ],
+      "failure_semantics": [
+        "If no focusable child exists, focus stays on the sidebar container",
+        "Nested dialog keyboard events are allowed to bubble to their owner"
+      ],
+      "evidence": [
+        "Component-level keyboard tests",
+        "Later browser/AT review"
+      ],
+      "driver_evidence": [
+        {
+          "claim": "The open compact sidebar can currently transfer keyboard focus behind its overlay.",
+          "source": "AppLayout source and read-only M-24/M-25 scout review",
+          "status": "CONFIRMED"
+        }
+      ],
+      "verdict": "selected"
+    },
+    {
+      "name": "Keep the current aside as ordinary navigation with no focus containment",
+      "complexity": "baseline",
+      "drivers": [],
+      "benefits": [
+        "No implementation or maintenance cost"
+      ],
+      "costs": [
+        "Keyboard focus can reach content behind the compact overlay",
+        "No modal semantics"
+      ],
+      "failure_semantics": [
+        "Background actions remain reachable while the drawer visually covers the workspace"
+      ],
+      "evidence": [
+        "Current source behavior"
+      ],
+      "driver_evidence": [
+        {
+          "claim": "The visual overlay obscures page content while focus can still move outside the sidebar.",
+          "source": "AppLayout focus and responsive source inspection",
+          "status": "CONFIRMED"
+        }
+      ],
+      "verdict": "rejected"
+    },
+    {
+      "name": "Render the sidebar through the existing DsModal component",
+      "complexity": "medium",
+      "drivers": [],
+      "benefits": [
+        "Potential reuse of existing modal semantics"
+      ],
+      "costs": [
+        "Would move the navigation tree through a teleported modal boundary",
+        "Adds more focus/scroll and responsive integration changes than required"
+      ],
+      "failure_semantics": [
+        "Modal close or teleport behavior could diverge from current sidebar state"
+      ],
+      "evidence": [
+        "AppLayout already uses DsModal for the command palette; sidebar currently owns persistent layout positioning"
+      ],
+      "driver_evidence": [
+        {
+          "claim": "No driver requires teleporting or replacing the existing sidebar shell component.",
+          "source": "Current Vue component boundary and sidebar positioning",
+          "status": "CONFIRMED"
+        }
+      ],
+      "verdict": "rejected"
+    }
+  ],
+  "simple_baseline": {
+    "name": "Leave the current aside unchanged",
+    "description": "Rely on existing initial focus, Escape, and focus restoration without adding modal semantics or containment.",
+    "why_insufficient_or_sufficient": "Insufficient because keyboard focus can reach the page behind an open compact overlay.",
+    "complexity": "baseline"
+  },
+  "rejected_candidates": [
+    {
+      "name": "Keep the current aside as ordinary navigation with no focus containment",
+      "reason": "It preserves the observed focus escape and does not communicate modal behavior.",
+      "evidence": [
+        "AppLayout source inspection",
+        "M-24/M-25 interaction criteria"
+      ]
+    },
+    {
+      "name": "Render the sidebar through the existing DsModal component",
+      "reason": "It adds a teleport/component boundary with no confirmed need and risks coupling persistent navigation state to modal implementation details.",
+      "evidence": [
+        "Current AppLayout ownership and fixed-position drawer implementation"
+      ]
+    }
+  ],
+  "selected_pattern": "Existing aside with conditional modal semantics, background inertness, and local Tab containment",
+  "selection_rationale": [
+    "The sidebar already owns the responsive open state and focus restoration, so it is the smallest coherent behavior boundary.",
+    "The compact overlay is modal while open; desktop navigation remains ordinary navigation.",
+    "The change adds no package, API, database, or persisted state."
+  ],
+  "component_boundaries": [
+    {
+      "name": "AppLayout compact navigation drawer",
+      "owns": [
+        "Responsive modal semantics",
+        "Background inertness",
+        "Keyboard focus containment",
+        "Existing close and restore behavior"
+      ],
+      "inputs": [
+        "sidebarCollapsed",
+        "isCompactViewport",
+        "activeElement"
+      ],
+      "outputs": [
+        "dialog semantics",
+        "focus transitions",
+        "toggleSidebar state change"
+      ],
+      "extraction_driver": "The application shell already owns the shared navigation and responsive focus lifecycle; no new component extraction is justified.",
+      "accessibility_contract": "Named modal dialog while compact-open; focus stays inside; Escape/backdrop close and restore focus; nested dialog retains its keyboard contract."
+    }
+  ],
+  "state_contract": {
+    "events": [
+      "OPEN_COMPACT_DRAWER",
+      "TAB_FORWARD",
+      "TAB_BACKWARD",
+      "CLOSE_ESCAPE",
+      "CLOSE_BACKDROP"
+    ],
+    "legal_states": [
+      "compact-closed",
+      "compact-open",
+      "desktop-expanded",
+      "desktop-collapsed"
+    ],
+    "illegal_states": [
+      "compact-open with focus in background",
+      "desktop mode exposing modal dialog semantics"
+    ],
+    "owner": "AppLayout with sidebarCollapsed persisted in Pinia appStore."
+  },
+  "data_fetching_contract": {
+    "query_identity": "No new query.",
+    "deduplication": "Existing session permission fetch is unchanged.",
+    "cancellation": "No new request.",
+    "stale_policy": "No data freshness change.",
+    "error_policy": "Existing permission loading fails closed as before."
+  },
+  "mutation_semantics": {
+    "idempotency": "No data mutation.",
+    "pending": "No network-pending state is added.",
+    "duplicate_guard": "Not applicable.",
+    "optimistic": "Not applicable.",
+    "rollback": "Closing restores only focus and the previous persisted sidebar state.",
+    "invalidation": "Not applicable."
+  },
+  "loading_behavior": "No change to existing navigation permission loading.",
+  "empty_behavior": "If the sidebar has no focusable child, the sidebar container receives focus and remains the focus boundary.",
+  "error_behavior": "No new data error state.",
+  "recovery_behavior": "Escape and backdrop close remain available; the opener receives focus if it is still connected.",
+  "responsive_behavior": "Modal behavior applies only at the existing max-width 860px breakpoint while the sidebar is open.",
+  "keyboard_focus_behavior": "Open focuses search; Tab/Shift+Tab wrap within visible enabled sidebar descendants; Escape closes; close returns to the original opener; desktop has no trap.",
+  "assistive_behavior": "Open compact sidebar exposes a named modal dialog, makes the skip link, header, and workspace inert, and hides the non-focusable backdrop from the accessibility tree while preserving pointer close. Manual screen-reader review is required before an accessibility acceptance claim.",
+  "motion_behavior": "No new animation; existing reduced-motion scrolling behavior is unchanged.",
+  "performance_budget": {
+    "workload": "No workload change; one keydown check while the AppLayout is mounted.",
+    "baseline": "Existing shell keydown listener.",
+    "target": "No extra dependency or recurring timer.",
+    "hard_max": "Not applicable.",
+    "measurement": "No performance claim is made.",
+    "status": "NOT_APPLICABLE"
+  },
+  "bundle_impact": "Local DOM and keyboard code only; no new dependency.",
+  "rendering_impact": "Conditional attributes update with compact sidebar state; no route rendering change.",
+  "network_impact": "None.",
+  "security_implications": [
+    "Presentation gating does not replace route or API authorization."
+  ],
+  "testing_requirements": [
+    {
+      "type": "component",
+      "boundary": "AppLayout public DOM and keyboard events in jsdom",
+      "claim": "Modal semantics, inert siblings, bidirectional wrapping, Escape, restoration, desktop behavior, and nested-dialog ownership.",
+      "minimum_evidence": "E3"
+    },
+    {
+      "type": "browser",
+      "boundary": "Compact drawer in Chromium, Firefox, and WebKit",
+      "claim": "Native sequential focus and inert background behavior at 375px/860px; desktop behavior above breakpoint.",
+      "minimum_evidence": "E4"
+    },
+    {
+      "type": "manual accessibility",
+      "boundary": "Supported screen reader and browser pairings",
+      "claim": "Dialog name, modal announcement, background isolation, keyboard navigation, and close/focus restoration.",
+      "minimum_evidence": "E4"
+    }
+  ],
+  "runtime_evidence_required": [
+    "Open and close with keyboard and backdrop in a real browser",
+    "Verify no background tab stop at compact sizes"
+  ],
+  "accessibility_evidence_required": [
+    "Keyboard Tab/Shift+Tab/Escape",
+    "Screen-reader dialog announcement",
+    "Manual background isolation review"
+  ],
+  "performance_evidence_required": [],
+  "migration": {
+    "strategy": "No data or API migration; conditional semantics only.",
+    "compatibility_window": "Desktop sidebar markup and persisted collapsed preference remain compatible.",
+    "rollback": "Revert the AppLayout source/test change; no stored schema changes."
+  },
+  "compatibility": [
+    "Existing route links and permission filtering",
+    "Existing sidebar preference in localStorage",
+    "Existing Escape/backdrop close behavior"
+  ],
+  "rollout": "Candidate-local UI change; browser and AT gates remain required before treating M-24/M-25 as accepted.",
+  "unresolved_risks": [
+    {
+      "id": "RISK-BROWSER-AT",
+      "risk": "JSDOM cannot prove native inert, real browser Tab order, or screen-reader announcements.",
+      "severity": "HIGH",
+      "mitigation": "Keep E4 browser and manual AT review open; do not label M-24/M-25 complete from component tests.",
+      "revalidation": "Run the isolated browser and screen-reader matrix when a safe environment is authorized."
+    }
+  ],
+  "handoff": [
+    {
+      "target": "design-director",
+      "trigger": "Responsive layout or focus-layer visual changes",
+      "inputs": [
+        "M-24/M-25 interaction criteria",
+        "Compact breakpoint and drawer states"
+      ],
+      "authority_boundary": "Visual and rendered design review; no release authority.",
+      "status": "DECLARED"
+    },
+    {
+      "target": "verification-loop-vNext",
+      "trigger": "Before claiming browser/assistive acceptance",
+      "inputs": [
+        "Compact browser matrix",
+        "Keyboard and focus contracts",
+        "Safe test environment"
+      ],
+      "authority_boundary": "Independent rendered and accessibility verification only.",
+      "status": "NOT_AVAILABLE"
+    }
+  ],
+  "revalidation_trigger": "Re-evaluate if the sidebar breakpoint, shell DOM hierarchy, permission-filtered nav, modal implementation, browser support matrix, or screen-reader targets change."
+}

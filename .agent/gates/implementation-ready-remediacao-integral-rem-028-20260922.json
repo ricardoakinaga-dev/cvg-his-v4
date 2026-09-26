@@ -1,0 +1,158 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-REM-028-20260922",
+  "timestamp": "2026-09-22T02:24:10.000000Z",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "inventário candidate-bound de páginas SPA, jornadas, ownership de estado, seams semânticos e contratos de UX/a11y para REM-028",
+  "scope_ref": "REM-028",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "Rotas, páginas, lazy loading, layout privado, tokens, componentes existentes e superfícies alvo foram inspecionados no runtime oficial.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-PREPARE-20260922",
+        ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt",
+        "apps/spa/src/router/index.ts",
+        "apps/spa/src/router/routes.ts",
+        "packages/design-system/src/tokens/variables.css",
+        "apps/spa/src/styles/main.css"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A inspeção é estática; não substitui a boundary renderizada no browser."
+    },
+    {
+      "id": "IR-002",
+      "description": "Ownership de URL, server state, UI local, workflow e stores transversais foi classificado; seams preservam source of truth e não introduzem store universal.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-PREPARE-20260922",
+        ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt",
+        "apps/spa/src/stores/app.ts",
+        "apps/spa/src/stores/auth.ts",
+        "apps/spa/src/stores/theme.ts",
+        "apps/spa/src/stores/widgets.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A decisão de boundary ainda requer regressão focal após qualquer extração."
+    },
+    {
+      "id": "IR-003",
+      "description": "Jornadas de paciente, venda, prontuário, report, agenda, dashboard e shell têm seams mínimos, contratos de falha/interação e testes focais identificados.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-PREPARE-20260922",
+        ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt",
+        "apps/spa/src/pages/patients/__tests__/PatientDetailPage.test.ts",
+        "apps/spa/src/pages/sales/__tests__/CounterSalesPage.test.ts",
+        "apps/spa/src/pages/medical-records/__tests__/MedicalRecordsDetailPage.test.ts",
+        "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+        "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts",
+        "apps/spa/src/pages/__tests__/DashboardPage.test.ts",
+        "apps/spa/src/composables/__tests__/useRouteFocus.test.ts",
+        "apps/spa/src/composables/__tests__/useUnsavedChanges.test.ts",
+        "apps/spa/src/router/routes.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "A cobertura existente não prova a preservação de comportamento por uma implementação futura."
+    },
+    {
+      "id": "IR-004",
+      "description": "Known-bads, alternativas rejeitadas, autoridade, matriz visual e procedimento de verificação foram registrados sem confundir snapshot histórico com render atual.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-PREPARE-20260922",
+        ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt",
+        "playwright-spa.config.ts",
+        "e2e/spa/visual/visual-regression.spec.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "O known-bad está especificado para implementação; nenhuma variante inválida foi executada nesta preparação."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt",
+    ".agent/verification.jsonl#VER-REM-028-PREPARE-20260922",
+    ".agent/plans/remediacao-integral-20260921.md",
+    ".agent/backlog.json",
+    "apps/spa/src/router/index.ts",
+    "apps/spa/src/router/routes.ts",
+    "apps/spa/src/pages/patients/PatientDetailPage.vue",
+    "apps/spa/src/pages/sales/CounterSalesPage.vue",
+    "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue",
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+    "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+    "apps/spa/src/pages/DashboardPage.vue",
+    "apps/spa/src/layouts/AppLayout.vue",
+    "packages/design-system/src/tokens/variables.css",
+    "apps/spa/src/styles/main.css",
+    "playwright-spa.config.ts",
+    "e2e/spa/visual/visual-regression.spec.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Nenhuma renderização E4 ou validação visual foi executada nesta preparação.",
+    "Nenhuma revisão adversarial independente E7 ou revisão/aceite de owner foi obtida.",
+    "Nenhuma extração de código foi implementada ou verificada ainda."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-028-RENDERED-VALIDATION",
+      "description": "Browser/visual/a11y de estados principais, teclado/foco e pelo menos uma largura intermediária devem ser executados após cada seam antes do gate VERIFIED.",
+      "non_blocking": true,
+      "impact": "Não bloqueia implementação local reversível; bloqueia qualquer claim de UX/a11y visual e o gate VERIFIED.",
+      "owner": "frontend/design",
+      "due_or_trigger": "Antes de promover qualquer extração a VERIFIED ou atualizar snapshots.",
+      "verification_method": "Executar teste focal, build/typecheck, Playwright visual/interação e revisão adversarial com artefatos atuais.",
+      "due_at": "2026-09-23T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt",
+        "playwright-spa.config.ts",
+        "e2e/spa/visual/visual-regression.spec.ts"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-028-DOMAIN-REVIEW",
+      "description": "A ordem por risco e os seams propostos são decisão operacional local; owners de frontend, clínica, financeiro, reports, scheduling, design e runtime ainda não aceitaram a classificação.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a implementação local dentro dos limites registrados; bloqueia claim de compromisso organizacional ou roadmap aprovado.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de transformar a ordem em compromisso de roadmap ou aceitar alteração de contrato de domínio.",
+      "verification_method": "Obter revisão identificada dos owners, registrar decisões e superseder a condição com evidência específica.",
+      "due_at": "2026-09-24T12:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt",
+        "docs/engineering/OWNERSHIP_AND_COMPLEXITY.md"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "inspeção e implementação local reversível dos seams registrados para REM-028",
+    "decision": "A instrução autoriza inspeção e implementação local; não autoriza aprovação organizacional, browser target, UAT, release ou mudança de autoridade.",
+    "evidence_ref": ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt",
+    "expires_or_revalidates": "Revalidar quando o primeiro seam alterar URL, server contract, visual boundary, auth/permission, clinical/financial workflow ou cruzar fronteira externa."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-028:IMPLEMENT",
+  "revalidation_triggers": [
+    "A implementação criar estado global, alterar source of truth de service/URL ou duplicar o contrato de reportKey.",
+    "Qualquer remoção de loading/empty/error/partial, generation, idempotency, unsaved guard, permission fail-closed, keyboard/focus ou reduced-motion.",
+    "Alteração de tokens, breakpoints ou snapshots sem renderização atual e comparação documentada.",
+    "Avanço para aprovação de owners, CI remoto, target, UAT, release ou autoridade humana."
+  ],
+  "supersedes": null
+}

@@ -1,0 +1,24 @@
+import assert from 'node:assert/strict';
+import { test } from 'node:test';
+import {
+  ATTACHMENT_JSON_METADATA_HEADROOM_BYTES,
+  MAX_ATTACHMENT_BASE64_LENGTH,
+  MAX_ATTACHMENT_FILE_SIZE_BYTES,
+  MAX_ATTACHMENT_INGRESS_BODY_MIB,
+  MAX_ATTACHMENT_INGRESS_BODY_SIZE,
+  MAX_ATTACHMENT_JSON_BODY_BYTES
+} from './upload-limits.js';
+
+test('attachment upload limits keep binary, JSON and ingress boundaries aligned', () => {
+  assert.equal(MAX_ATTACHMENT_FILE_SIZE_BYTES, 25 * 1024 * 1024);
+  assert.equal(MAX_ATTACHMENT_BASE64_LENGTH, Math.ceil(MAX_ATTACHMENT_FILE_SIZE_BYTES / 3) * 4);
+  assert.equal(
+    MAX_ATTACHMENT_JSON_BODY_BYTES,
+    MAX_ATTACHMENT_BASE64_LENGTH + ATTACHMENT_JSON_METADATA_HEADROOM_BYTES
+  );
+  assert.equal(
+    MAX_ATTACHMENT_INGRESS_BODY_MIB,
+    Math.ceil(MAX_ATTACHMENT_JSON_BODY_BYTES / (1024 * 1024))
+  );
+  assert.equal(MAX_ATTACHMENT_INGRESS_BODY_SIZE, `${MAX_ATTACHMENT_INGRESS_BODY_MIB}m`);
+});

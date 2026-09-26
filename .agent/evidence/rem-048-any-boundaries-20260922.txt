@@ -1,0 +1,19 @@
+REM-048 IMPLEMENTATION — 2026-09-22T10:52:57.000000Z
+
+Implemented surface
+- `apps/api/src/payment-gateway.ts`: replaced the twelve executable `any`/`Record<string, any>` provider-payload uses with `unknown`, `Record<string, unknown>`, explicit record/string predicates and safe optional string conversion. Existing fail-closed amount, account, order, charge, transaction and status checks remain authoritative.
+- `packages/contracts/src/integration.ts`: replaced the clinical integration response `z.any()` with `z.unknown()`, preserving permissive runtime parsing while making the boundary explicitly unknown.
+- `packages/contracts/src/__tests__/integration.test.ts`: added a runtime contract assertion for provider-shaped object and string responses.
+
+Verification
+- Node 22.23.2/pnpm 10.33.0: API payment-gateway native test 11/11; API prepared workspace test command exit 0; contracts Vitest 3 files/48 tests; contracts typecheck/build exit 0.
+- API typecheck exit 0; API semantic lint exit 0. Existing lint warnings remain in unrelated legacy/test surfaces (17 warnings reported); the changed runtime gateway and integration contract have no `any` match.
+- Targeted post-inventory returns no `any`, `as any`, `Record<string, any>` or `z.any()` in `apps/api/src/payment-gateway.ts` and `packages/contracts/src/integration.ts`.
+- `pnpm validate:test-skips`: PASS, 36 allowlisted occurrences; `pnpm validate:dependencies`: PASS, 69 active manifests; `git diff --check`: PASS.
+
+Safety and limitations
+- Tests use local fake fetch responses and schemas only; no Pagar.me/provider, credentials, target, database, Redis, shared infrastructure, UAT, deploy, push or release action was performed.
+- This closes only the selected financial/external and clinical contract slice, not all residual `any` or equivalents in the repository.
+- The gate proves local type boundaries and regressions, not CI/OCI, provider certification, target behavior, browser/a11y, owners, release, go/no-go or independent critique.
+
+Result: PASS_WITH_CONDITIONS. REM-048 is DONE only in local scope; reopen if the selected boundaries or inventory drift.

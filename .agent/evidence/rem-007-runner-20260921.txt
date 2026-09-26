@@ -1,0 +1,29 @@
+REM-007 — runner raiz canônico e fail-closed
+Data: 2026-09-21
+Candidato: HEAD ad2f0373f68635f2579253b013a4382219906921 + worktree local
+Ambiente: Linux; Node v22.23.2; pnpm 10.33.0; sem secrets reais, providers, target, UAT ou ação externa
+
+Superfície inspecionada:
+- package.json: `test` delegava apenas para `pnpm -r ... run test`; `tests/unit/**` é incluído pelo vitest.config.ts, mas não era parte do comando padrão.
+- pnpm-workspace.yaml: apps/*, packages/*, packages/modules/* e packages/shared/*.
+- package scripts dos 68 workspaces selecionados: API/worker executam builds e node:test; SPA e módulos executam Vitest ou testes nativos.
+- .github/workflows/ci.yml: `pnpm test` é executado com `set -o pipefail` e tee, portanto o exit do runner raiz é o boundary do job.
+
+Implementação:
+- package.json separa `test:root` (Vitest raiz) e `test:workspaces` (runner recursivo dos namespaces canônicos).
+- `test` agora chama `node scripts/run-root-test-suite.mjs`.
+- `scripts/run-root-test-suite.mjs` executa as duas etapas em ordem, sem shell/continue-on-error, e retorna o primeiro status não zero.
+- `tests/unit/infra/root-test-runner-contract.test.ts` cobre manifesto, ordem, propagação de sucesso e known-bad real com subprocesso que retorna 73.
+
+Procedimentos e resultados:
+1. `node --check scripts/run-root-test-suite.mjs` — PASS.
+2. `pnpm exec vitest run tests/unit/infra/root-test-runner-contract.test.ts --config vitest.config.ts --no-file-parallelism` — PASS, 1 arquivo/3 testes.
+3. Known-bad do contrato — PASS: estágio raiz sintético saiu 73 e o marcador da etapa workspace não foi criado.
+4. `pnpm test` — FAIL fechado no estágio raiz, exit 1: 280 arquivos/3015 testes passaram, 1 arquivo/1 teste falhou, 1 arquivo foi skipped e 3 testes skipped. A única falha é o residual já conhecido de REM-026: `apps/api/src/server.ts` com 8406 linhas contra orçamento 8335 em `complexity-hotspots.test.ts`. O estágio workspace não foi iniciado nessa execução, como exigido pelo fail-closed.
+5. `pnpm test:workspaces` — PASS, escopo 68 de 69 projetos: SPA 217 arquivos/1891 testes, API 639 testes, worker e módulos executados sem falha; processo terminou com exit 0.
+6. `git diff --check` — PASS.
+
+Conclusão limitada:
+- F-003 foi corrigido no boundary do comando: testes raiz e workspaces têm etapas explícitas e uma falha raiz interrompe o gate.
+- O `pnpm test` corrente permanece vermelho por REM-026; isso não foi mascarado nem promovido a release readiness.
+- CI remoto, target, UAT, release e autoridade humana continuam fora deste artefato.

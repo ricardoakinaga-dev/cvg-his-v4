@@ -12,6 +12,8 @@ import {
   createPatientBodySchema,
   updatePatientBodySchema,
   listPatientsQuerySchema,
+  patientListItemSchema,
+  listPatientsResponseSchema,
   patientResponseSchema,
   patientsContract,
 
@@ -27,7 +29,8 @@ import {
 
   // Common
   apiContract,
-  contractEndpoints
+  contractEndpoints,
+  errorResponseSchema
 } from '../index.js';
 
 /**
@@ -202,6 +205,27 @@ describe('Owners Contract', () => {
   });
 });
 
+describe('API error contract', () => {
+  it('requires the server error code, message, and correlation ID', () => {
+    const response = {
+      code: 'VALIDATION_ERROR',
+      message: 'page must be a positive safe integer',
+      correlationId: 'api_contract_test',
+      details: { field: 'page' }
+    };
+
+    expect(errorResponseSchema.parse(response)).toEqual(response);
+    expect(errorResponseSchema.safeParse({ code: response.code, message: response.message }).success)
+      .toBe(false);
+  });
+
+  it('declares the canonical error schema for patient list failures', () => {
+    for (const status of [400, 401, 403, 500] as const) {
+      expect(patientsContract.list.responses[status]).toBe(errorResponseSchema);
+    }
+  });
+});
+
 /**
  * ==========================================
  * PATIENTS CONTRACT TESTS
@@ -294,14 +318,69 @@ describe('Patients Contract', () => {
   });
 
   describe('GET /patients - list query', () => {
-    it('should validate query with ownerId filter', () => {
+    it('accepts unpaginated filters without adding pagination defaults', () => {
       const query = {
-        ownerId: '550e8400-e29b-41d4-a716-446655440000',
-        species: 'Dog'
+        ownerId: 'owner_maria_silva',
+        species: 'Dog',
+        status: 'active'
       };
 
       const result = listPatientsQuerySchema.safeParse(query);
       expect(result.success).toBe(true);
+      if (result.success) {
+        expect(result.data.page).toBeUndefined();
+        expect(result.data.pageSize).toBeUndefined();
+      }
+    });
+
+    it('accepts bounded pagination and the legacy limit alias', () => {
+      expect(listPatientsQuerySchema.safeParse({ page: '2', pageSize: '50' }).success).toBe(true);
+      expect(listPatientsQuerySchema.safeParse({ limit: '200' }).success).toBe(true);
+      expect(listPatientsQuerySchema.safeParse({ pageSize: '201' }).success).toBe(false);
+      expect(listPatientsQuerySchema.safeParse({ limit: '201' }).success).toBe(false);
+      expect(listPatientsQuerySchema.safeParse({ status: 'archived' }).success).toBe(false);
+
+      const pageSizeTakesPrecedence = listPatientsQuerySchema.safeParse({
+        pageSize: '10',
+        limit: '201'
+      });
+      expect(pageSizeTakesPrecedence.success).toBe(true);
+      if (pageSizeTakesPrecedence.success) {
+        expect(pageSizeTakesPrecedence.data.pageSize).toBe(10);
+        expect('limit' in pageSizeTakesPrecedence.data).toBe(false);
+      }
+    });
+  });
+
+  describe('GET /patients - list response', () => {
+    const patient = {
+      id: 'patient_luna',
+      accountId: 'acc_cvg_demo',
+      name: 'Luna',
+      species: 'canine',
+      sex: 'female',
+      baseWeightKg: 0,
+      primaryOwnerId: 'owner_maria_silva',
+      status: 'active',
+      createdAt: '2026-03-25T00:00:00.000Z',
+      updatedAt: '2026-03-25T00:00:00.000Z'
+    } as const;
+
+    it('accepts the legacy unpaginated response shape', () => {
+      expect(listPatientsResponseSchema.safeParse({ items: [patient] }).success).toBe(true);
+      expect(listPatientsResponseSchema.safeParse({ items: [patient], total: 1 }).success).toBe(false);
+    });
+
+    it('accepts paginated response metadata and rejects inconsistent totals', () => {
+      const page = { items: [patient], page: 1, pageSize: 1, total: 2, totalPages: 2 };
+      expect(listPatientsResponseSchema.safeParse(page).success).toBe(true);
+      expect(listPatientsResponseSchema.safeParse({ ...page, totalPages: 1 }).success).toBe(false);
+      expect(listPatientsResponseSchema.safeParse({ ...page, pageSize: 201 }).success).toBe(false);
+    });
+
+    it('keeps list item sex and status within runtime enums', () => {
+      expect(patientListItemSchema.safeParse(patient).success).toBe(true);
+      expect(patientListItemSchema.safeParse({ ...patient, sex: 'unspecified' }).success).toBe(false);
     });
   });
 

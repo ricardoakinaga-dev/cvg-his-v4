@@ -1,0 +1,34 @@
+# REM-013 — lint semântico uniforme — evidência current
+
+Data da coleta: 2026-09-21 (Node oficial 22.23.2; pnpm 10.33.0)
+Escopo: contrato local de lint semântico e fronteira separada de typecheck para os 68 workspaces em `apps/` e `packages/`.
+
+## Diagnóstico reproduzido
+
+- Inventário encontrou 68 manifests de workspace aplicáveis.
+- Antes da alteração, nove workspaces não possuíam `scripts.lint`: `packages/chaos`, `packages/modules/api-keys`, `packages/modules/event-bus`, `packages/modules/fiscal`, `packages/modules/lgpd`, `packages/modules/mfa`, `packages/modules/notifications-whatsapp`, `packages/modules/pix` e `packages/tenant-context`.
+- Antes da alteração, 57 scripts chamados `lint` eram aliases de `tsc` ou `vue-tsc`; somente `packages/contracts` e `packages/db` executavam ESLint semântico real.
+- A configuração ESLint ampla existente, aplicada de forma exploratória à superfície TypeScript, produziu 328 erros e 174 avisos, majoritariamente `@typescript-eslint/no-unused-vars`; ela não era uma base segura para um autofix massivo dentro deste cartão.
+- O known-bad do contrato é preservado como dívida explícita: o lint mínimo não promove essas regras históricas a PASS.
+
+## Mudança bounded
+
+- `.eslintrc.semantic.cjs` congela quatro regras mínimas: `no-debugger`, `no-unreachable` e `no-unsafe-finally` como `error`, e `@typescript-eslint/no-explicit-any` como `warn`.
+- `scripts/run-semantic-lint.mjs` executa o binário ESLint da raiz contra o `src/` do workspace, falha com o status do ESLint e trata workspace sem `src/` como vazio.
+- Os 68 manifests agora chamam `run-semantic-lint.mjs`; nenhum `scripts.lint` continua apontando para `tsc`/`vue-tsc`.
+- `packages/db` e `packages/modules/pix` receberam `typecheck` explícito. Os demais typechecks existentes foram preservados e o root mantém `lint` e `typecheck` como gates distintos.
+- `tests/unit/infra/lint-contract.test.ts` congela a cardinalidade, a fronteira lint/typecheck e as quatro regras mínimas.
+
+## Verificações executadas
+
+1. `CI=1 pnpm lint` — PASS, exit 0; scope recursivo 68/69; zero erros de lint, apenas avisos não bloqueantes de `@typescript-eslint/no-explicit-any`.
+2. `CI=1 pnpm typecheck` — PASS, exit 0; scope recursivo 68/69, incluindo `db` e `modules/pix`.
+3. `pnpm exec vitest run tests/unit/infra/lint-contract.test.ts --config vitest.config.ts --no-file-parallelism` — PASS, 1 arquivo e 3 testes.
+4. `CI=1 pnpm test` — PASS, exit 0. Root: 283 arquivos passaram, 1 foi skipped; 3022 testes passaram, 3 foram skipped. Workspaces: 68/69 concluídos sem failure observado; SPA 217/217 arquivos e 1891/1891 testes; API 639/639 testes; worker e módulos concluídos.
+5. `git diff --check` — PASS, exit 0.
+
+## Limitações honestas
+
+- Este cartão fecha o contrato mínimo uniforme; não afirma que a dívida histórica das regras amplas foi corrigida. Os avisos de `no-explicit-any` permanecem não bloqueantes.
+- O runner cobre extensões TypeScript/JavaScript (`.ts`, `.tsx`, `.js`, `.jsx`, `.mjs`, `.cjs`). Arquivos Vue SFC (`.vue`) não foram promovidos a lint semântico porque o repositório não possui `eslint-plugin-vue`/`vue-eslint-parser`; sua fronteira atual continua sendo o typecheck/teste SPA.
+- A evidência é local e reversível. Não prova CI remoto, OCI, target, providers, UAT, recovery, release ou autoridade humana.

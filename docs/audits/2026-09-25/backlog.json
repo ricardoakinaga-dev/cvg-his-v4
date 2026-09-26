@@ -1,0 +1,645 @@
+[
+  {
+    "id": 1,
+    "priority": "Alta",
+    "kind": "Defeito estático",
+    "title": "Exigir o MFA já ativado também para perfis não críticos",
+    "evidence": [
+      "packages/modules/auth/src/index.ts:195",
+      "packages/modules/auth/src/index.ts:240",
+      "packages/modules/mfa/src/service.ts:40"
+    ],
+    "impact": "O login condiciona o segundo fator ao papel obrigatório; um fator voluntariamente ativado fica fora dessa condição.",
+    "acceptance": "Usuário com fator ativo recebe desafio em todos os perfis; perfis obrigatórios sem fator seguem o cadastro seguro. Cobrir as duas condições por papel."
+  },
+  {
+    "id": 2,
+    "priority": "Alta",
+    "kind": "Risco estático de integridade",
+    "title": "Preservar anexos confirmados quando um reenvio falha",
+    "evidence": [
+      "packages/modules/attachments/src/file-storage.ts:365",
+      "packages/modules/attachments/src/index.ts:444",
+      "packages/modules/attachments/src/index.ts:507"
+    ],
+    "impact": "A chave S3 é reutilizável para o mesmo conteúdo/nome; a compensação de um envio recusado pode apagar o objeto de um anexo anterior.",
+    "acceptance": "Usar staging/identidade de tentativa ou compensação com prova de propriedade. Reenvio com checksum incorreto e falha de metadados devem preservar integralmente o anexo anterior."
+  },
+  {
+    "id": 3,
+    "priority": "Alta",
+    "kind": "Defeito estático",
+    "title": "Executar a revogação de consentimento antes de concluir a solicitação",
+    "evidence": [
+      "packages/modules/lgpd/src/service.ts:351",
+      "packages/modules/lgpd/src/service.ts:477"
+    ],
+    "impact": "A conclusão registra candidatos à revogação, sem executar a revogação correspondente no ramo inspecionado.",
+    "acceptance": "Consentimentos aplicáveis deixam de estar ativos de forma transacional/auditável, ou a solicitação permanece pendente com motivo explícito. Testar o efeito nos dados."
+  },
+  {
+    "id": 4,
+    "priority": "Alta",
+    "kind": "Incoerência funcional estática",
+    "title": "Distinguir plano de tratamento de dados de eliminação ou anonimização executada",
+    "evidence": [
+      "packages/modules/lgpd/src/service.ts:440",
+      "packages/modules/lgpd/src/service.ts:473"
+    ],
+    "impact": "Um plano de retenção pode levar a status concluído sem comprovação de execução. Isso não determina que registros sujeitos à retenção devam ser apagados.",
+    "acceptance": "Estados separados para plano, retenção fundamentada, execução e conclusão; demonstrar efeitos e exceções por tipo de dado, com decisão de retenção validada pela autoridade responsável."
+  },
+  {
+    "id": 5,
+    "priority": "Alta",
+    "kind": "Lacuna de implementação/homologação",
+    "title": "Conectar o Pix real à tentativa de pagamento do atendimento",
+    "evidence": [
+      "apps/api/src/routes/payments-routes.ts:165",
+      "apps/worker/src/bootstrap.ts:274",
+      "apps/api/src/routes/pix-provider-webhook-routes.ts:27"
+    ],
+    "impact": "O adapter HTTP direto existe, mas o caminho de tentativa/dispatch/settlement inspecionado usa provider sintético, corretamente bloqueado em produção.",
+    "acceptance": "Provider real integrado ao comando durável, callback autenticado, reconciliação e baixa única; homologar duplicatas, ordem invertida, timeout e reinício em sandbox."
+  },
+  {
+    "id": 6,
+    "priority": "Alta",
+    "kind": "Risco estático",
+    "title": "Persistir a identidade da intenção Pix direta antes da chamada externa",
+    "evidence": [
+      "packages/modules/pix/src/adapters/pagarme.adapter.ts:99",
+      "packages/modules/pix/src/adapters/pagarme.adapter.ts:147",
+      "apps/api/src/payment-gateway.ts:417"
+    ],
+    "impact": "A criação remota antecede a persistência local, sem chave de idempotência nesse caminho; retries e crashes podem deixar operações duplicadas ou órfãs.",
+    "acceptance": "Identidade estável vinculada ao tenant/payload antes do POST, idempotência suportada pelo provedor e reconciliação de resultado ambíguo; provar uma única cobrança em retries concorrentes."
+  },
+  {
+    "id": 7,
+    "priority": "Alta",
+    "kind": "Risco estático",
+    "title": "Tornar durável o envio de lembretes WhatsApp",
+    "evidence": [
+      "apps/api/src/runtime.ts:493",
+      "apps/api/src/runtime.ts:503",
+      "packages/modules/notifications-whatsapp/src/reminder-workflow.ts:68",
+      "apps/worker/src/consumer-composition.ts:17"
+    ],
+    "impact": "O lembrete é uma tarefa assíncrona solta no processo da API, sem retomada pelo manifesto de consumidores inspecionado.",
+    "acceptance": "Intenção persistida junto ao evento, execução com claim/lease, dedupe e estados terminais; reiniciar antes e depois da aceitação remota sem perder nem duplicar a entrega."
+  },
+  {
+    "id": 8,
+    "priority": "Alta",
+    "kind": "Defeito estático",
+    "title": "Separar accountSid e authToken na configuração WhatsApp Twilio",
+    "evidence": [
+      "packages/modules/notifications-whatsapp/src/adapters.ts:21",
+      "packages/modules/notifications-whatsapp/src/adapters.ts:229"
+    ],
+    "impact": "A factory atribui a mesma apiKey aos dois campos que a própria classe modela separadamente.",
+    "acceptance": "Schema, configuração e injeção aceitam credenciais independentes; testes verificam a construção da requisição sem revelar seus valores."
+  },
+  {
+    "id": 9,
+    "priority": "Alta",
+    "kind": "Defeito estático de durabilidade",
+    "title": "Persistir o acompanhamento de email, SMS e Calendar da API",
+    "evidence": [
+      "apps/api/src/server.ts:1026",
+      "apps/api/src/server.ts:1034",
+      "apps/api/src/server.ts:1046",
+      "infra/helm/cvg-his-v2/values.prod.yaml:6"
+    ],
+    "impact": "Os três históricos usam memória mesmo com adapters externos, enquanto o perfil de implantação admite múltiplas réplicas.",
+    "acceptance": "Repositórios duráveis por tenant; operação criada na réplica A deve ser consultável/reconciliável na B e após reinício, com histórico e identidade preservados."
+  },
+  {
+    "id": 10,
+    "priority": "Alta",
+    "kind": "Defeito estático",
+    "title": "Rejeitar NFS-e configurada somente com certificado enquanto esse transporte não existir",
+    "evidence": [
+      "apps/api/src/server.ts:583",
+      "packages/modules/fiscal/src/nfse-emitter.ts:389"
+    ],
+    "impact": "A validação inicial aceita uma combinação que o emissor rejeita por não implementar a assinatura PFX.",
+    "acceptance": "O guard corresponde às capacidades reais: certificado isolado falha na configuração, ou assinatura/transporte são implementados e homologados. Cobrir todas as combinações de credenciais."
+  },
+  {
+    "id": 11,
+    "priority": "Alta",
+    "kind": "Risco estático",
+    "title": "Vincular a prontidão do worker ao progresso recente",
+    "evidence": [
+      "apps/worker/src/health.ts:60",
+      "apps/worker/src/health.ts:65",
+      "apps/worker/src/index.ts:745"
+    ],
+    "impact": "Um trabalho que não termina pode conservar lastError nulo e readiness positiva sem concluir novos ciclos.",
+    "acceptance": "Limites de inicialização e idade do último progresso; job suspenso com HTTP vivo deve fechar readiness no prazo e recuperá-la após progresso válido."
+  },
+  {
+    "id": 12,
+    "priority": "Alta",
+    "kind": "Defeito estático de implantação",
+    "title": "Disponibilizar a ServiceAccount antes do hook Helm de primeira instalação",
+    "evidence": [
+      "infra/helm/cvg-his-v2/templates/database-maintenance-jobs.yaml:10",
+      "infra/helm/cvg-his-v2/templates/database-maintenance-jobs.yaml:23",
+      "infra/helm/cvg-his-v2/templates/serviceaccount.yaml:1"
+    ],
+    "impact": "O hook pre-install usa uma conta criada como recurso normal pelo mesmo chart; o namespace novo não possui essa dependência.",
+    "acceptance": "Contrato explícito para a criação prévia, com privilégio mínimo; primeira instalação em namespace vazio e upgrade subsequente concluem a manutenção do banco."
+  },
+  {
+    "id": 13,
+    "priority": "Alta",
+    "kind": "Bloqueio observado de release",
+    "title": "Consolidar um candidato reproduzível e vincular todas as evidências",
+    "evidence": [
+      "docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json:4",
+      "scripts/run-triple-a-release-gate.mjs:509",
+      "scripts/lib/candidate-binding.mjs:8"
+    ],
+    "impact": "O worktree contém 667 alterações preexistentes; o validador P0 rejeitou a ausência de um snapshot limpo. Um SHA histórico não representa os bytes locais auditados.",
+    "acceptance": "Preservar o trabalho, revisar e fixar um candidato; build, CI, imagens/digests, SBOM e decisão de release referenciam seus bytes. Alteração posterior de código invalida a certificação."
+  },
+  {
+    "id": 14,
+    "priority": "Alta",
+    "kind": "Lacuna de prova operacional",
+    "title": "Demonstrar recuperação conjunta do PostgreSQL e dos anexos do alvo",
+    "evidence": [
+      "infra/scripts/backup-v2.sh:103",
+      "infra/scripts/backup-v2.sh:125",
+      "infra/helm/cvg-his-v2/values.prod.yaml:84",
+      "docs/operations/DISASTER_RECOVERY.md:8"
+    ],
+    "impact": "O bundle local usa Compose e diretório de arquivos; o perfil alvo usa banco externo e S3. O check de contrato executado não restaura esse conjunto.",
+    "acceptance": "Drill isolado com o mecanismo real de backup, objetos e metadados, roles/RLS, dedupe e grafo clínico; registrar hashes, objetos ausentes e RPO/RTO medidos."
+  },
+  {
+    "id": 15,
+    "priority": "Alta",
+    "kind": "Risco estático dependente do ambiente",
+    "title": "Proteger explicitamente o bundle de backup e seu material de autenticação",
+    "evidence": [
+      "infra/scripts/backup-v2.sh:89",
+      "infra/scripts/backup-v2.sh:116",
+      "infra/scripts/backup-v2.sh:204",
+      "docs/operations/DISASTER_RECOVERY.md:8"
+    ],
+    "impact": "Permissões e confidencialidade dependem do ambiente; o dump de globals pode conter verificadores de roles. SHA-256 fornece integridade, não sigilo.",
+    "acceptance": "Permissões restritas e criptografia demonstradas em toda cópia/armazenamento; definir reprovisionamento de credenciais e comprovar recuperação das chaves e do bundle sintético."
+  },
+  {
+    "id": 16,
+    "priority": "Alta",
+    "kind": "Lacuna de aceitação operacional",
+    "title": "Executar UAT hospitalar humana no candidato que será implantado",
+    "evidence": [
+      "docs/operations/HOSPITAL_UAT_PROTOCOL.md:10",
+      "docs/operations/HOSPITAL_UAT_PROTOCOL.md:34"
+    ],
+    "impact": "Testes automáticos de personas não substituem a aceitação dos profissionais nos oito cenários do protocolo.",
+    "acceptance": "Recepção, veterinário, internação e administração executam os cenários aplicáveis com dados sintéticos, casos negativos, evidências vinculadas ao SHA e decisão nominativa de go/no-go."
+  },
+  {
+    "id": 17,
+    "priority": "Média",
+    "kind": "Risco estático",
+    "title": "Aplicar deadlines e cancelamento aos transports externos que ainda não os têm",
+    "evidence": [
+      "packages/modules/pix/src/adapters/pagarme.adapter.ts:112",
+      "packages/modules/fiscal/src/nfse-emitter.ts:397",
+      "apps/api/src/email-gateway.ts:61",
+      "apps/api/src/google-calendar-gateway.ts:72"
+    ],
+    "impact": "As chamadas selecionadas ficam sujeitas à duração da rede/provedor; nem todos os adapters possuem o timeout já existente em outros caminhos.",
+    "acceptance": "Orçamento por operação, cancelamento de headers/body e classificação de resultado ambíguo; simular retenção de resposta, 429, 5xx e conexão interrompida sem retry financeiro cego."
+  },
+  {
+    "id": 18,
+    "priority": "Média",
+    "kind": "Defeito estático",
+    "title": "Implementar atualização e reconciliação de eventos Calendar já sincronizados",
+    "evidence": [
+      "apps/api/src/google-calendar-gateway.ts:50",
+      "apps/api/src/routes/google-calendar-routes.ts:55",
+      "apps/api/src/routes/google-calendar-routes.ts:65"
+    ],
+    "impact": "O gateway usa POST para agendamentos não cancelados, mesmo com identidade determinística já usada; o upsert atual é somente do histórico local.",
+    "acceptance": "Primeiro envio, repetição, remarcação e cancelamento mantêm um único evento remoto correto, com vínculo persistido e tratamento de conflito."
+  },
+  {
+    "id": 19,
+    "priority": "Média",
+    "kind": "Inconsistência local; contrato externo não homologado",
+    "title": "Validar o contrato de conta, autenticação e payload do adapter SMS",
+    "evidence": [
+      "apps/api/src/sms-gateway.ts:45",
+      "packages/modules/notifications-whatsapp/src/adapters.ts:65",
+      "tests/unit/api/operational-boundaries-coverage.test.ts:101"
+    ],
+    "impact": "O SMS não recebe accountSid independente e sua construção de request diverge do outro adapter Twilio. Fetch simulado não comprova compatibilidade externa.",
+    "acceptance": "Conferir documentação oficial vigente do fornecedor, corrigir schema/transporte e validar requisições e rejeições em teste de contrato e sandbox autorizado."
+  },
+  {
+    "id": 20,
+    "priority": "Média",
+    "kind": "Defeito reproduzido no navegador",
+    "title": "Restaurar o fechamento acessível do menu lateral em viewport compacto",
+    "evidence": [
+      "apps/spa/src/layouts/AppLayout.vue:18",
+      "apps/spa/src/layouts/AppLayout.vue:36",
+      "e2e/spa/deleted-sales-report-flow.spec.ts:143"
+    ],
+    "impact": "O cabeçalho fica inert com o menu aberto; o botão visível de recolher não recebe o clique. A mesma falha ocorreu em duas execuções independentes.",
+    "acceptance": "Oferecer controle de fechar operável dentro da área ativa, manter foco/teclado coerentes e validar abertura/fechamento após resize e reload em 390 px sem force-click."
+  },
+  {
+    "id": 21,
+    "priority": "Média",
+    "kind": "Defeito estático de observabilidade",
+    "title": "Alinhar labels de ambiente do Prometheus aos alertas do worker",
+    "evidence": [
+      "docker-compose.v2.yml:189",
+      "infra/observability/prometheus.yml:26",
+      "infra/observability/prometheus-alerts.yml:188"
+    ],
+    "impact": "O scrape fornecido marca development enquanto os alertas específicos selecionam production/staging; a combinação pode coletar métricas sem ativar esses alertas.",
+    "acceptance": "Labels refletem o ambiente real; testes das regras demonstram disparo e resolução para perda de progresso, banco e persistência."
+  },
+  {
+    "id": 22,
+    "priority": "Média",
+    "kind": "Defeito matemático estático",
+    "title": "Preservar a proporção de erros HTTP em tráfego baixo",
+    "evidence": [
+      "infra/observability/prometheus-alerts.yml:25",
+      "infra/observability/prometheus-alerts.yml:35"
+    ],
+    "impact": "clamp_min da taxa total em 1 reduz artificialmente a proporção quando há menos de uma requisição por segundo.",
+    "acceptance": "Tratar ausência de tráfego e tamanho de amostra sem alterar a razão; 0,002 erros/s em 0,2 requests/s deve resultar em 1%, não 0,2%."
+  },
+  {
+    "id": 23,
+    "priority": "Média",
+    "kind": "Lacuna de bloqueio demonstrável",
+    "title": "Comprovar que achados SAST bloqueantes reprovam o CI",
+    "evidence": [
+      ".github/workflows/ci.yml:104",
+      ".github/workflows/ci.yml:122"
+    ],
+    "impact": "O job publica scan e contagens sem política explícita de fail-on-findings nessa etapa; proteção remota adicional não foi verificada.",
+    "acceptance": "Severidades e exceções definidas; fixture que viola uma regra produz falha e impede promoção, enquanto o caso limpo passa."
+  },
+  {
+    "id": 24,
+    "priority": "Alta",
+    "kind": "Lacuna de identidade da evidência",
+    "title": "Vincular o benchmark ao SHA/digest efetivamente servido pelo alvo",
+    "evidence": [
+      ".github/workflows/performance-certification.yml:92",
+      ".github/workflows/performance-certification.yml:108",
+      "benchmarks/k6/api-benchmark.js:365"
+    ],
+    "impact": "O nome do artifact usa o SHA solicitado, mas a URL medida é independente e o relatório não prova a identidade do deployment servido.",
+    "acceptance": "Ler identidade confiável antes/depois da carga e comparar com o candidato; registrar recursos/perfil e rejeitar alvo com versão diferente."
+  },
+  {
+    "id": 25,
+    "priority": "Média",
+    "kind": "Lacuna de cobertura certificada",
+    "title": "Medir e certificar o escopo crítico de cobertura separado da suíte geral",
+    "evidence": [
+      "vitest.config.ts:62",
+      "vitest.critical-coverage.config.ts:1",
+      "docs/engineering/critical-coverage-scope.json:1"
+    ],
+    "impact": "A cobertura geral exclui rotas, repositórios e domínios críticos; o manifesto específico permanece não certificado. Testes verdes não informam seu percentual de cobertura.",
+    "acceptance": "Executar e combinar os shards previstos, aplicar thresholds ao denominador declarado e publicar resultados atuais por área, sem usar exclusões para aparentar cobertura do produto inteiro."
+  },
+  {
+    "id": 26,
+    "priority": "Média",
+    "kind": "Lacuna de análise estática",
+    "title": "Incluir os arquivos Vue na análise semântica adequada ao framework",
+    "evidence": [
+      "scripts/run-semantic-lint.mjs:19",
+      ".eslintrc.semantic.cjs:14",
+      "apps/spa/package.json:1"
+    ],
+    "impact": "O runner semântico seleciona extensões TS/JS e deixa os SFCs fora desse controle, embora o build realize verificação de tipos Vue.",
+    "acceptance": "Parser e regras de Vue executados sobre os SFCs com baseline revisado; a análise deve detectar uma violação controlada sem substituir o typecheck existente."
+  },
+  {
+    "id": 27,
+    "priority": "Baixa",
+    "kind": "Dívida de qualidade observada",
+    "title": "Reduzir os 161 avisos de lint e explicitar exceções de tipagem",
+    "evidence": [
+      ".eslintrc.semantic.cjs:14",
+      "packages/modules/event-bus/src/index.ts:1",
+      "apps/spa/src/services/api.ts:14"
+    ],
+    "impact": "Lint passou com 161 avisos em 14 pacotes; o estado verde permite que a dívida continue crescendo.",
+    "acceptance": "Inventário por regra/owner, correção priorizada nas fronteiras de dados e orçamento que impeça crescimento, mantendo exceções justificadas em vez de silenciar regras globalmente."
+  },
+  {
+    "id": 28,
+    "priority": "Média",
+    "kind": "Dívida arquitetural medida",
+    "title": "Reduzir a concentração de composição e dispatch em server.ts",
+    "evidence": [
+      "apps/api/src/server.ts:1",
+      "apps/api/src/bootstrap.ts:1",
+      "scripts/check-complexity-hotspots.mjs:1"
+    ],
+    "impact": "O servidor concentra 3.473 linhas apesar dos handlers extraídos, aumentando o alcance de mudanças e o custo da revisão.",
+    "acceptance": "Extrair composição por fronteira de responsabilidade com dependências explícitas; preservar contratos HTTP, autorização e transações com regressão focal, sem fragmentar apenas para reduzir linhas."
+  },
+  {
+    "id": 29,
+    "priority": "Média",
+    "kind": "Dívida arquitetural medida",
+    "title": "Decompor páginas clínicas extensas por responsabilidade e estado",
+    "evidence": [
+      "apps/spa/src/pages/patients/PatientDetailPage.vue:1",
+      "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue:1",
+      "apps/spa/src/layouts/AppLayout.vue:1"
+    ],
+    "impact": "Há páginas de 4.007 e 3.002 linhas e layout de 2.803 linhas; formulário, navegação e estado clínico exigem revisão conjunta extensa.",
+    "acceptance": "Componentes/composables com ownership claro e contratos tipados; preservar drafts, permissões, carregamento/erro, foco e jornadas aprovadas no navegador."
+  },
+  {
+    "id": 30,
+    "priority": "Baixa",
+    "kind": "Melhoria de manutenção",
+    "title": "Organizar o catálogo de rotas por domínio sem perder a validação global",
+    "evidence": [
+      "apps/spa/src/router/routes.ts:1",
+      "e2e/spa/master-usability-audit.spec.ts:76"
+    ],
+    "impact": "O arquivo de rotas tem 2.920 linhas; navegação, aliases e permissões ficam mais difíceis de revisar em conjunto.",
+    "acceptance": "Catálogo composto por domínio, metadados tipados e prova de que nenhuma rota/alias/permissão desaparece; manter a varredura das 150 entradas de navegação."
+  },
+  {
+    "id": 31,
+    "priority": "Média",
+    "kind": "Risco estático do tooling",
+    "title": "Substituir limpeza E2E por porta/nome genérico por ownership de processos",
+    "evidence": [
+      "package.json:78",
+      "playwright.config.ts:47",
+      "infra/scripts/run-e2e-spa.sh:64"
+    ],
+    "impact": "Comandos fuser/pkill podem encerrar um processo que não foi iniciado pela execução corrente e dificultam testes simultâneos.",
+    "acceptance": "Cada execução registra PIDs, portas e projeto próprios; cleanup remove somente recursos comprovadamente pertencentes à execução, inclusive após falha."
+  },
+  {
+    "id": 32,
+    "priority": "Alta",
+    "kind": "Lacuna de atualização operacional",
+    "title": "Testar upgrade a partir da última release realmente suportada",
+    "evidence": [
+      "infra/scripts/run-install-upgrade-drill.mjs:31",
+      "docs/131-checklist-cutover-servidor.md:1"
+    ],
+    "impact": "Partir da penúltima migração atual não demonstra compatibilidade com a aplicação e o banco da instalação anterior real.",
+    "acceptance": "Restaurar snapshot sintético representativo da release suportada e executar upgrade/estratégia de retorno; conferir roles, dados clínicos, objetos, dedupe e versão da aplicação."
+  },
+  {
+    "id": 33,
+    "priority": "Média",
+    "kind": "Lacuna de capacidade operacional",
+    "title": "Certificar carga e failover no perfil de implantação adotado",
+    "evidence": [
+      "docs/engineering/SLO_AND_LOAD_PROFILE.md:35",
+      "infra/helm/cvg-his-v2/values.prod.yaml:6",
+      "apps/worker/src/health.ts:65"
+    ],
+    "impact": "Build e testes locais não medem latência/capacidade sustentada ou comportamento de todas as réplicas no servidor escolhido.",
+    "acceptance": "Aprovar perfil e recursos, medir p95/p99/erros e crescimento; ensaiar troca de réplica/worker sem efeito duplicado e executar endurance no tenant descartável autorizado."
+  },
+  {
+    "id": 34,
+    "priority": "Média",
+    "kind": "Lacuna de ciclo de credenciais",
+    "title": "Definir renovação e recuperação da credencial Calendar",
+    "evidence": [
+      "apps/api/src/google-calendar-gateway.ts:50",
+      "apps/api/src/server.ts:1037"
+    ],
+    "impact": "O gateway recebe um access token estático; o mecanismo externo de renovação e tratamento de expiração não foi demonstrado.",
+    "acceptance": "Fluxo de renovação ou contrato operacional explícito, segregado por conta quando aplicável; expiração/rotação não perde o vínculo nem duplica eventos."
+  },
+  {
+    "id": 35,
+    "priority": "Alta",
+    "kind": "Lacuna de homologação de dependência crítica",
+    "title": "Validar storage privado e scanner reais no ambiente alvo",
+    "evidence": [
+      "apps/api/src/server.ts:606",
+      "packages/modules/attachments/src/file-storage.test.ts:13",
+      "packages/modules/attachments/src/index.ts:353"
+    ],
+    "impact": "Os controles existem, mas esta auditoria não comprova IAM, isolamento de bucket, disponibilidade ou inspeção do serviço efetivamente instalado.",
+    "acceptance": "Upload/download autorizado, recusa entre tenants, quarentena, arquivo de teste de scanner e indisponibilidade do serviço demonstrados com dados sintéticos; guardar evidência do provider real."
+  },
+  {
+    "id": 36,
+    "priority": "Média",
+    "kind": "Lacuna de integração operacional",
+    "title": "Homologar a entrada de resultados com o equipamento ou bridge laboratorial utilizado",
+    "evidence": [
+      "apps/api/src/server.ts:1047",
+      "tests/integration/database/laboratory-provider-ingress.test.ts:1",
+      "tests/integration/process/public-laboratory-structured-results.test.ts:1"
+    ],
+    "impact": "Endpoint, assinatura e persistência não demonstram por si só compatibilidade com o equipamento do hospital.",
+    "acceptance": "Contrato e amostras reais desidentificadas, campos/unidades/identidade de paciente, assinatura, duplicata e resultado malformado validados contra o bridge autorizado."
+  },
+  {
+    "id": 37,
+    "priority": "Alta",
+    "kind": "Lacuna de homologação financeira",
+    "title": "Homologar autorização, captura e conciliação de cartões no adquirente",
+    "evidence": [
+      "apps/api/src/payment-gateway.ts:517",
+      "apps/api/src/payment-gateway.ts:715",
+      "tests/integration/card-creation-durable.test.ts:1"
+    ],
+    "impact": "Há adapter, persistência e testes controlados; nenhuma transação no sandbox do adquirente foi executada nesta auditoria.",
+    "acceptance": "Validar valores/unidades, vínculo, autorização/captura, resposta ambígua, recusa e reconciliação, com uma única operação financeira observável por identidade."
+  },
+  {
+    "id": 38,
+    "priority": "Média",
+    "kind": "Lacuna de homologação fiscal",
+    "title": "Homologar o ciclo de NFS-e no município/provedor efetivo",
+    "evidence": [
+      "packages/modules/fiscal/src/nfse-emitter.ts:397",
+      "tests/integration/database/fiscal-nfse-provider-postgres.test.ts:1"
+    ],
+    "impact": "O transporte XML genérico e uma lista de providers não demonstram emissão, consulta e cancelamento aceitos pela integração efetiva.",
+    "acceptance": "Validar schema, autenticação, autorização e ciclo documental no ambiente oficial de homologação aplicável; registrar rejeições e reconciliação sem simular autorização."
+  },
+  {
+    "id": 39,
+    "priority": "Média",
+    "kind": "Lacuna de homologação de comunicação",
+    "title": "Validar entrega e callbacks dos canais de comunicação configurados",
+    "evidence": [
+      "apps/api/src/routes/whatsapp-routes.ts:165",
+      "apps/api/src/email-gateway.ts:61",
+      "apps/worker/src/report-delivery-provider.ts:77",
+      "packages/modules/notifications-whatsapp/src/adapters.ts:175"
+    ],
+    "impact": "Aceitação de HTTP em mocks não prova entrega, templates/remetentes, bridge inbound nem retorno de status dos fornecedores.",
+    "acceptance": "Sandbox autorizado por canal, remetentes/destinatários sintéticos, estados de aceitação/entrega/rejeição e callbacks autenticados; demonstrar retry durável e correlação com a operação local."
+  },
+  {
+    "id": 40,
+    "priority": "Média",
+    "kind": "Lacuna de observabilidade no alvo",
+    "title": "Demonstrar tracing distribuído e retenção consultável",
+    "evidence": [
+      "apps/api/src/tracing.ts:1",
+      "infra/observability/README.md:133",
+      "apps/worker/src/report-delivery-provider.ts:77"
+    ],
+    "impact": "Os testes de tracing locais não comprovam recepção, armazenamento e consulta das cadeias API–worker–provedor no alvo.",
+    "acceptance": "Uma jornada sintética recuperável por correlação, com spans pai/filho, falha/retry e política de retenção/redação verificada no coletor e backend escolhidos."
+  },
+  {
+    "id": 41,
+    "priority": "Média",
+    "kind": "Lacuna de resposta operacional",
+    "title": "Ensaiar entrega, reconhecimento e resolução de alertas",
+    "evidence": [
+      "infra/observability/prometheus-alerts.yml:1",
+      "docs/operations/DISASTER_RECOVERY.md:5"
+    ],
+    "impact": "Regras presentes e validadas estruturalmente não demonstram que a equipe recebe e resolve um incidente no ambiente instalado.",
+    "acceptance": "Ensaio autorizado em canal de teste com perda de progresso, banco indisponível e erro HTTP; registrar firing, notificação, reconhecimento, runbook e resolução sem enviar mensagens durante esta auditoria."
+  },
+  {
+    "id": 42,
+    "priority": "Média",
+    "kind": "Lacuna de evidência visual atual",
+    "title": "Reexecutar as comparações visuais com o ambiente estabilizado",
+    "evidence": [
+      "e2e/spa/visual/visual-regression.spec.ts:87",
+      "playwright-spa.config.ts:106"
+    ],
+    "impact": "A tentativa visual desta auditoria foi afetada por recusa de conexão; ela não permite concluir aprovação nem regressão de snapshots.",
+    "acceptance": "Mesma versão de navegador/fontes/viewport, baseline revisada e resultados vinculados aos bytes do candidato; investigar diferenças antes de atualizar imagens."
+  },
+  {
+    "id": 43,
+    "priority": "Média",
+    "kind": "Lacuna de compatibilidade",
+    "title": "Executar as jornadas críticas em Firefox e WebKit",
+    "evidence": [
+      "playwright-spa.config.ts:39",
+      "playwright-spa.config.ts:43"
+    ],
+    "impact": "A configuração oferece esses projetos, mas a execução desta auditoria utilizou Chromium.",
+    "acceptance": "Login/refresh, formulários, uploads, impressão/exportação e navegação compacta aprovados nos navegadores suportados, com falhas específicas registradas."
+  },
+  {
+    "id": 44,
+    "priority": "Média",
+    "kind": "Risco estático de resiliência da interface",
+    "title": "Manter o timeout da API até terminar a leitura do corpo da resposta",
+    "evidence": [
+      "apps/spa/src/services/api.ts:213",
+      "apps/spa/src/services/api.ts:259",
+      "apps/spa/src/services/api.ts:323"
+    ],
+    "impact": "O temporizador é limpo quando fetch devolve os headers; response.json é consumido depois, fora desse orçamento, e pode manter a interface pendente.",
+    "acceptance": "Deadline cobre conexão, headers e body; resposta com headers rápidos e corpo suspenso termina com estado incerto explícito e recursos cancelados."
+  },
+  {
+    "id": 45,
+    "priority": "Média",
+    "kind": "Risco estático de sessão",
+    "title": "Aplicar timeout e recuperação ao refresh compartilhado de autenticação",
+    "evidence": [
+      "apps/spa/src/services/api.ts:29",
+      "apps/spa/src/services/api.ts:34",
+      "apps/spa/src/services/api.ts:284"
+    ],
+    "impact": "refreshPromise é compartilhada e a chamada de renovação não tem deadline; um refresh suspenso pode bloquear as requisições que aguardam renovação.",
+    "acceptance": "Renovação e consumo de body terminam no orçamento, liberam o single-flight e permitem recuperação controlada sem loops ou múltiplos logins concorrentes."
+  },
+  {
+    "id": 46,
+    "priority": "Baixa",
+    "kind": "Divergência documental estática",
+    "title": "Corrigir os nomes de variáveis OTel no guia de observabilidade",
+    "evidence": [
+      "infra/observability/README.md:133",
+      "packages/shared/config/src/index.ts:183",
+      "docker-compose.v2.yml:199"
+    ],
+    "impact": "O guia usa OTLP_* onde o loader e Compose usam OTEL_EXPORTER_OTLP_*.",
+    "acceptance": "Tabela e exemplos usam nomes aceitos pelo parser; exemplo de configuração é validado localmente e explica onde os traces são retidos."
+  },
+  {
+    "id": 47,
+    "priority": "Baixa",
+    "kind": "Dívida de configuração de testes",
+    "title": "Centralizar URLs e portas padrão das fixtures E2E",
+    "evidence": [
+      "playwright-spa.config.ts:4",
+      "e2e/spa/fixtures/spa-fixture.ts:18",
+      "e2e/spa/visual/visual-regression.spec.ts:33"
+    ],
+    "impact": "Defaults 3101/3102 e 3111/3112 coexistem. Overrides corretos funcionam, mas executar fixtures fora do wrapper aumenta a chance de apontar ao servidor errado.",
+    "acceptance": "Uma fonte de configuração e verificação explícita de identidade/disponibilidade do servidor; todas as suítes respeitam as mesmas URLs e falham com diagnóstico claro."
+  },
+  {
+    "id": 48,
+    "priority": "Média",
+    "kind": "Falha reproduzida na fixture de integração",
+    "title": "Tornar autossuficiente e diagnosticável o teste da cadeia API–worker",
+    "evidence": [
+      "tests/integration/process/public-api-worker-event-chain.test.ts:182",
+      "tests/integration/process/public-api-worker-event-chain.test.ts:502",
+      "apps/worker/src/metrics-auth.ts:31"
+    ],
+    "impact": "O teste inicia worker em staging sem declarar METRICS_AUTH_TOKEN, exigido pelo guard. Falhou duas vezes em ambiente limpo; a asserção do finally ainda pode esconder a causa original.",
+    "acceptance": "Fixture fornece explicitamente todas as configurações sintéticas obrigatórias, preserva o erro primário e anexa saída redigida do filho; rodar a cadeia isolada e na suíte completa sem depender de .env local."
+  },
+  {
+    "id": 49,
+    "priority": "Média",
+    "kind": "Lacuna de validação analítica",
+    "title": "Distinguir heurísticas e parsing textual de capacidades OCR/ML validadas",
+    "evidence": [
+      "packages/modules/ml/src/ocr-fiscal.service.ts:3",
+      "packages/modules/ml/src/ocr-fiscal.service.ts:143",
+      "packages/modules/ml/src/demand-forecasting.service.ts:83",
+      "packages/modules/ml/src/smart-scheduling.service.ts:185"
+    ],
+    "impact": "A prévia fiscal recebe rawText e usa expressões regulares; previsões/confiança incluem fórmulas fixas. Esses números não demonstram probabilidade calibrada nem extração de imagem.",
+    "acceptance": "Descrever o escopo real na UI/documentação; medir erro e calibração em amostras representativas separadas da implementação. Resultados laboratoriais assistidos exigem validação pelo responsável clínico antes de uso decisório."
+  },
+  {
+    "id": 50,
+    "priority": "Baixa",
+    "kind": "Melhoria de eficiência e leitura de evidências",
+    "title": "Consolidar shards e contagens sem duplicar testes entre root e workspaces",
+    "evidence": [
+      "vitest.config.ts:8",
+      "scripts/run-root-test-suite.mjs:1",
+      "package.json:1"
+    ],
+    "impact": "O runner root inclui módulos que também executam nos workspaces; somar suas contagens como testes únicos distorce o tamanho da prova e prolonga o ciclo.",
+    "acceptance": "Inventário de testes por arquivo/caso, relatório agregado sem dupla contagem e shards com ownership claro; reduzir repetição mantendo os mesmos contratos e checks de integração."
+  }
+]

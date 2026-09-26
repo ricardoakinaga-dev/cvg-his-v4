@@ -1,0 +1,45 @@
+{
+  "collected_at": "2026-09-25T11:25:10.536308-03:00",
+  "method": "Read-only catalog queries on audit-owned PostgreSQL containers",
+  "databases": [
+    {
+      "container": "cvg-audit25-pg-9c0a022c89",
+      "database": "cvg_audit_test",
+      "statistics": {
+        "tables": 0,
+        "enums": 0,
+        "foreign_keys": 0,
+        "unvalidated_foreign_keys": 0,
+        "rls_enabled": 0,
+        "rls_forced": 0,
+        "invalid_indexes": 0
+      }
+    },
+    {
+      "container": "cvg-audit25-pg-9c0a022c89",
+      "database": "cvg_his_v2_test_browser",
+      "statistics": {
+        "tables": 189,
+        "enums": 43,
+        "foreign_keys": 530,
+        "unvalidated_foreign_keys": 0,
+        "rls_enabled": 173,
+        "rls_forced": 171,
+        "invalid_indexes": 0
+      }
+    },
+    {
+      "container": "cvg-audit25-browser-pg",
+      "database": "cvg_his_v2_test_browser_retry",
+      "statistics": {
+        "tables": 189,
+        "enums": 43,
+        "foreign_keys": 530,
+        "unvalidated_foreign_keys": 0,
+        "rls_enabled": 173,
+        "rls_forced": 171,
+        "invalid_indexes": 0
+      }
+    }
+  ]
+}

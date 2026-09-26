@@ -1,0 +1,44 @@
+REM-014 — inventário de skips, política fail-closed e shards obrigatórios
+Data do registro: 2026-09-21
+Escopo: inventário de skips e shards obrigatórios Redis/PostgreSQL/diagnósticos no Node oficial 22.23.2/pnpm 10.33.0.
+
+Objetivo e mudança
+
+- Foi criado `docs/engineering/test-skip-policy.json` com 36 ocorrências reais inventariadas, 23 entradas de allowlist agrupadas e sete declarações de shard obrigatório.
+- Foi criado `scripts/validate-test-skip-policy.mjs`, que analisa a AST dos testes, rejeita skip/todo não autorizado, verifica contagem/condição exatas e valida o wiring dos shards no manifesto congelado, scripts e CI.
+- Foi criado `scripts/run-redis-rate-limiter-shard.mjs`; o comando exige `REDIS_RATE_LIMITER_TEST_URL` e falha quando a execução TAP reporta qualquer skip ou todo.
+- Foi criado `tests/unit/infra/test-skip-policy.test.ts` com contrato para a política vigente, rejeição de skip não listado e matching exato de condição/contagem.
+- `package.json` ganhou `validate:test-skips` e `test:redis`.
+- `.github/workflows/ci.yml` ganhou serviço Redis com digest imutável já usado no CI, validação da política, shard Redis obrigatório e shard PostgreSQL obrigatório para o webhook PIX fora do manifesto de processo congelado. Os shards críticos já existentes recebem `REQUIRE_TEST_DB=1` e `TEST_DB_EPHEMERAL=1`.
+
+Inventário AST
+
+As 36 ocorrências reais são: nove `skipIf` de PostgreSQL/diagnósticos/ML/setup, dois skips condicionais do Redis rate limiter, nove skips de plataforma Windows, cinco skips de plataforma Linux, um skip de runtime fixture Linux, um skip de preload root-only e nove `test.skip` de E2E PostgreSQL. Strings de fixture contendo `test.skip`/`test.todo` não foram contadas como skips AST reais.
+
+Shards declarados
+
+1. PostgreSQL Vitest para integração/ML.
+2. Diagnósticos PostgreSQL.
+3. PostgreSQL nos testes de processo críticos.
+4. Shard auxiliar PostgreSQL obrigatório para `pix-provider-webhook-settlement-e2e.test.ts`.
+5. Redis rate limiter com serviço Redis e zero skip/todo.
+6. E2E PostgreSQL com `E2E_DATABASE_MODE=1`.
+7. Allowlist de skips de plataforma/runtime sem inventar um ambiente que não existe.
+
+Verificações executadas
+
+- Node/pnpm: `v22.23.2` / `pnpm 10.33.0`.
+- `node scripts/validate-test-skip-policy.mjs`: PASS; 36 ocorrências allowlisted.
+- `CI=1 pnpm exec vitest run tests/unit/infra/test-skip-policy.test.ts --config vitest.config.ts --no-file-parallelism`: PASS; 1 arquivo / 3 testes.
+- Redis descartável local com a imagem CI `redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf`; `REDIS_RATE_LIMITER_TEST_URL=redis://localhost:6380 CI=1 pnpm test:redis`: PASS; 26/26 testes, `# skipped 0`, `# todo 0`.
+- `REDIS_RATE_LIMITER_TEST_URL=redis://localhost:6380 CI=1 pnpm test`: PASS; raiz 284 arquivos (283 passados e 1 allowlisted skipped), 3025 testes passados e 3 allowlisted skipped; workspaces 68/69 sem falha observada.
+- `CI=1 pnpm typecheck`: PASS no escopo 68/69.
+- Contratos focais `test-skip-policy`, `ci-contract`, `root-test-runner-contract` e `lint-contract`: PASS; 4 arquivos / 30 testes.
+- `docker manifest inspect` do digest Redis: PASS.
+- `git diff --check`: PASS.
+
+Limitações e fronteiras
+
+A execução canônica local não recebeu variáveis PostgreSQL/E2E deliberadamente; por isso os três skips condicionais de diagnóstico/ML que dependem desses serviços permaneceram allowlisted nessa execução local. O CI agora declara o serviço/ambiente descartável e o shard auxiliar obrigatório para exercitar essas fronteiras; a execução remota do workflow e os shards PostgreSQL/E2E não foram simulados contra target compartilhado. Não houve push, deploy, cluster, namespace, credential real, provider, UAT, alteração do manifesto crítico congelado ou decisão de release.
+
+Resultado: política de skips e wiring local fechados com evidência current; execução externa de PostgreSQL/E2E continua condição aberta e não autoriza claim de release readiness.

@@ -14,6 +14,8 @@ These invariants are the safety contract for the CVG HIS clinical surface. They 
 10. A worker failure cannot cause another tenant's job to be skipped indefinitely; per-account fairness and lease fencing are required.
 11. Partial failure in a multi-step clinical screen must expose the incomplete operation and permit safe reconciliation; it must not report success for only one side of an intended atomic action.
 12. Restore and migration procedures must preserve tenant boundaries, audit durability, idempotency records and attachment references before accepting traffic.
+13. A prescription whose medication lexically matches the patient's recorded allergy is accepted only with the prescriber's written justification (minimum 10 characters), stored in the prescription content and audited as `allergy_override`; it is never silently accepted nor hard-blocked. The rule is shared by API and SPA (`packages/shared/contracts/src/clinical-allergy.ts`).
+14. Compensation after a failed attachment write must never delete a storage object still referenced by a committed attachment; when the reference check fails, the object is kept.
 
 ## Executable coverage map
 
@@ -24,6 +26,8 @@ These invariants are the safety contract for the CVG HIS clinical surface. They 
 | Lifecycle, stale lease and fencing | `apps/worker/src/workflow-task-runner.test.ts`, workflow PostgreSQL suite | Local PASS; killed-child recovery artifact open |
 | Append-only audit/event history | workflow event trigger assertions and audit module tests | Local/source PASS; target artifact open |
 | Authorization and replay | workflow route tests and idempotency authorization tests | Local PASS; revoked-actor runtime evidence open |
+| Allergy screening on prescription | `packages/shared/contracts/src/clinical-allergy.test.ts`, `apps/api/src/routes/prescription-routes.test.ts`, `apps/spa/src/pages/clinical/__tests__/PrescriptionsPage.test.ts` | Local PASS (2026-09-26); class-level matching and dose-by-weight open |
+| Attachment compensation | `packages/modules/attachments/src/attachments.test.ts` | Local PASS (2026-09-26) |
 | Restore/migration integrity | `tests/integration/database/migration-integrity-runtime.test.ts`, restore-drill contracts | Contract/source coverage; timed target drill open |
 
 Every new P0 invariant must add or reference an executable test before the

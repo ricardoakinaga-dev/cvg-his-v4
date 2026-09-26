@@ -1,5 +1,6 @@
 import type { DatabaseStatus } from '@cvg-his-v2/shared-database';
 export * from './upload-limits.js';
+export * from './clinical-allergy.js';
 import type {
   AccessProfile,
   AttachmentSummary,
@@ -320,9 +321,21 @@ export interface UpdatePatientRequest {
   readonly status?: 'active' | 'inactive' | 'deceased';
 }
 
-export interface PatientListResponse {
-  readonly items: readonly PatientSummary[];
-}
+export type PatientListResponse =
+  | {
+      readonly items: readonly PatientSummary[];
+      readonly page?: never;
+      readonly pageSize?: never;
+      readonly total?: never;
+      readonly totalPages?: never;
+    }
+  | {
+      readonly items: readonly PatientSummary[];
+      readonly page: number;
+      readonly pageSize: number;
+      readonly total: number;
+      readonly totalPages: number;
+    };
 
 export interface CreateOwnerPatientLinkRequest {
   readonly ownerId: string;

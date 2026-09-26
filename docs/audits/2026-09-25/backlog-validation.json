@@ -1,0 +1,9 @@
+{
+  "count": 50,
+  "priorities": {
+    "Alta": 20,
+    "Média": 25,
+    "Baixa": 5
+  },
+  "reference_errors": []
+}

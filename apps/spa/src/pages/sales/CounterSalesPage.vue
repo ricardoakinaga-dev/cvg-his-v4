@@ -11,12 +11,12 @@
       </template>
     </AppPageHeader>
 
-    <section class="counter-sales-kpis">
-      <DsStatCard :label="`${openSalesCount} aberta(s)`" value="" icon="🟠" />
-      <DsStatCard :label="`${closedSalesCount} fechada(s)`" value="" icon="🟢" />
-      <DsStatCard :label="formatCurrency(openBalanceTotal)" value="" icon="💰" />
-      <DsStatCard :label="formatCurrency(grossSalesTotal)" value="" icon="📈" />
-    </section>
+    <CounterSalesKpiSummary
+      :open-sales-label="`${openSalesCount} aberta(s)`"
+      :closed-sales-label="`${closedSalesCount} fechada(s)`"
+      :open-balance-label="formatCurrency(openBalanceTotal)"
+      :gross-sales-label="formatCurrency(grossSalesTotal)"
+    />
 
     <details class="counter-sales-report">
       <summary class="counter-sales-report__summary">
@@ -278,782 +278,69 @@
     </DsAlert>
 
     <div class="counter-sales-layout">
-      <section class="counter-sales-list">
-        <DsCard title="Comandas">
-          <div v-if="loadingPage" class="counter-sales-empty">Carregando comandas...</div>
-          <EmptyState
-            v-else-if="filteredSales.length === 0"
-            icon="🧾"
-            title="Nenhuma comanda encontrada"
-            description="Abra uma nova comanda ou ajuste os filtros para localizar eventos de balcão."
-          />
-
-          <div v-else class="counter-sales-cards">
-            <article
-              v-for="sale in filteredSales"
-              :key="sale.id"
-              class="counter-sale-card"
-              :class="{ 'counter-sale-card--selected': sale.id === selectedSaleId }"
-            >
-              <div class="counter-sale-card__header">
-                <DsBadge :variant="statusBadgeVariant(sale.status)">
-                  {{ statusLabel(sale.status) }}
-                </DsBadge>
-                <div class="counter-sale-card__field">
-                  <span>ID da Comanda:</span>
-                  <strong>{{ sale.number }}</strong>
-                </div>
-                <div class="counter-sale-card__field">
-                  <span>Abertura:</span>
-                  <strong>{{ formatDateTime(sale.createdAt) }}</strong>
-                </div>
-                <div class="counter-sale-card__field">
-                  <span>Fechamento:</span>
-                  <strong>{{ sale.closedAt ? formatDateTime(sale.closedAt) : '-' }}</strong>
-                </div>
-                <div class="counter-sale-card__field">
-                  <span>Cliente:</span>
-                  <strong>{{ ownerName(sale.ownerId) }}</strong>
-                </div>
-                <div class="counter-sale-card__field counter-sale-card__field--total">
-                  <span>Valor Total:</span>
-                  <strong>{{ formatCurrency(sale.total) }}</strong>
-                </div>
-                <DsButton size="sm" variant="primary" @click="selectSale(sale.id)">
-                  Ver comanda
-                </DsButton>
-              </div>
-
-              <div class="counter-sale-card__mobile-context">
-                <span>{{ ownerPrimaryContactLabel(sale.ownerId) }}</span>
-                <span>{{ ownerPatientsLabel(sale.ownerId) }}</span>
-                <span>{{ openedByLabel(sale.openedByUserId) }}</span>
-                <span>{{ accountLabel(sale.accountId) }}</span>
-              </div>
-
-              <div class="counter-sale-card__grid">
-                <div class="summary-card">
-                  <span class="summary-card__label">Total</span>
-                  <strong class="summary-card__value">{{ formatCurrency(sale.total) }}</strong>
-                </div>
-                <div class="summary-card">
-                  <span class="summary-card__label">Pago</span>
-                  <strong class="summary-card__value">{{ formatCurrency(sale.paidAmount) }}</strong>
-                </div>
-                <div class="summary-card">
-                  <span class="summary-card__label">Saldo</span>
-                  <strong class="summary-card__value">{{ formatCurrency(sale.balanceDue) }}</strong>
-                </div>
-              </div>
-
-              <p v-if="sale.notes" class="counter-sale-card__notes">{{ sale.notes }}</p>
-
-              <details class="counter-sale-card__details">
-                <summary>Informações do cliente</summary>
-                <div class="counter-sale-card__details-grid">
-                  <span>{{ ownerName(sale.ownerId) }}</span>
-                  <span>{{ ownerPrimaryContactLabel(sale.ownerId) }}</span>
-                  <span>{{ ownerPatientsLabel(sale.ownerId) }}</span>
-                </div>
-              </details>
-
-              <details class="counter-sale-card__details">
-                <summary>Serviços / Produtos</summary>
-                <div class="counter-sale-card__details-grid">
-                  <span>{{ saleItemsCountLabel(sale) }}</span>
-                  <span>Produtos: {{ formatCurrency(saleItemsTotal(sale, 'product')) }}</span>
-                  <span>Serviços: {{ formatCurrency(saleItemsTotal(sale, 'service')) }}</span>
-                </div>
-              </details>
-
-              <div class="counter-sale-card__actions">
-                <DsButton size="sm" variant="primary" @click="selectSale(sale.id)">
-                  {{ sale.id === selectedSaleId ? 'Atualizar comanda' : 'Ver comanda' }}
-                </DsButton>
-                <DsButton
-                  v-if="sale.ownerId"
-                  size="sm"
-                  variant="ghost"
-                  tag="a"
-                  :to="`/owners/${sale.ownerId}`"
-                >
-                  Ver tutor
-                </DsButton>
-              </div>
-            </article>
-          </div>
-        </DsCard>
-      </section>
+      <CounterSalesCardList
+        :sales="counterSaleCards"
+        :loading="loadingPage"
+        @select="selectSale"
+      />
 
       <section class="counter-sales-workbench">
-        <DsCard v-if="selectedSale" title="Detalhes da Comanda">
-          <div class="workbench-shell">
-            <div class="workbench-main">
-              <section class="workbench-section">
-                <header class="workbench-section__header">
-                  <div>
-                    <span class="workbench-section__eyebrow">Contexto assistencial</span>
-                    <h3>Animais Vinculados na Comanda</h3>
-                  </div>
-                  <span class="workbench-section__hint">
-                    {{ selectedPatientContexts.length }} animal(is)
-                  </span>
-                  <DsButton
-                    v-if="selectedSale.ownerId"
-                    size="sm"
-                    variant="ghost"
-                    tag="a"
-                    :to="`/patients?ownerId=${selectedSale.ownerId}`"
-                  >
-                    Ver cadastro
-                  </DsButton>
-                </header>
-
-                <div v-if="selectedPatientContexts.length > 0" class="patient-context-grid">
-                  <article
-                    v-for="context in selectedPatientContexts"
-                    :key="context.patient.id"
-                    class="patient-context-card"
-                  >
-                    <div class="patient-context-card__summary">
-                      <div>
-                        <strong>{{ context.patient.name }}</strong>
-                        <div class="patient-context-card__meta">
-                          {{ context.patient.species }}
-                          <span v-if="context.patient.breed">· {{ context.patient.breed }}</span>
-                        </div>
-                      </div>
-
-                      <div class="patient-context-card__badges">
-                        <DsBadge :variant="context.encounter ? 'success' : 'default'">
-                          {{ encounterBadgeLabel(context) }}
-                        </DsBadge>
-                        <DsBadge :variant="context.medicalRecord ? 'warning' : 'default'">
-                          {{ medicalRecordBadgeLabel(context) }}
-                        </DsBadge>
-                      </div>
-                    </div>
-
-                    <div class="patient-context-card__journey">
-                      <div class="journey-pill">
-                        <span class="summary-card__label">Atendimento</span>
-                        <strong>{{ patientEncounterSubtitle(context) }}</strong>
-                      </div>
-                      <div class="journey-pill">
-                        <span class="summary-card__label">Prontuário</span>
-                        <strong>{{ patientMedicalRecordSubtitle(context) }}</strong>
-                      </div>
-                    </div>
-
-                    <div class="patient-context-card__actions">
-                      <DsButton
-                        size="sm"
-                        variant="ghost"
-                        tag="a"
-                        :to="`/patients/${context.patient.id}`"
-                      >
-                        Cadastro
-                      </DsButton>
-                      <DsButton
-                        size="sm"
-                        variant="secondary"
-                        tag="a"
-                        :to="patientEncounterLink(context)"
-                      >
-                        {{ patientEncounterActionLabel(context) }}
-                      </DsButton>
-                      <DsButton
-                        size="sm"
-                        variant="primary"
-                        tag="a"
-                        :to="patientMedicalRecordLink(context)"
-                      >
-                        {{ patientMedicalRecordActionLabel(context) }}
-                      </DsButton>
-                    </div>
-                  </article>
-                </div>
-                <div v-else class="counter-sales-empty">
-                  Nenhum animal relacionado ao tutor desta comanda.
-                </div>
-              </section>
-
-              <section class="workbench-section">
-                <header class="workbench-section__header">
-                  <div>
-                    <span class="workbench-section__eyebrow">Execução assistencial</span>
-                    <h3>Serviços</h3>
-                  </div>
-                  <span class="workbench-section__hint">
-                    Total: {{ formatCurrency(selectedServicesTotal) }}
-                  </span>
-                </header>
-
-                <div v-if="selectedPatientContexts.length > 0" class="service-patient-list">
-                  <article
-                    v-for="context in selectedPatientContexts"
-                    :key="`service-${context.patient.id}`"
-                    class="service-patient-card"
-                  >
-                    <div>
-                      <strong>{{ context.patient.name }}</strong>
-                      <div class="patient-context-card__meta">
-                        {{ context.patient.species }}
-                        <span v-if="context.patient.breed">· {{ context.patient.breed }}</span>
-                      </div>
-                    </div>
-                    <div class="service-patient-card__actions">
-                      <DsButton
-                        size="sm"
-                        variant="ghost"
-                        tag="a"
-                        :to="`/patients/${context.patient.id}`"
-                      >
-                        Ver Detalhes do Animal
-                      </DsButton>
-                      <DsButton size="sm" variant="primary" @click="focusCatalogType('service')">
-                        Incluir Serviços
-                      </DsButton>
-                    </div>
-                  </article>
-                </div>
-                <div v-else class="counter-sales-empty">
-                  Vincule um animal para lançar serviços contextualizados na comanda.
-                </div>
-              </section>
-
-              <section class="workbench-section">
-                <header class="workbench-section__header">
-                  <div>
-                    <span class="workbench-section__eyebrow">Lançamento operacional</span>
-                    <h3>Produtos</h3>
-                  </div>
-                </header>
-
-                <div class="catalog-toolbar">
-                  <DsInput
-                    v-model="catalogForm.search"
-                    type="search"
-                    label="Catálogo"
-                    placeholder="Nome, código de barras, SKU ou serviço"
-                  />
-                  <DsInput v-model="catalogForm.itemType" type="select" label="Tipo">
-                    <option value="all">Todos</option>
-                    <option value="product">Produtos</option>
-                    <option value="service">Serviços</option>
-                  </DsInput>
-                  <DsInput
-                    v-model.number="catalogForm.quantity"
-                    type="number"
-                    label="Quantidade"
-                    min="1"
-                  />
-                  <DsInput
-                    v-model.number="catalogForm.discountAmount"
-                    type="number"
-                    label="Desconto"
-                    min="0"
-                    step="0.01"
-                  />
-                </div>
-
-                <div class="barcode-toolbar">
-                  <DsInput
-                    v-model="barcodeForm.code"
-                    label="Código de barras"
-                    placeholder="Bipar ou digitar código de barras"
-                    @keyup.enter="addItemByBarcode"
-                  />
-                  <DsInput
-                    v-model.number="barcodeForm.quantity"
-                    type="number"
-                    label="Qtd código"
-                    min="1"
-                  />
-                  <DsButton
-                    variant="primary"
-                    :loading="savingItem"
-                    :disabled="!canEditSelectedSale"
-                    @click="addItemByBarcode"
-                  >
-                    Adicionar Produtos
-                  </DsButton>
-                </div>
-
-                <div v-if="barcodeMatchedOption" class="barcode-match">
-                  <strong>{{ barcodeMatchedOption.name }}</strong>
-                  <span>
-                    {{ barcodeMatchedOption.type === 'product' ? 'Produto' : 'Serviço' }}
-                    <span v-if="barcodeMatchedOption.code">· {{ barcodeMatchedOption.code }}</span>
-                    · {{ formatCurrency(barcodeMatchedOption.basePrice) }}
-                  </span>
-                </div>
-                <div v-else-if="barcodeForm.code.trim()" class="counter-sales-empty">
-                  Nenhum item do catálogo corresponde ao código digitado.
-                </div>
-
-                <div class="catalog-results">
-                  <article
-                    v-for="option in visibleCatalogOptions"
-                    :key="`${option.type}-${option.id}`"
-                    class="catalog-card"
-                  >
-                    <div class="catalog-card__header">
-                      <div>
-                        <h4>{{ option.name }}</h4>
-                        <div class="catalog-card__meta">
-                          <span>{{ option.type === 'product' ? 'Produto' : 'Serviço' }}</span>
-                          <span v-if="option.code">{{ option.code }}</span>
-                          <span v-if="option.type === 'product'">
-                            Estoque {{ option.onHandQuantity ?? '—' }}
-                          </span>
-                        </div>
-                      </div>
-                      <strong>{{ formatCurrency(option.basePrice) }}</strong>
-                    </div>
-
-                    <p class="catalog-card__hint">
-                      {{ option.description || 'Sem descrição operacional cadastrada.' }}
-                    </p>
-
-                    <DsButton
-                      size="sm"
-                      variant="primary"
-                      :loading="savingItem"
-                      :disabled="!canEditSelectedSale"
-                      @click="addCatalogOption(option)"
-                    >
-                      Adicionar na comanda
-                    </DsButton>
-                  </article>
-
-                  <div v-if="visibleCatalogOptions.length === 0" class="counter-sales-empty">
-                    Nenhum item de catálogo encontrado para o filtro atual.
-                  </div>
-                </div>
-              </section>
-
-              <section class="workbench-section">
-                <header class="workbench-section__header">
-                  <div>
-                    <span class="workbench-section__eyebrow">Painel esquerdo</span>
-                    <h3>Serviços / Produtos</h3>
-                  </div>
-                </header>
-
-                <div class="item-total-grid">
-                  <div class="summary-card">
-                    <span class="summary-card__label">Produtos</span>
-                    <strong class="summary-card__value">{{
-                      formatCurrency(selectedProductsTotal)
-                    }}</strong>
-                  </div>
-                  <div class="summary-card">
-                    <span class="summary-card__label">Serviços</span>
-                    <strong class="summary-card__value">{{
-                      formatCurrency(selectedServicesTotal)
-                    }}</strong>
-                  </div>
-                </div>
-
-                <div v-if="selectedSale.items.length > 0" class="item-list">
-                  <article v-for="item in selectedSale.items" :key="item.id" class="line-item-card">
-                    <div class="line-item-card__header">
-                      <div>
-                        <strong>{{ item.nameSnapshot }}</strong>
-                        <div class="line-item-card__meta">
-                          <span>{{ item.itemType === 'product' ? 'Produto' : 'Serviço' }}</span>
-                          <span v-if="item.codeSnapshot">{{ item.codeSnapshot }}</span>
-                          <span>{{ formatCurrency(item.unitPrice) }}/un</span>
-                        </div>
-                      </div>
-                      <strong>{{ formatCurrency(item.lineTotal) }}</strong>
-                    </div>
-
-                    <div class="line-item-card__controls">
-                      <DsButton
-                        size="sm"
-                        variant="ghost"
-                        :disabled="!canEditSelectedSale || savingItem || item.quantity <= 1"
-                        @click="changeItemQuantity(item, item.quantity - 1)"
-                      >
-                        -
-                      </DsButton>
-                      <span class="line-item-card__quantity">{{ item.quantity }}</span>
-                      <DsButton
-                        size="sm"
-                        variant="ghost"
-                        :disabled="!canEditSelectedSale || savingItem"
-                        @click="changeItemQuantity(item, item.quantity + 1)"
-                      >
-                        +
-                      </DsButton>
-                      <DsButton
-                        size="sm"
-                        variant="secondary"
-                        :disabled="!canEditSelectedSale || savingItem"
-                        @click="applyDefaultDiscount(item)"
-                      >
-                        Editar desconto
-                      </DsButton>
-                      <DsButton
-                        size="sm"
-                        variant="danger"
-                        :disabled="!canEditSelectedSale || savingItem"
-                        @click="removeItem(item.id)"
-                      >
-                        Excluir
-                      </DsButton>
-                    </div>
-
-                    <div class="line-item-card__footer">
-                      <span>Desconto atual: {{ formatCurrency(item.discountAmount) }}</span>
-                      <span v-if="item.notes">{{ item.notes }}</span>
-                    </div>
-                  </article>
-                </div>
-                <div v-else class="counter-sales-empty">
-                  Nenhum item lançado ainda. Use o catálogo acima para montar a cobrança.
-                </div>
-              </section>
-
-              <section class="workbench-section">
-                <header class="workbench-section__header">
-                  <div>
-                    <span class="workbench-section__eyebrow">chat</span>
-                    <h3>Observações Gerais</h3>
-                  </div>
-                  <span class="workbench-section__hint">{{ selectedSaleNotesLength }} / 1000</span>
-                </header>
-                <p class="counter-sale-observations">
-                  {{ selectedSale.notes || 'Esta comanda ainda não possui observações gerais.' }}
-                </p>
-              </section>
-
-              <section class="workbench-section">
-                <header class="workbench-section__header">
-                  <div>
-                    <span class="workbench-section__eyebrow">medical_services</span>
-                    <h3>Histórico de Esteira</h3>
-                  </div>
-                </header>
-                <div v-if="selectedTimelineItems.length > 0" class="timeline-stack">
-                  <article
-                    v-for="event in selectedTimelineItems"
-                    :key="event.key"
-                    class="timeline-card"
-                  >
-                    <strong>{{ event.title }}</strong>
-                    <span>{{ event.description }}</span>
-                  </article>
-                </div>
-                <div v-else class="counter-sales-empty">
-                  Nenhum registro de esteira para esta comanda.
-                </div>
-              </section>
-
-              <section class="workbench-section" data-testid="counter-sale-cancellation-history">
-                <header class="workbench-section__header">
-                  <div>
-                    <span class="workbench-section__eyebrow">audit</span>
-                    <h3>Histórico de cancelamentos</h3>
-                  </div>
-                  <span class="workbench-section__hint">
-                    {{ selectedCancellationHistory.length }} registro(s)
-                  </span>
-                </header>
-                <div v-if="selectedCancellationHistory.length > 0" class="timeline-stack">
-                  <article
-                    v-for="event in selectedCancellationHistory"
-                    :key="event.eventId"
-                    class="timeline-card timeline-card--cancellation"
-                  >
-                    <strong>Cancelamento em {{ formatDateTime(event.cancelledAt) }}</strong>
-                    <span>Motivo: {{ event.reason }}</span>
-                    <span>Registrado por: {{ openedByLabel(event.cancelledByUserId) }}</span>
-                  </article>
-                </div>
-                <div v-else class="counter-sales-empty">
-                  Nenhum histórico de cancelamento disponível para esta comanda.
-                </div>
-              </section>
-            </div>
-
-            <aside class="workbench-sidebar">
-              <section class="workbench-sidebar__section">
-                <div class="sidebar-summary">
-                  <div class="sidebar-summary__header">
-                    <div>
-                      <span class="workbench-section__eyebrow">Resumo da Conta</span>
-                      <h3>Comanda ID: {{ selectedSale.number }}</h3>
-                    </div>
-                    <DsBadge :variant="statusBadgeVariant(selectedSale.status)">
-                      {{ statusLabel(selectedSale.status) }}
-                    </DsBadge>
-                  </div>
-
-                  <div class="sidebar-summary__grid">
-                    <div class="summary-card">
-                      <span class="summary-card__label">Subtotal</span>
-                      <strong class="summary-card__value">
-                        {{ formatCurrency(selectedSale.subtotal) }}
-                      </strong>
-                    </div>
-                    <div class="summary-card">
-                      <span class="summary-card__label">Desconto</span>
-                      <strong class="summary-card__value">
-                        {{ formatCurrency(selectedSale.discountAmount) }}
-                      </strong>
-                    </div>
-                    <div class="summary-card">
-                      <span class="summary-card__label">Pago</span>
-                      <strong class="summary-card__value">
-                        {{ formatCurrency(selectedSale.paidAmount) }}
-                      </strong>
-                    </div>
-                    <div class="summary-card">
-                      <span class="summary-card__label">Total a pagar</span>
-                      <strong class="summary-card__value">
-                        {{ formatCurrency(selectedSale.balanceDue) }}
-                      </strong>
-                    </div>
-                  </div>
-
-                  <div class="sidebar-owner">
-                    <div>
-                      <span class="summary-card__label">Cliente</span>
-                      <strong>{{ selectedOwner?.fullName || 'Comanda sem tutor' }}</strong>
-                    </div>
-                    <div class="sidebar-owner__meta">
-                      <span>{{ ownerPrimaryContactLabel(selectedSale.ownerId) }}</span>
-                      <span>ID {{ selectedSale.id }}</span>
-                      <span>Abertura {{ formatDateTime(selectedSale.createdAt) }}</span>
-                      <span>Aberta por: {{ openedByLabel(selectedSale.openedByUserId) }}</span>
-                      <span>{{ accountLabel(selectedSale.accountId) }}</span>
-                    </div>
-                    <details class="sidebar-contact">
-                      <summary>Ver Informações de Contato</summary>
-                      <p>{{ ownerContactsSummary(selectedSale.ownerId) }}</p>
-                    </details>
-                    <div class="sidebar-owner__actions">
-                      <DsButton
-                        v-if="selectedSale.ownerId"
-                        size="sm"
-                        variant="ghost"
-                        tag="a"
-                        :to="`/owners/${selectedSale.ownerId}`"
-                      >
-                        Ver cadastro do cliente
-                      </DsButton>
-                      <DsButton
-                        size="sm"
-                        variant="secondary"
-                        :loading="printingSale"
-                        @click="printSelectedSale"
-                      >
-                        Impressão operacional
-                      </DsButton>
-                      <DsButton size="sm" variant="ghost" tag="a" to="/queue">
-                        Encaminhar Esteira
-                      </DsButton>
-                    </div>
-                  </div>
-
-                  <div
-                    v-if="selectedSale.receipt"
-                    class="receipt-summary"
-                    data-testid="counter-sale-receipt"
-                  >
-                    <div>
-                      <span class="summary-card__label">Comprovante financeiro</span>
-                      <strong>{{ formatCurrency(selectedSale.receipt.amount) }}</strong>
-                    </div>
-                    <div class="receipt-summary__meta">
-                      <span>ID {{ selectedSale.receipt.id }}</span>
-                      <span>{{ formatDateTime(selectedSale.receipt.receivedAt) }}</span>
-                      <span v-if="selectedSale.receipt.journalEntryId">
-                        Diário {{ selectedSale.receipt.journalEntryId }}
-                      </span>
-                    </div>
-                  </div>
-
-                  <div class="sidebar-actions">
-                    <DsButton
-                      v-if="selectedSale.status === 'open'"
-                      variant="secondary"
-                      :disabled="savingItem"
-                      @click="applySaleAdjustment('expense')"
-                    >
-                      Incluir Despesa Extra
-                    </DsButton>
-                    <DsButton
-                      v-if="selectedSale.status === 'open'"
-                      variant="secondary"
-                      :disabled="savingItem"
-                      @click="applySaleAdjustment('discount')"
-                    >
-                      Incluir Desconto
-                    </DsButton>
-                    <DsButton
-                      v-if="selectedSale.status === 'open'"
-                      variant="primary"
-                      :loading="transitioningSale"
-                      @click="closeSale"
-                    >
-                      Finalizar Comanda
-                    </DsButton>
-                    <DsButton
-                      v-if="selectedSale.status === 'open'"
-                      variant="danger"
-                      :loading="transitioningSale"
-                      @click="openCancelModal"
-                    >
-                      Cancelar Comanda
-                    </DsButton>
-                    <DsButton
-                      v-if="selectedSale.status === 'closed' && !selectedSale.receipt"
-                      variant="secondary"
-                      :loading="transitioningSale"
-                      @click="reopenSale"
-                    >
-                      Reabrir Comanda
-                    </DsButton>
-                  </div>
-                </div>
-              </section>
-
-              <section class="workbench-sidebar__section">
-                <header class="workbench-section__header">
-                  <div>
-                    <span class="workbench-section__eyebrow">Painel direito</span>
-                    <h3>Registrar pagamento</h3>
-                  </div>
-                </header>
-
-                <div class="payment-form">
-                  <DsInput v-model="paymentForm.method" type="select" label="Método">
-                    <option value="pix">PIX</option>
-                    <option value="cash">Dinheiro</option>
-                    <option value="debit_card">Cartão débito</option>
-                    <option value="credit_card">Cartão crédito</option>
-                    <option value="bank_transfer">Transferência</option>
-                    <option value="check">Cheque</option>
-                    <option value="insurance">Convênio</option>
-                    <option value="other">Outro</option>
-                  </DsInput>
-                  <DsInput
-                    v-model.number="paymentForm.amount"
-                    type="number"
-                    label="Valor"
-                    min="0.01"
-                    step="0.01"
-                  />
-                  <DsInput
-                    v-model.number="paymentForm.installments"
-                    type="number"
-                    label="Parcelas"
-                    min="1"
-                    max="12"
-                  />
-                  <DsInput v-model="paymentForm.reference" label="Referência" />
-                  <DsInput
-                    v-model="paymentForm.notes"
-                    type="textarea"
-                    label="Observação"
-                    :rows="3"
-                  />
-
-                  <DsButton
-                    variant="secondary"
-                    :loading="savingPayment"
-                    :disabled="selectedSale.status !== 'open'"
-                    @click="submitPayment"
-                  >
-                    Registrar pagamento
-                  </DsButton>
-                </div>
-              </section>
-
-              <section class="workbench-sidebar__section">
-                <header class="workbench-section__header">
-                  <div>
-                    <span class="workbench-section__eyebrow">Histórico financeiro</span>
-                    <h3>Pagamentos já lançados</h3>
-                  </div>
-                </header>
-
-                <div v-if="selectedSale.payments.length > 0" class="payment-list">
-                  <article
-                    v-for="payment in selectedSale.payments"
-                    :key="payment.id"
-                    class="payment-card"
-                  >
-                    <div class="payment-card__header">
-                      <strong>{{ paymentMethodLabel(payment.method) }}</strong>
-                      <strong>{{ formatCurrency(payment.amount) }}</strong>
-                    </div>
-                    <div class="payment-card__meta">
-                      <span>{{ formatDateTime(payment.createdAt) }}</span>
-                      <span v-if="payment.reference">{{ payment.reference }}</span>
-                      <span>{{ payment.installments }}x</span>
-                    </div>
-                  </article>
-                </div>
-                <div v-else class="counter-sales-empty">
-                  Nenhum pagamento registrado para esta comanda.
-                </div>
-              </section>
-
-              <section v-if="selectedOwnerQuotes.length > 0" class="workbench-sidebar__section">
-                <header class="workbench-section__header">
-                  <div>
-                    <span class="workbench-section__eyebrow">Pipeline comercial</span>
-                    <h3>Orçamentos aprovados do tutor</h3>
-                  </div>
-                </header>
-
-                <div class="quote-list">
-                  <article v-for="quote in selectedOwnerQuotes" :key="quote.id" class="quote-card">
-                    <div class="quote-card__header">
-                      <strong>{{ quote.number }}</strong>
-                      <strong>{{ formatCurrency(quote.total) }}</strong>
-                    </div>
-                    <div class="quote-card__meta">
-                      <span>{{ quote.validUntil || 'Sem validade' }}</span>
-                      <span>{{
-                        quote.convertedToSaleId ? 'Convertido' : 'Pronto para conversão'
-                      }}</span>
-                    </div>
-                    <DsButton
-                      size="sm"
-                      variant="ghost"
-                      :disabled="Boolean(quote.convertedToSaleId)"
-                      @click="convertQuote(quote.id)"
-                    >
-                      Converter em comanda
-                    </DsButton>
-                  </article>
-                </div>
-              </section>
-            </aside>
-          </div>
-
-          <div class="command-bottom-actions">
-            <DsButton variant="ghost" @click="selectedSaleId = ''"> Voltar para Comandas </DsButton>
-            <DsButton variant="secondary" tag="a" to="/queue"> Encaminhar Esteira </DsButton>
-            <DsButton variant="secondary" :loading="printingSale" @click="printSelectedSale">
-              Imprimir
-            </DsButton>
-            <DsButton
-              v-if="selectedSale.status === 'open'"
-              variant="primary"
-              :loading="transitioningSale"
-              @click="closeSale"
-            >
-              Finalizar Comanda
-            </DsButton>
-          </div>
-        </DsCard>
+        <CounterSalesWorkbench
+          v-if="selectedSale"
+          :sale="selectedSale"
+          :owner="selectedOwner"
+          :patient-contexts="selectedPatientContexts"
+          :owner-quotes="selectedOwnerQuotes"
+          :visible-catalog-options="visibleCatalogOptions"
+          :barcode-matched-option="barcodeMatchedOption"
+          :timeline-items="selectedTimelineItems"
+          :cancellation-history="selectedCancellationHistory"
+          :catalog-form="catalogForm"
+          :barcode-form="barcodeForm"
+          :payment-form="paymentForm"
+          :can-edit="canEditSelectedSale"
+          :selected-products-total="selectedProductsTotal"
+          :selected-services-total="selectedServicesTotal"
+          :notes-length="selectedSaleNotesLength"
+          :saving-item="savingItem"
+          :saving-payment="savingPayment"
+          :transitioning-sale="transitioningSale"
+          :printing-sale="printingSale"
+          :format-currency="formatCurrency"
+          :format-date-time="formatDateTime"
+          :status-label="statusLabel"
+          :status-badge-variant="statusBadgeVariant"
+          :payment-method-label="paymentMethodLabel"
+          :owner-primary-contact-label="ownerPrimaryContactLabel"
+          :owner-contacts-summary="ownerContactsSummary"
+          :opened-by-label="openedByLabel"
+          :account-label="accountLabel"
+          :encounter-badge-label="encounterBadgeLabel"
+          :medical-record-badge-label="medicalRecordBadgeLabel"
+          :patient-encounter-subtitle="patientEncounterSubtitle"
+          :patient-medical-record-subtitle="patientMedicalRecordSubtitle"
+          :patient-encounter-link="patientEncounterLink"
+          :patient-encounter-action-label="patientEncounterActionLabel"
+          :patient-medical-record-link="patientMedicalRecordLink"
+          :patient-medical-record-action-label="patientMedicalRecordActionLabel"
+          @update-catalog-field="updateCatalogField"
+          @update-barcode-field="updateBarcodeField"
+          @update-payment-field="updatePaymentField"
+          @focus-catalog-type="focusCatalogType"
+          @add-item-by-barcode="addItemByBarcode"
+          @add-catalog-option="addCatalogOption"
+          @change-item-quantity="changeItemQuantity"
+          @apply-default-discount="applyDefaultDiscount"
+          @remove-item="removeItem"
+          @apply-sale-adjustment="applySaleAdjustment"
+          @submit-payment="submitPayment"
+          @close-sale="closeSale"
+          @open-cancel-modal="openCancelModal"
+          @reopen-sale="reopenSale"
+          @convert-quote="convertQuote"
+          @print-sale="printSelectedSale"
+          @clear-selection="selectedSaleId = ''"
+        />
 
         <DsCard v-else title="Workbench de comanda">
           <EmptyState
@@ -1263,7 +550,14 @@ import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
-import DsStatCard from '@cvg-his-v2/design-system/vue/DsStatCard.vue';
+import CounterSalesKpiSummary from './CounterSalesKpiSummary.vue';
+import CounterSalesCardList from './CounterSalesCardList.vue';
+import type { CounterSalesCardModel } from './CounterSalesCard.vue';
+import CounterSalesWorkbench, {
+  type CounterSalesBarcodeField,
+  type CounterSalesCatalogField,
+  type CounterSalesPaymentField
+} from './CounterSalesWorkbench.vue';
 import {
   counterSalesService,
   type CounterSaleDetail,
@@ -1642,6 +936,32 @@ const filteredSales = computed(() => {
   });
 });
 
+const counterSaleCards = computed<readonly CounterSalesCardModel[]>(() =>
+  filteredSales.value.map((sale) => ({
+    id: sale.id,
+    statusVariant: statusBadgeVariant(sale.status),
+    statusLabel: statusLabel(sale.status),
+    number: sale.number,
+    openedAtLabel: formatDateTime(sale.createdAt),
+    closedAtLabel: sale.closedAt ? formatDateTime(sale.closedAt) : '-',
+    ownerNameLabel: ownerName(sale.ownerId),
+    totalLabel: formatCurrency(sale.total),
+    primaryContactLabel: ownerPrimaryContactLabel(sale.ownerId),
+    patientsLabel: ownerPatientsLabel(sale.ownerId),
+    openedByLabel: openedByLabel(sale.openedByUserId),
+    accountLabel: accountLabel(sale.accountId),
+    paidLabel: formatCurrency(sale.paidAmount),
+    balanceLabel: formatCurrency(sale.balanceDue),
+    notes: sale.notes,
+    itemsCountLabel: saleItemsCountLabel(sale),
+    productsTotalLabel: formatCurrency(saleItemsTotal(sale, 'product')),
+    servicesTotalLabel: formatCurrency(saleItemsTotal(sale, 'service')),
+    selected: sale.id === selectedSaleId.value,
+    selectLabel: sale.id === selectedSaleId.value ? 'Atualizar comanda' : 'Ver comanda',
+    ownerHref: sale.ownerId ? `/owners/${sale.ownerId}` : null
+  }))
+);
+
 const openSalesCount = computed(() => sales.value.filter((sale) => sale.status === 'open').length);
 const closedSalesCount = computed(
   () => sales.value.filter((sale) => sale.status === 'closed').length
@@ -1968,6 +1288,72 @@ async function addCatalogOption(option: CatalogOption) {
 function focusCatalogType(type: Exclude<CatalogItemType, 'all'>) {
   catalogForm.itemType = type;
   catalogForm.search = '';
+}
+
+function updateCatalogField(field: CounterSalesCatalogField, value: string | number) {
+  if (field === 'search' && typeof value === 'string') {
+    catalogForm.search = value;
+    return;
+  }
+
+  if (field === 'itemType' && (value === 'all' || value === 'product' || value === 'service')) {
+    catalogForm.itemType = value;
+    return;
+  }
+
+  if (field === 'quantity' || field === 'discountAmount') {
+    const numericValue = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(numericValue)) return;
+    catalogForm[field] = Math.max(field === 'quantity' ? 1 : 0, numericValue);
+  }
+}
+
+function updateBarcodeField(field: CounterSalesBarcodeField, value: string | number) {
+  if (field === 'code' && typeof value === 'string') {
+    barcodeForm.code = value;
+    return;
+  }
+
+  if (field === 'quantity') {
+    const numericValue = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(numericValue)) return;
+    barcodeForm.quantity = Math.max(1, numericValue);
+  }
+}
+
+function updatePaymentField(field: CounterSalesPaymentField, value: string | number) {
+  if (field === 'method' && typeof value === 'string') {
+    const methods: readonly CounterSalePaymentMethod[] = [
+      'cash',
+      'credit_card',
+      'debit_card',
+      'pix',
+      'bank_transfer',
+      'check',
+      'insurance',
+      'other'
+    ];
+    if (methods.includes(value as CounterSalePaymentMethod)) {
+      paymentForm.method = value as CounterSalePaymentMethod;
+    }
+    return;
+  }
+
+  if (field === 'reference' && typeof value === 'string') {
+    paymentForm.reference = value;
+    return;
+  }
+
+  if (field === 'notes' && typeof value === 'string') {
+    paymentForm.notes = value;
+    return;
+  }
+
+  if (field === 'amount' || field === 'installments') {
+    const numericValue = typeof value === 'number' ? value : Number(value);
+    if (!Number.isFinite(numericValue)) return;
+    paymentForm[field] = Math.max(field === 'installments' ? 1 : 0, numericValue);
+  }
 }
 
 async function addItemByBarcode() {
@@ -2677,12 +2063,6 @@ function formatDateTime(value: string): string {
   gap: 16px;
 }
 
-.counter-sales-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 12px;
-}
-
 .counter-sales-alerts,
 .counter-sales-actions,
 .counter-sales-toolbar,
@@ -2867,7 +2247,6 @@ function formatDateTime(value: string): string {
   gap: 16px;
 }
 
-.counter-sales-cards,
 .item-list,
 .payment-list,
 .quote-list,
@@ -2877,7 +2256,6 @@ function formatDateTime(value: string): string {
   gap: 12px;
 }
 
-.counter-sale-card,
 .catalog-card,
 .line-item-card,
 .patient-context-card,
@@ -2890,46 +2268,6 @@ function formatDateTime(value: string): string {
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.95), rgba(245, 248, 252, 0.95)),
     radial-gradient(circle at top right, rgba(241, 144, 42, 0.08), transparent 42%);
-}
-
-.counter-sale-card--selected {
-  border-color: rgba(241, 144, 42, 0.65);
-  box-shadow: 0 18px 36px rgba(15, 23, 42, 0.08);
-}
-
-.counter-sale-card__header {
-  display: grid;
-  grid-template-columns:
-    110px minmax(120px, 0.85fr) minmax(150px, 1fr) minmax(150px, 1fr) minmax(180px, 1.35fr)
-    minmax(130px, 0.8fr) max-content;
-  align-items: center;
-}
-
-.counter-sale-card__field {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-}
-
-.counter-sale-card__field span {
-  color: var(--color-text-muted, #64748b);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.counter-sale-card__field strong {
-  min-width: 0;
-  overflow-wrap: anywhere;
-  font-size: 14px;
-  color: var(--color-text, #0f172a);
-}
-
-.counter-sale-card__field--total strong {
-  font-weight: 800;
-}
-
-.counter-sale-card__mobile-context {
-  display: none;
 }
 
 .catalog-card__header,
@@ -2946,14 +2284,12 @@ function formatDateTime(value: string): string {
   gap: 12px;
 }
 
-.counter-sale-card__header h3,
 .catalog-card__header h4,
 .workbench-section__header h3,
 .sidebar-summary__header h3 {
   margin: 4px 0 0;
 }
 
-.counter-sale-card__eyebrow,
 .workbench-section__eyebrow {
   font-size: 11px;
   font-weight: 700;
@@ -2962,7 +2298,6 @@ function formatDateTime(value: string): string {
   color: var(--color-text-muted, #64748b);
 }
 
-.counter-sale-card__meta,
 .catalog-card__meta,
 .line-item-card__meta,
 .payment-card__meta,
@@ -2977,7 +2312,6 @@ function formatDateTime(value: string): string {
   font-size: 13px;
 }
 
-.counter-sale-card__grid,
 .sidebar-summary__grid,
 .summary-grid,
 .item-total-grid,
@@ -3009,21 +2343,18 @@ function formatDateTime(value: string): string {
   font-size: 18px;
 }
 
-.counter-sale-card__notes,
 .catalog-card__hint,
 .counter-sale-observations {
   margin: 0;
   color: var(--color-text-muted, #64748b);
 }
 
-.counter-sale-card__details,
 .sidebar-contact {
   border-radius: 14px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   background: rgba(255, 255, 255, 0.72);
 }
 
-.counter-sale-card__details summary,
 .sidebar-contact summary {
   padding: 10px 12px;
   cursor: pointer;
@@ -3034,14 +2365,6 @@ function formatDateTime(value: string): string {
   color: var(--color-text-muted, #64748b);
 }
 
-.counter-sale-card__details-grid {
-  display: grid;
-  gap: 6px;
-  padding: 0 12px 12px;
-  color: var(--color-text-secondary, #475569);
-  font-size: 13px;
-}
-
 .sidebar-contact p {
   margin: 0;
   padding: 0 12px 12px;
@@ -3049,7 +2372,6 @@ function formatDateTime(value: string): string {
   font-size: 13px;
 }
 
-.counter-sale-card__actions,
 .line-item-card__controls,
 .sidebar-actions,
 .sidebar-owner__actions,
@@ -3322,17 +2644,6 @@ function formatDateTime(value: string): string {
     grid-template-columns: 1fr;
   }
 
-  .counter-sale-card__header {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .counter-sale-card__mobile-context {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px 12px;
-    color: var(--color-text-muted, #64748b);
-    font-size: 13px;
-  }
 }
 
 @media (max-width: 720px) {

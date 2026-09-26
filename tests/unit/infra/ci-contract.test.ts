@@ -280,28 +280,46 @@ describe('CI repository guardrails', () => {
       nextJobOffset === -1 ? undefined : jobStart + 3 + nextJobOffset
     );
 
+    const provisionScript = readFileSync(
+      resolve(root, 'scripts/provision-private-coverage-binaries.sh'),
+      'utf8'
+    );
+
     expect(job).toContain('name: Provision private coverage runner binaries');
     expect(job).toContain('ci-critical-coverage-provision.log');
-    expect(job).toContain('pg_package=postgresql-16');
-    expect(job).toContain('apt.postgresql.org/pub/repos/apt jammy-pgdg main');
-    expect(job).toContain('B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8');
-    expect(job).toContain('[[ "${pg_version}" == *.pgdg22.04* ]]');
-    expect(job).toContain('pg_client_package="${pg_package/postgresql-/postgresql-client-}"');
-    expect(job).toContain('packages=("${pg_package}" "${pg_client_package}" libpq5 libxml2 libldap-2.5-0 libicu70 redis-server redis-tools liblzf1 libjemalloc2 lua-cjson lua-bitop liblua5.1-0)');
+    expect(job).toContain('bash -se < scripts/provision-private-coverage-binaries.sh');
     expect(job).toContain('test "${#packages[@]}" -eq 13');
     expect(job).toContain('ubuntu:22.04@sha256:829f6df217bcbae2b371026e81711d1a787c61b2967ad09d015063663ebafbf7');
     expect(job).toContain('docker run --rm --interactive');
-    expect(job).toContain('apt-get update -y -o Acquire::Retries=3');
-    expect(job).toContain('apt-cache policy "$1"');
-    expect(job).toContain('package_specs+=("${package}=${version}")');
-    expect(job).toContain('printf \'%s\\n\' "${packages[@]}" > /out/package-manifest');
     expect(job).toContain('mapfile -t packages < "${deb_dir}/package-manifest"');
-    expect(job).toContain('cd /out');
-    expect(job).toContain('apt-get download "${package_specs[@]}"');
     expect(job).toContain('LD_LIBRARY_PATH="${runtime_lib}" "${pg_bin}/postgres" --version');
     expect(job).toContain('LD_LIBRARY_PATH="${runtime_lib}" "${redis_server}" --version');
     expect(job).toContain('find "${runtime_root}/usr/lib/postgresql" -type f -name initdb');
     expect(job).toContain('find "${runtime_root}/usr/share/postgresql" -type f -name postgres.bki');
+
+    expect(provisionScript).toContain('pg_package=postgresql-16');
+    expect(provisionScript).toContain('apt.postgresql.org/pub/repos/apt jammy-pgdg main');
+    expect(provisionScript).toContain('B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8');
+    expect(provisionScript).toContain('[[ "${pg_version}" == *.pgdg22.04* ]]');
+    expect(provisionScript).toContain('pg_client_package="${pg_package/postgresql-/postgresql-client-}"');
+    expect(provisionScript).toContain('packages=("${pg_package}" "${pg_client_package}" libpq5 libxml2 libldap-2.5-0 libicu70 redis-server redis-tools liblzf1 libjemalloc2 lua-cjson lua-bitop liblua5.1-0)');
+    expect(provisionScript).toContain('apt-get update -y -o Acquire::Retries=3');
+    expect(provisionScript).toContain('apt-cache policy "$1"');
+    expect(provisionScript).toContain('package_specs+=("${package}=${version}")');
+    expect(provisionScript).toContain('printf \'%s\\n\' "${packages[@]}" > /out/package-manifest');
+    expect(provisionScript).toContain('cd /out');
+    expect(provisionScript).toContain('apt-get download "${package_specs[@]}"');
+    // package count is asserted in-job after mapfile and here from the packages= line
+    const packagesLine = provisionScript
+      .split('\n')
+      .find((line) => line.startsWith('packages=('));
+    expect(packagesLine).toBeDefined();
+    const packageCount = packagesLine
+      ?.replace(/^packages=\(/, '')
+      .replace(/\)$/, '')
+      .split(/\s+/)
+      .filter(Boolean).length;
+    expect(packageCount).toBe(13);
   });
 
   it('runs the full workspace suite against the required isolated PostgreSQL', () => {

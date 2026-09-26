@@ -1,0 +1,37 @@
+REM-029 — PREPARAÇÃO DO BOUNDARY DE RENDERIZAÇÃO DO MODULE-REPORTS
+Observado em: 2026-09-22T07:30:00Z
+HEAD observado: ad2f0373f68635f2579253b013a4382219906921
+Ambiente: Linux local; Node v22.23.2; pnpm 10.33.0; agente primário único em modo Direct; worktree compartilhado dirty preservado
+
+SUPERFÍCIE E OWNERSHIP
+- `packages/modules/reports/src/index.ts` mede 2.631 linhas físicas.
+- A região de renderização começa em `toCsv` na linha 2.383 e inclui `csvCell`, `renderExport`, `createXlsx`, `xlsxCell`, `xlsxColumnName`, `createPdf`, `pdfText`, `xmlEscape`, `createZip` e `crc32`, terminando na linha 2.631: 249 linhas físicas.
+- `ReportsService.exportExecution`/`exportScheduled` e `exportReport` (linhas 896–965) continuam donos da autorização de formato, `stableReportId`, filename, cache de artefato, identidade de usuário e chamada de persistência.
+- `persistExport` (linhas 967–991) continua dono de `saveExport`, `saveExportForScheduleClaim`, `ReportScheduleLeaseLostError` e atualização do mapa em memória; não será movido para o renderer.
+- Claims de schedule/delivery, retries, `DatabaseReportRepository`, `getPool` e `withTenantQuery` permanecem fora do boundary puro.
+
+BOUNDARY SELECIONADO
+- Próxima fatia: `packages/modules/reports/src/report-renderers.ts` com `renderReportExport` e helpers de CSV/JSON/XLSX/PDF/ZIP.
+- Entrada mínima: `reportId`, `generatedAt`, `columns` e `rows` da execução; saída: `contentType`, `contentEncoding` e `content`.
+- O renderer não deve importar `shared-database`, `tenant-context`, repository, provider, router, store, API ou estado global; a única primitiva de runtime atual é `node:zlib` para o ZIP XLSX.
+- `index.ts` deve conservar todos os tipos e exports públicos e apenas delegar a produção do artefato; nenhuma mudança de contrato de `ReportExportSummary` ou `ReportFormat` foi autorizada nesta fase.
+
+CONTRATOS E KNOWN-BADS CONGELADOS
+- CSV: BOM UTF-8, labels na ordem de `ReportDefinition.columns`, quoting de vírgula/aspas/newline, sem CR/trailing newline e neutralização de fórmulas iniciadas por whitespace/`=`, `+`, `-` ou `@`.
+- JSON: `JSON.stringify(execution, null, 2)` e encoding `utf8` com content type atual.
+- XLSX: encoding base64, content type OOXML, assinatura ZIP `PK`, XML escapado, células numéricas/booleanas preservadas, CRC32 e offsets válidos.
+- PDF: encoding base64, `%PDF-1.4`, escape de parênteses/backslash, linhas limitadas ao contrato atual e truncamento por linha.
+- Identidade/retry: `stableReportId`, cache de export interativo, `deliveryId`/idempotency e reexecução agendada permanecem no service; renderização não pode persistir, reclamar lease ou chamar provider.
+- Known-bads: mover `persistExport`, alterar ordem de colunas, remover fórmula-safe CSV, quebrar XML/PDF escaping, produzir ZIP inválido, criar ciclo runtime de imports ou trocar content type/encoding.
+
+BASELINE EXECUTADO SOB NODE 22.23.2
+- `pnpm --filter @cvg-his-v2/module-reports test` — PASS, 3 arquivos/36 testes; inclui exportação CSV/JSON/XLSX/PDF, compatibilidade de bytes CSV e neutralização de fórmulas.
+- `pnpm --filter @cvg-his-v2/module-reports typecheck` — PASS.
+- `pnpm --filter @cvg-his-v2/module-reports lint` — PASS.
+- `git diff --check` — PASS.
+
+LIMITES E PRÓXIMA AÇÃO
+- Nenhum arquivo de produção do module-reports foi alterado nesta preparação; não há teste direto novo do renderer ainda.
+- A implementação seguinte deve extrair somente a região pura, adicionar teste focal direto para todos os formatos/escaping e repetir a regressão do service.
+- Crítica E7, revisão dos owners REPORTS/RUNTIME, quatro medições SPA divergentes do checker global, CI/OCI, target, provider real, UAT, browser visual/a11y e release permanecem fora deste gate.
+- Próxima ação: `REM-029:IMPLEMENT-REPORTS-RENDERING`.

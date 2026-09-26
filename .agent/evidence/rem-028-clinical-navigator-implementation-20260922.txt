@@ -1,0 +1,56 @@
+REM-028 — segunda extração local: ClinicalStepNavigator
+Data: 2026-09-22
+Escopo: implementação e verificação candidate-bound do navigator read-only do prontuário
+Superfície: `apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue`
+Decisão: PASS_WITH_CONDITIONS; validação browser/visual segue aberta
+
+## Mudança
+
+`ClinicalStepNavigator.vue` recebeu a apresentação e interação do `role=tablist`:
+props readonly `steps`/`activeKey`, evento `select`, IDs estáveis,
+`aria-selected`/`aria-controls`, roving `tabindex`, click e ArrowRight/ArrowDown/
+ArrowLeft/ArrowUp/Home/End com foco no próximo tab. O page mantém `activeClinicalStep`,
+`clinicalStepPanelId`, o `tabpanel`, contexto clínico, `useUnsavedChanges`, geração,
+attachments, idempotência, read-only e todas as mutações.
+
+O CSS do navigator foi movido para o módulo mantendo os valores existentes, a
+grade desktop de quatro etapas e o breakpoint de 820px para duas colunas. Não houve
+alteração de token, rota, service, store, dirty guard ou contrato de persistência.
+`MedicalRecordsDetailPage.vue` passou de 3.393 para 3.317 linhas; o novo módulo tem
+124 linhas e o teste focal 45 linhas.
+
+## Verificações executadas
+
+Runtime: Node v22.23.2, pnpm 10.33.0, worktree compartilhado dirty preservado.
+
+- teste focal do prontuário + navigator: `2` arquivos, `51` testes, exit 0;
+- `pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit`: exit 0 após corrigir o
+  contrato emitido `string` para a união clínica com validação fail-closed;
+- `pnpm --filter @cvg-his-v2/spa lint`: exit 0, 0 erros e 32 avisos `any`
+  preexistentes fora do módulo novo;
+- `pnpm --filter @cvg-his-v2/spa build`: exit 0, Vite transformou 820 módulos e
+  gerou build/PWA;
+- `git diff --check`: exit 0.
+
+A primeira tentativa de typecheck/build falhou com TS2322 porque o emit genérico do
+componente aceitava `string` e o page aceitava `ClinicalStepKey`; esse known-bad foi
+corrigido sem alargar o estado: `selectClinicalStep` rejeita chaves que não estejam
+em `clinicalSteps` antes do cast/assignment. A regressão focal posterior passou.
+
+## Validação visual e limite
+
+Não houve nova tentativa de Playwright para o segundo seam: a tentativa pública do
+primeiro seam, no mesmo runtime local, terminou BLOCKED porque `/health` da API
+respondeu `unhealthy` após 30s. Nenhum snapshot foi atualizado.
+
+Esta verificação prova contrato de interação em component test, types, lint, build e
+integração do page, mas não prova foco real no browser, pixel diff, dark/mobile,
+screen reader ou performance. O gate fica condicionado ao runtime E2E saudável e à
+reexecução visual/interativa antes de qualquer claim UX/a11y ou atualização de
+baseline.
+
+## Próxima ação
+
+Continuar pela separação do contexto clínico read-only/aside do prontuário ou, se a
+revisão do owner exigir menor risco, pelo shell de apresentação de `CounterSales`;
+server state, workflow financeiro/clínico e URL permanecem fora dos componentes.

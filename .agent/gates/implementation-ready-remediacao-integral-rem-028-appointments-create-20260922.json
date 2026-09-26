@@ -1,0 +1,122 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-REM-028-APPOINTMENTS-CREATE-20260922",
+  "timestamp": "2026-09-22T06:00:00.000000Z",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "preparação candidate-bound do create flow da agenda, preservando mutation/refresh/query ownership na page e no quick form",
+  "scope_ref": "REM-028",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-APPT-CREATE-001",
+      "description": "Seleção de cliente, cadastro inline, preset de slot, quick-create, mutation, refresh e reconciliação pós-create foram mapeados contra os componentes e testes existentes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-create-preparation-20260922.txt",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+        "apps/spa/src/components/appointments/AppointmentClientSelectorModal.vue",
+        "apps/spa/src/components/appointments/AppointmentQuickCreateForm.vue",
+        "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts",
+        "apps/spa/src/components/appointments/__tests__/AppointmentClientSelectorModal.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A inspeção não substitui a regressão após a implementação."
+    },
+    {
+      "id": "IR-APPT-CREATE-002",
+      "description": "Foi selecionado wrapper workflow candidate-bound com props/emits tipados; mutation/service permanece no quick form e refresh/reconciliação permanecem na page.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-create-preparation-20260922.txt",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+        "apps/spa/src/components/appointments/AppointmentQuickCreateForm.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A auditoria estática do novo boundary será executada após a implementação."
+    },
+    {
+      "id": "IR-APPT-CREATE-003",
+      "description": "Known-bads e verificação proporcional estão explícitos: owner selection, registered/new tab, preset contextual, 30-minute default, created forwarding, refresh e selected appointment reconciliation.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-create-preparation-20260922.txt",
+        "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts",
+        "apps/spa/src/components/appointments/__tests__/AppointmentClientSelectorModal.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Browser/visual, E7, owners e suíte SPA integral continuam fora desta preparação."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-028-appointments-create-preparation-20260922.txt",
+    "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+    "apps/spa/src/components/appointments/AppointmentClientSelectorModal.vue",
+    "apps/spa/src/components/appointments/AppointmentQuickCreateForm.vue",
+    "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts",
+    "apps/spa/src/components/appointments/__tests__/AppointmentClientSelectorModal.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "O wrapper e seu teste focal ainda não foram implementados.",
+    "Browser/visual/a11y real continua condicionado pelo /health da API local indisponível.",
+    "Crítica adversarial E7, revisão de owners e suíte SPA integral pós-seam permanecem abertas."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-028-APPOINTMENTS-CREATE-BROWSER",
+      "description": "Executar browser/visual com API saudável após o create flow, incluindo selector, new client, quick form, preset, loading, error, close, foco e responsividade.",
+      "non_blocking": true,
+      "impact": "Bloqueia claim visual/a11y e fechamento integral de REM-028, mas não a implementação local reversível.",
+      "owner": "frontend/design",
+      "due_or_trigger": "Antes do VERIFIED integral de REM-028 ou atualização de baseline visual.",
+      "verification_method": "Playwright focal/interação e inspeção de artefatos atuais.",
+      "due_at": "2026-09-23T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-create-preparation-20260922.txt",
+        "playwright-spa.config.ts"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-028-APPOINTMENTS-CREATE-OWNER",
+      "description": "O contrato candidate-bound do wrapper e sua relação com o quick form aguardam revisão identificada dos owners de scheduling/frontend/design.",
+      "non_blocking": true,
+      "impact": "Não bloqueia implementação local reversível; bloqueia aceite organizacional do contrato.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de promover o wrapper a compromisso de roadmap ou aceitar alteração no workflow de criação.",
+      "verification_method": "Registrar revisão/decisão do owner e superseder a condição.",
+      "due_at": "2026-09-24T12:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-create-preparation-20260922.txt",
+        "docs/engineering/OWNERSHIP_AND_COMPLEXITY.md"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "inspeção e implementação local reversível do wrapper candidate-bound de create flow da agenda",
+    "decision": "A instrução autoriza inspeção e implementação local; não autoriza aceite visual humano, target, UAT, release ou autoridade externa.",
+    "evidence_ref": ".agent/evidence/rem-028-appointments-create-preparation-20260922.txt",
+    "expires_or_revalidates": "Revalidar se o wrapper tocar services, router, permission source, refresh/server state ou novo workflow de domínio."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-028:IMPLEMENT-APPOINTMENTS-CREATE-SEAM",
+  "revalidation_triggers": [
+    "Mover appointmentService.create, lookups, availability ou recommendation para a page/wrapper.",
+    "Mover loadOverview, selectedAppointment reconciliation, URL/query ou permission source para o wrapper.",
+    "Remover preset de slot, registered/new client, close/cancel ou forwarding de created.",
+    "Atualizar snapshots enquanto a API/health E2E estiver indisponível.",
+    "Avançar para owner acceptance, CI remoto, target, UAT ou release."
+  ],
+  "supersedes": ".agent/gates/verified-remediacao-integral-rem-028-appointments-overview-20260922.json"
+}

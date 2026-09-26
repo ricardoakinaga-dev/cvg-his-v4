@@ -1,5 +1,10 @@
 # Triple-A — 13 Final Scorecard
 
+> **Nota de arquivo (2026-09-24):** os links abaixo apontam para os documentos
+> canônicos atuais em `docs/triple-a/`; eles não representam cópias congeladas
+> em 2026-09-10. Os scores, estados e veredictos deste registro permanecem
+> históricos.
+
 **Candidato avaliado:** `e793345ab71441298bdb2cb2de2755dc5921b115`
 
 **Decisão atual:** `BLOCKED / NOT PROVEN`
@@ -25,7 +30,7 @@ O CI #58 ([run 34454422885](https://github.com/ricardoakinaga-dev/cvg-his-v4/act
 | DR/RPO/RTO/performance/deploy | Não comprovado |
 | Release gate strict | BLOCKED — score 38, critical 25, 21 P0 abertos |
 
-Os thresholds de 97/95/zero P0 permanecem congelados em [`QUALITY_BAR_V1.json`](./QUALITY_BAR_V1.json). Este scorecard não contém claim de certificação.
+Os thresholds de 97/95/zero P0 permanecem congelados em [`QUALITY_BAR_V1.json`](../QUALITY_BAR_V1.json). Este scorecard não contém claim de certificação.
 
 ## Reconciliação terminal — CI #58 / candidato local `0dc4809b`
 

@@ -1,0 +1,397 @@
+{
+  "schema_version": "FP-DR-1",
+  "record_id": "DR-MEDICAL-RECORD-ATTACHMENTS-20260924",
+  "claim_type": "DECISION",
+  "evidence_status": "CONFIRMED",
+  "confidence": "HIGH",
+  "problem": "MedicalRecordsDetailPage combines record composition with attachment loading, partial-source reconciliation, scan-status presentation, signed-download validation, and route-stale completion handling.",
+  "desired_outcome": "Move the attachment panel and its local loading/open workflow to a medical-record feature slice while leaving route lifecycle, navigation context, and page composition in MedicalRecordsDetailPage.",
+  "user_journey": [
+    "Open a medical record and review record-linked and encounter-linked attachments.",
+    "Distinguish a confirmed empty list from loading, full failure, and partial-source failure.",
+    "Open an attachment only when scanning marks it available and the API returns a matching, unexpired signed content URL.",
+    "If the route changes during a read or URL request, ignore the stale completion and reset feature state for the new record."
+  ],
+  "current_evidence": [
+    {
+      "id": "OBS-001",
+      "claim": "The page owned attachment list state, two-source merge, status/error text, download URL validation, window opening, and route generation checks.",
+      "status": "CONFIRMED",
+      "source": "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue"
+    },
+    {
+      "id": "OBS-002",
+      "claim": "Existing MedicalRecordsDetailPage tests cover loading/empty, metadata rendering, signed URL confirmation, invalid target URL, and source failure.",
+      "status": "CONFIRMED",
+      "source": "apps/spa/src/pages/medical-records/__tests__/MedicalRecordsDetailPage.test.ts"
+    },
+    {
+      "id": "OBS-003",
+      "claim": "The application is a Vue 3 Vite SPA and this route already composes domain components with local feature composables.",
+      "status": "CONFIRMED",
+      "source": "apps/spa/package.json and apps/spa/src/pages/medical-records/ClinicalRecordContextAside.vue"
+    }
+  ],
+  "unknowns": [
+    {
+      "id": "UNK-001",
+      "question": "Does the extracted card retain visual parity in a real browser across narrow layouts and dark theme?",
+      "impact": "MEDIUM",
+      "falsification": "Compare rendered screenshots at desktop and narrow widths in light and dark themes."
+    },
+    {
+      "id": "UNK-002",
+      "question": "Do real assistive technologies announce the status, errors, and available actions as expected?",
+      "impact": "MEDIUM",
+      "falsification": "Run the browser journey with keyboard-only input and a screen reader."
+    }
+  ],
+  "constraints": [
+    "The API remains the source of truth for attachment metadata, scanning status, authorization, and signed URLs.",
+    "Preserve the existing record-linked and encounter-linked queries, identity filters, deduplication, newest-first ordering, and partial-failure wording.",
+    "Retain the page generation guard and reset attachment state when the record route changes.",
+    "Do not open a content URL until its attachment path, token, origin, and expiry are validated.",
+    "Keep the existing diagnostics navigation context and add no package or route dependency."
+  ],
+  "framework_runtime": {
+    "framework": "Vue",
+    "version": "3.5.x",
+    "router": "Vue Router 4.5.x",
+    "runtime": "Vite client-rendered SPA",
+    "status": "CONFIRMED"
+  },
+  "render_environment": {
+    "mode": "client-rendered SPA",
+    "server": "API owns attachment records, scan state, authorization, and signed URL issuance",
+    "client": "The page owns route validity and the feature owns the attachment panel and transient open/read workflow",
+    "hydration": "No SSR hydration boundary is used for this route"
+  },
+  "browser_targets": ["Current evergreen browsers supported by the app"],
+  "device_input_constraints": ["Keyboard", "Pointer", "Touch", "Narrow viewport reflow"],
+  "ux_invariants": [
+    "Loading never appears as a confirmed empty state.",
+    "A full or partial read failure is visible and does not claim the missing source has no attachments.",
+    "Only available attachments expose an open action.",
+    "An unconfirmed, mismatched, external, or expired content URL is never opened."
+  ],
+  "accessibility_invariants": [
+    "The panel remains a labelled list of attachments.",
+    "Loading and scan availability retain status semantics; read and action failures retain alert semantics.",
+    "Open buttons retain a file-specific accessible name and busy state.",
+    "At narrow widths, metadata and actions reflow without horizontal overflow."
+  ],
+  "data_invariants": [
+    "Attachment data remains server-owned and is not cached or persisted in the browser.",
+    "Only entries linked to the current medical record or encounter are projected.",
+    "Duplicate attachment IDs are represented once and entries remain newest first.",
+    "A route-stale response cannot replace the active record's attachment state."
+  ],
+  "state_classification": [
+    {
+      "kind": "server",
+      "source_of_truth": "Attachments and diagnostics APIs",
+      "owner": "Attachment and diagnostics services",
+      "scope": "Medical record and encounter attachment metadata",
+      "derivation": "Feature filters, deduplicates, and orders exact linked records",
+      "persistence": "Remote database and object storage",
+      "sync_requirement": "Read fresh metadata for each record route; request a signed URL only when the user opens a file"
+    },
+    {
+      "kind": "local_ui",
+      "source_of_truth": "Current list operation and open action",
+      "owner": "useClinicalRecordAttachments composable",
+      "scope": "One mounted medical-record route",
+      "derivation": "User action and current route request",
+      "persistence": "Ephemeral in memory",
+      "sync_requirement": "Reset on record route change; reject stale completions"
+    },
+    {
+      "kind": "derived",
+      "source_of_truth": "Attachment scan state and validated URL response",
+      "owner": "ClinicalAttachmentsPanel and feature composable",
+      "scope": "One attachment row and open attempt",
+      "derivation": "Available status controls action; matching unexpired URL controls navigation",
+      "persistence": "None",
+      "sync_requirement": "Recompute for each response and current route guard"
+    }
+  ],
+  "state_ownership": [
+    {
+      "state": "Attachment list, loading, read error, open error, and opening ID",
+      "owner": "useClinicalRecordAttachments composable",
+      "readers": ["ClinicalAttachmentsPanel", "MedicalRecordsDetailPage route composition"],
+      "writers": ["Feature load/open/reset operations"],
+      "reset": "Reset when the page starts a new record route load"
+    },
+    {
+      "state": "Current record ID and page generation",
+      "owner": "MedicalRecordsDetailPage",
+      "readers": ["Feature route guard callback"],
+      "writers": ["Vue Router route change and page load"],
+      "reset": "Increment on route load and invalidate on unmount"
+    },
+    {
+      "state": "Attachment row and status presentation",
+      "owner": "ClinicalAttachmentsPanel",
+      "readers": ["Medical-record user"],
+      "writers": ["Controlled feature props and open event"],
+      "reset": "Re-render from feature state"
+    }
+  ],
+  "data_ownership": {
+    "source": "Attachments and diagnostics APIs",
+    "client_projection": "Feature accepts only rows linked to the current medical record or encounter and merges duplicate IDs",
+    "mutation_owner": "No attachment metadata mutation is performed; open requests a signed download URL",
+    "staleness": "Page route generation plus feature sequence guard rejects stale reads and opens"
+  },
+  "server_client_boundary": {
+    "server_owned": [
+      "Attachment authorization",
+      "Canonical attachment metadata",
+      "Malware scan status",
+      "Signed URL issuance and expiry"
+    ],
+    "client_owned": [
+      "Panel presentation",
+      "Ephemeral request and open states",
+      "Matching signed URL validation before opening"
+    ],
+    "serialization": "No SSR serialization or hydration boundary is used"
+  },
+  "trust_boundary": {
+    "untrusted_inputs": ["Attachment metadata responses", "Signed URL response"],
+    "client_checks": [
+      "Exact attachment content path",
+      "Relative same-origin URL",
+      "Non-empty token",
+      "Finite future expiry"
+    ],
+    "server_enforcement": "API remains responsible for authorization, tenant scoping, attachment ownership, scanning, and token validity",
+    "residual_risk": "Client checks prevent opening an unexpected URL; they do not replace server authorization"
+  },
+  "candidates": [
+    {
+      "name": "Keep attachment markup and workflow in the page",
+      "fit": "Lowest immediate edit cost",
+      "cost": "Maintains attachment list, URL trust checks, and route race handling inside the already large medical-record page"
+    },
+    {
+      "name": "Global attachment store",
+      "fit": "Could share attachment state across unrelated routes",
+      "cost": "No demonstrated cross-route cache or synchronization need; adds shared ownership and invalidation risk"
+    },
+    {
+      "name": "Feature panel plus local composable",
+      "fit": "Groups attachment presentation and its route-scoped loading/open workflow",
+      "cost": "Adds two internal modules and controlled props without adding a package or request"
+    }
+  ],
+  "simple_baseline": "Keep route identity in the page and render a controlled panel; feature state remains local to the medical-record route.",
+  "rejected_candidates": [
+    {
+      "candidate": "Global attachment store",
+      "reason": "Attachments are only consumed by this route here, and no shared cache or cross-route sync contract exists."
+    },
+    {
+      "candidate": "Move route generation and patient/record loading into the attachment feature",
+      "reason": "The page already owns cross-domain route lifecycle; moving it would couple an attachment feature to patient, encounter, billing, and clinical record state."
+    },
+    {
+      "candidate": "Open the returned URL directly without validation",
+      "reason": "A mismatched or expired response could navigate away from the application or open a different attachment."
+    }
+  ],
+  "selected_pattern": "Route-scoped feature composable with a controlled attachment panel.",
+  "selection_rationale": "The attachment list, failures, scan eligibility, and signed-open flow form one domain journey and can be tested independently. The page keeps the route-generation source of truth and supplies a guard; the feature owns only its ephemeral state. The choice is based on observed state and responsibility concentration, not line count alone.",
+  "typed_driver_evidence": [
+    {
+      "driver": "domain_boundary",
+      "evidence": "The route currently handles two attachment sources, linkage filtering, partial failure, scan-status gating, signed URL validation, and open feedback.",
+      "source": "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue"
+    },
+    {
+      "driver": "test_boundary",
+      "evidence": "Existing tests already verify loading, empty, partial failure, open URL confirmation, and bad target behavior at the page boundary.",
+      "source": "apps/spa/src/pages/medical-records/__tests__/MedicalRecordsDetailPage.test.ts"
+    }
+  ],
+  "component_boundaries": [
+    {
+      "name": "useClinicalRecordAttachments",
+      "owns": [
+        "Attachment query state",
+        "Source merge and failure state",
+        "Open action and URL validation",
+        "Feature reset"
+      ],
+      "inputs": ["Medical record summary", "Page-owned current-route guard"],
+      "outputs": ["Controlled attachment panel state", "Load/open operations"],
+      "extraction_driver": "Domain, state, and test ownership",
+      "accessibility_contract": "Supplies loading, error, opening, and scan state for the panel"
+    },
+    {
+      "name": "ClinicalAttachmentsPanel",
+      "owns": ["Attachment metadata and actions", "Loading/empty/error/availability presentation"],
+      "inputs": ["Attachments", "Loading and error state", "Opening ID", "Diagnostics link"],
+      "outputs": ["Open attachment event"],
+      "extraction_driver": "Semantic feature presentation boundary",
+      "accessibility_contract": "Preserves labelled list, status/alert semantics, file-specific action names, and busy state"
+    },
+    {
+      "name": "MedicalRecordsDetailPage",
+      "owns": [
+        "Record route",
+        "Page generation",
+        "Cross-domain record composition",
+        "Diagnostics navigation context"
+      ],
+      "inputs": ["Route ID", "API projections"],
+      "outputs": ["Feature record and route guard", "Page layout"],
+      "extraction_driver": "Page-level route and cross-domain ownership",
+      "accessibility_contract": "Preserves the surrounding medical-record landmarks and focus flow"
+    }
+  ],
+  "state_contract": {
+    "events": [
+      "RECORD_ROUTE_RESET",
+      "ATTACHMENTS_LOAD",
+      "ATTACHMENTS_PARTIAL_FAILURE",
+      "OPEN_AVAILABLE_ATTACHMENT",
+      "OPEN_CONFIRMED",
+      "OPEN_FAILED"
+    ],
+    "legal_states": [
+      "loading",
+      "confirmed empty",
+      "loaded",
+      "partial source failure",
+      "read failure",
+      "opening",
+      "open failed"
+    ],
+    "illegal_states": [
+      "claiming empty while loading or failed",
+      "opening non-available attachment",
+      "opening mismatched or expired content URL",
+      "stale route completion changing current feature state"
+    ],
+    "owner": "Composable owns attachment state; page owns route identity and invalidation"
+  },
+  "data_fetching_contract": {
+    "query_identity": "Current medical record ID plus encounter ID",
+    "deduplication": "Merge by attachment ID after filtering exact link type and ID",
+    "cancellation": "Existing requests are not aborted; page route guard and feature generation ignore stale results",
+    "stale_policy": "Load once during current record context resolution; stale completion is discarded",
+    "error_policy": "Preserve confirmed rows on partial failure and distinguish an unknown list from confirmed empty"
+  },
+  "mutation_semantics": {
+    "idempotency": "No persistent attachment mutation; download URL request retains existing API semantics",
+    "pending": "One opening ID disables other open actions during URL preparation",
+    "duplicate_guard": "Composable rejects another open while one request is pending",
+    "optimistic": "No optimistic content navigation",
+    "rollback": "Failed URL validation or blocked browser window leaves the record page intact and shows an action error",
+    "invalidation": "Record route reset clears all attachment feature state"
+  },
+  "loading_behavior": "Show a polite busy status while both sources settle; do not show the empty message until a confirmed result exists.",
+  "empty_behavior": "Show the existing confirmed-empty message only when there is no attachment read error.",
+  "error_behavior": "Show full or partial list errors separately from open-action errors; retain confirmed rows on a partial result.",
+  "recovery_behavior": "Record route reload retries the reads; an open error leaves the user on the record so they can retry.",
+  "responsive_behavior": "Preserve card styling and stack attachment metadata/actions at the existing 820px breakpoint.",
+  "keyboard_focus_behavior": "Use the existing design-system button and file-specific accessible action name; no new focus trap or modal is introduced.",
+  "assistive_behavior": "Preserve list/listitem roles, polite loading and scan statuses, alert roles for failures, and button busy state.",
+  "motion_behavior": "No new motion or transition is introduced.",
+  "performance_budget": {
+    "workload": "One medical record with record-linked and encounter-linked attachment metadata",
+    "baseline": "Existing two list-source requests and one user-triggered signed URL request",
+    "target": "No additional request or dependency; retain existing list and open request sequence",
+    "hard_max": "Do not add requests to the attachment journey",
+    "measurement": "Compare the request call sequence in tests; browser bundle measurement is not required because the feature stays in the current route chunk",
+    "status": "DEFAULT"
+  },
+  "bundle_impact": "Adds two modules to the existing route chunk and no package dependency or route-level split.",
+  "rendering_impact": "No route rendering mode change; the controlled panel updates from local feature refs.",
+  "network_impact": "Preserves the two-source read and one signed URL request on user action.",
+  "security_implications": [
+    "Attachment links and metadata remain text interpolation; no HTML rendering is added.",
+    "The API remains responsible for attachment authorization, tenant scope, scan enforcement, and signed-token validity.",
+    "The client opens only a same-origin relative URL with the exact attachment content path, token, and future expiry."
+  ],
+  "testing_requirements": [
+    {
+      "type": "unit",
+      "boundary": "useClinicalRecordAttachments",
+      "claim": "Filtering/merge, partial errors, route staleness, signed URL target/expiry checks, and pending reset remain correct.",
+      "minimum_evidence": "E3"
+    },
+    {
+      "type": "component",
+      "boundary": "ClinicalAttachmentsPanel",
+      "claim": "Loading, confirmed empty, errors, metadata, scan eligibility, accessible names, and open event remain correct.",
+      "minimum_evidence": "E3"
+    },
+    {
+      "type": "integration",
+      "boundary": "MedicalRecordsDetailPage",
+      "claim": "Route context, loading call, and stale route integration remain correct.",
+      "minimum_evidence": "E3"
+    }
+  ],
+  "runtime_evidence_required": [
+    "Open a confirmed attachment from the medical-record page",
+    "Change routes during list/open requests"
+  ],
+  "accessibility_evidence_required": [
+    "Keyboard open action",
+    "Real browser screen-reader status and error announcement check"
+  ],
+  "performance_evidence_required": ["No additional request relative to the existing page sequence"],
+  "migration": {
+    "strategy": "Extract the current attachment markup and behavior in place without changing API DTOs or route ownership.",
+    "compatibility_window": "No API compatibility window required; the medical-record URL and attachment service calls remain stable.",
+    "rollback": "Restore inline panel and attachment state from the parent if focused tests reveal a regression."
+  },
+  "compatibility": [
+    "Existing medical-record URLs",
+    "Existing attachment APIs",
+    "Existing diagnostics link context",
+    "Existing design-system controls"
+  ],
+  "rollout": "Internal Vue composition refactor behind the existing medical-record route with no feature flag.",
+  "unresolved_risks": [
+    {
+      "id": "RISK-001",
+      "risk": "Component and composable tests cannot establish real browser visual parity or assistive-technology announcements.",
+      "severity": "MEDIUM",
+      "mitigation": "Preserve the existing DOM roles and text states; keep screenshot and assisted review open as separate evidence.",
+      "revalidation": "Before claiming full browser or accessibility acceptance for M-22/M-25."
+    },
+    {
+      "id": "RISK-002",
+      "risk": "Client validation does not authorize access and cannot replace API tenant, scan, or signed-token enforcement.",
+      "severity": "HIGH",
+      "mitigation": "Keep server/API negative tenant tests and target-backed authorization evidence as M-27/M-28 gates.",
+      "revalidation": "Before production acceptance of attachment access."
+    }
+  ],
+  "handoff": [
+    {
+      "target": "Design/accessibility review",
+      "trigger": "M-22 requires rendered visual and assistive evidence",
+      "inputs": [
+        "The panel states",
+        "Existing 820px layout breakpoint",
+        "Keyboard and announcement invariants"
+      ],
+      "authority_boundary": "Visual and assistive evidence only",
+      "status": "NOT_AVAILABLE"
+    },
+    {
+      "target": "API/security review",
+      "trigger": "Attachment authorization and tenant isolation are server-owned",
+      "inputs": ["Signed URL boundary", "API attachment route tests", "Tenant identity cases"],
+      "authority_boundary": "Server authorization and security acceptance",
+      "status": "REQUIRED"
+    }
+  ],
+  "revalidation_trigger": "Revisit when attachment listing, scan status, signed URL shape, record route lifecycle, or API trust contract changes."
+}

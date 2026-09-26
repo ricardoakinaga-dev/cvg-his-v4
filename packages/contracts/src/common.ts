@@ -95,8 +95,9 @@ export function createPaginatedResponseSchema<T extends z.ZodTypeAny>(itemSchema
  * Error response schema
  */
 export const errorResponseSchema = z.object({
+  code: z.string(),
   message: z.string(),
-  code: z.string().optional(),
+  correlationId: z.string().min(1),
   details: z.record(z.unknown()).optional()
 });
 

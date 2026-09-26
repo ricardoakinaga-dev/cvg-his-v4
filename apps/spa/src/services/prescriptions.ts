@@ -113,7 +113,10 @@ export const prescriptionsService = {
     return response.items ?? [];
   },
 
-  async create(payload: Omit<CreateClinicalEntryRequest, 'entryType'>): Promise<PrescriptionSummary> {
+  async create(
+    payload: Omit<CreateClinicalEntryRequest, 'entryType'>,
+    options: { readonly allergyAcknowledgement?: string } = {}
+  ): Promise<PrescriptionSummary> {
     const { record } = await medicalRecordsService.getByEncounter(payload.encounterId);
     const parsed = parsePrescriptionContent(payload.title, payload.content);
 
@@ -127,7 +130,10 @@ export const prescriptionsService = {
         dosage: parsed.dosage,
         route: parsed.route,
         frequency: parsed.frequency,
-        notes: parsed.notes
+        notes: parsed.notes,
+        ...(options.allergyAcknowledgement?.trim()
+          ? { allergyAcknowledgement: options.allergyAcknowledgement.trim() }
+          : {})
       })
     });
   },

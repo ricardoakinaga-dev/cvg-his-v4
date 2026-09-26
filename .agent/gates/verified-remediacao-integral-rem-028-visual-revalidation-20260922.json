@@ -1,0 +1,142 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-028-VISUAL-REVALIDATION-20260922",
+  "gate_id": "VERIFIED",
+  "supersedes": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-028-APPOINTMENTS-AGGREGATE-20260922",
+  "task": "REM-028",
+  "timestamp": "2026-09-22T12:34:19.000000Z",
+  "gate_type": "VERIFIED_REVALIDATION",
+  "scope": "revisão agregada local dos seams candidate-bound de appointments e seleção da próxima tarefa",
+  "scope_ref": "REM-028",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-ACCEPTANCE-EVIDENCE",
+      "description": "A correção permanece dentro do boundary visual extraído e restaura os seletores que a mudança de scoped-style tornou inacessíveis.",
+      "required": true,
+      "criterion": "A correção permanece dentro do boundary visual extraído e restaura os seletores que a mudança de scoped-style tornou inacessíveis.",
+      "status": "PASS",
+      "observed": "AgendaCalendarOrList.vue possui o layout flex do day-board header, a base compartilhada da time-matrix e truncamento para strong/span dos títulos de coluna; URL/query, server state, permissions e workflows continuam na page.",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-visual-revalidation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-VISUAL-REVALIDATION-20260922",
+        "apps/spa/src/pages/appointments/AgendaCalendarOrList.vue",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Validação local do boundary visual; não substitui aceite de owner, E7, CI ou release."
+    },
+    {
+      "id": "V-002-REGRESSION-RISK",
+      "description": "Typecheck/build e higiene do diff permanecem verdes após a correção.",
+      "required": true,
+      "criterion": "Typecheck/build e higiene do diff permanecem verdes após a correção.",
+      "status": "PASS",
+      "observed": "O build SPA passou com vue-tsc, Vite/PWA e 861 módulos; git diff --check passou.",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-visual-revalidation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-VISUAL-REVALIDATION-20260922",
+        "apps/spa/src/pages/appointments/AgendaCalendarOrList.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Validação local do build e do diff; não constitui prova de CI ou release."
+    },
+    {
+      "id": "V-003-LIMITATIONS-AUTHORITY",
+      "description": "O browser alcança a API em modo PostgreSQL real preparado e a suíte visual canônica completa passa sem atualizar snapshots.",
+      "required": true,
+      "criterion": "O browser alcança a API em modo PostgreSQL real preparado e a suíte visual canônica completa passa sem atualizar snapshots.",
+      "status": "PASS",
+      "observed": "O banco descartável passou migrations/seed e canonical runtime 1/1; API reportou productionReady=true; Playwright passou 34/34, incluindo appointments desktop/mobile claro/escuro, sem --update-snapshots.",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-visual-revalidation-20260922.txt",
+        ".agent/verification.jsonl#VER-REM-028-VISUAL-REVALIDATION-20260922",
+        "playwright-spa.config.ts",
+        "e2e/spa/visual/visual-regression.spec.ts",
+        "e2e/spa/snapshots/visual/visual-regression.spec.ts/appointments-kanban-page.png",
+        "e2e/spa/snapshots/visual/visual-regression.spec.ts/appointments-kanban-page-dark.png",
+        "e2e/spa/snapshots/visual/visual-regression.spec.ts/appointments-kanban-page-mobile.png",
+        "e2e/spa/snapshots/visual/visual-regression.spec.ts/appointments-kanban-page-mobile-dark.png"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A execução cobre o runtime descartável e a suíte visual local; a11y específico, owners, E7 e fronteiras externas continuam abertos."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-028-visual-revalidation-20260922.txt",
+    ".agent/verification.jsonl#VER-REM-028-VISUAL-REVALIDATION-20260922",
+    "apps/spa/src/pages/appointments/AgendaCalendarOrList.vue",
+    "playwright-spa.config.ts",
+    "e2e/spa/visual/visual-regression.spec.ts",
+    "e2e/spa/snapshots/visual/visual-regression.spec.ts/appointments-kanban-page.png",
+    "e2e/spa/snapshots/visual/visual-regression.spec.ts/appointments-kanban-page-dark.png",
+    "e2e/spa/snapshots/visual/visual-regression.spec.ts/appointments-kanban-page-mobile.png",
+    "e2e/spa/snapshots/visual/visual-regression.spec.ts/appointments-kanban-page-mobile-dark.png"
+  ],
+  "source_hashes": {
+    "apps/spa/src/pages/appointments/AgendaCalendarOrList.vue": "317316931b9707125bb1535bdf68d42e440bce584282ef32e35674bef395ad0c",
+    "e2e/spa/snapshots/visual/visual-regression.spec.ts/appointments-kanban-page.png": "020dac30d43f766104db2c921a42586daab95ecdf1ad54c5fc1c88ec5e3342c0",
+    "e2e/spa/snapshots/visual/visual-regression.spec.ts/appointments-kanban-page-dark.png": "c93b3f31dd4d1b4da67761e5eb6ed17488a8bc921b299d029c940ffef3d7592d",
+    "e2e/spa/snapshots/visual/visual-regression.spec.ts/appointments-kanban-page-mobile.png": "9f5bc7dde3d9eb13f69af236b4d362e6052f9ec0571b64ac4dec4c18431ee300",
+    "e2e/spa/snapshots/visual/visual-regression.spec.ts/appointments-kanban-page-mobile-dark.png": "bc61b94f4003bce32110fd422d47ef8942cf87a3d2521ea62475694351112a1b"
+  },
+  "limitations": [
+    "A evidência é local e candidate-bound; não há CI/OCI, target, UAT, release ou go/no-go.",
+    "A suíte visual não substitui revisão de owner nem a crítica independente fresca E7.",
+    "Axe/a11y específico de appointments não foi promovido por esta execução visual."
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-REM028-VISUAL-OWNER",
+      "description": "Owners de scheduling/frontend/design ainda precisam revisar o conjunto de boundaries e seus limites de responsabilidade.",
+      "non_blocking": true,
+      "status": "OPEN",
+      "owner": "lead",
+      "authority_state": "NOT_REQUIRED",
+      "impact": "Mantém aberto o aceite de ownership, sem invalidar a revalidação local do browser/visual.",
+      "due_or_trigger": "Antes do aceite integral de REM-028 ou se qualquer boundary de ownership mudar.",
+      "due_at": "2026-09-30T18:00:00.000000Z",
+      "residual_risk": "MEDIUM",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-visual-revalidation-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-028-visual-revalidation-20260922.json"
+      ],
+      "verification_method": "Registrar revisão/decisão dos owners e emitir gate superseding se houver drift."
+    },
+    {
+      "id": "COND-REM028-VISUAL-E7",
+      "description": "Crítica adversarial independente E7 permanece ausente sob o modo de agente primário único.",
+      "non_blocking": true,
+      "status": "OPEN",
+      "owner": "lead",
+      "authority_state": "NOT_REQUIRED",
+      "impact": "Mantém a crítica independente ausente como limitação explícita, sem invalidar a execução local reproduzível.",
+      "due_or_trigger": "Antes de qualquer aceite integral ou certificação de qualidade.",
+      "due_at": "2026-10-07T18:00:00.000000Z",
+      "residual_risk": "MEDIUM",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-visual-revalidation-20260922.txt",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "verification_method": "Executar crítica independente fresca antes de qualquer aceite integral."
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "lead",
+    "scope": "revisão agregada local dos seams candidate-bound de appointments e seleção da próxima tarefa",
+    "decision": "Nenhuma autoridade humana é necessária para esta revalidação local e reversível; aceite externo permanece aberto.",
+    "evidence_ref": ".agent/evidence/rem-028-visual-revalidation-20260922.txt",
+    "expires_or_revalidates": "Revalidar se o source boundary, runtime, snapshots, ownership ou autoridade de release mudar."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "status": "DONE_LOCAL",
+  "next_action": "REM-028:REOPEN-IF-DRIFT",
+  "revalidation_triggers": [
+    "Mudança em AgendaCalendarOrList.vue, AppointmentsListPage.vue, selectors, snapshots ou configuração Playwright.",
+    "Mudança no runtime/API/PostgreSQL de teste, ownership, condições de a11y ou requisitos de CI/UAT/release."
+  ]
+}

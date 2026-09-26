@@ -1,0 +1,101 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND12-20260923",
+  "recorded_at": "2026-09-23T07:57:09Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PARTIAL; patient timeline extraction and parent data-loading boundary reviewed; account-wide read minimization, fixture provenance, browser/accessibility/visual evidence, remaining parent workflows and independent critique remain open",
+  "paths_reviewed": [
+    {
+      "path": "apps/spa/src/pages/patients/PatientDetailPage.vue",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "c83c1cb64eedff3fe677dec0473e104899df48bfcd0c7e2864fa83cdaa1804ce",
+      "current_sha256": "c83c1cb64eedff3fe677dec0473e104899df48bfcd0c7e2864fa83cdaa1804ce",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_DATA_MINIMIZATION_AND_FIXTURE_PROVENANCE_HOLDS",
+      "review_notes": "The 3-insertion/27-deletion diff extracts the 360 timeline markup and its item type into PatientTimeline360. The parent still owns patient loading, patient-related domain data, summary composition and all service calls; no load/write method changed in this diff. Targeted source review checked route-generation guards and the encounter/medical-record list response boundaries.",
+      "candidate_overlay_decision": "HOLD_PENDING_PATIENT_DATA_MINIMIZATION_AND_COMPLETE_INVENTORY_CRITIQUE"
+    },
+    {
+      "path": "apps/spa/src/pages/patients/PatientTimeline360.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "15a0ddcdb9e77b708507b49100cab3f1a5bda906bed01a2199daa18c04ef275f",
+      "current_sha256": "15a0ddcdb9e77b708507b49100cab3f1a5bda906bed01a2199daa18c04ef275f",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_AND_ROUTING_HOLD",
+      "review_notes": "Read-only typed-props component renders parent-provided event text, timestamp and optional RouterLink. It performs no service/API call and owns no domain state. Vue interpolation escapes text; actual router navigation, screen-reader semantics, responsive viewport and visual behavior were not browser-tested.",
+      "candidate_overlay_decision": "HOLD_PENDING_BROWSER_ACCESSIBILITY_VISUAL_AND_COMPLETE_INVENTORY_REVIEW"
+    },
+    {
+      "path": "apps/spa/src/pages/patients/__tests__/PatientTimeline360.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "fec458fe5c62332f95e51b59445c161557baf3b828a45ae41d657fab8d047b62",
+      "current_sha256": "fec458fe5c62332f95e51b59445c161557baf3b828a45ae41d657fab8d047b62",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_ROUTER_AND_VISUAL_TEST_LIMITS",
+      "review_notes": "Two unit cases use component stubs to cover event display/date formatting/link label and explicit empty state. RouterLink is stubbed to an anchor; real route handling, keyboard/screen-reader behavior and visual layout are not exercised.",
+      "candidate_overlay_decision": "HOLD_PENDING_COMPLETE_INVENTORY_AND_INDEPENDENT_CRITIQUE"
+    }
+  ],
+  "reference_test": {
+    "path": "apps/spa/src/pages/patients/__tests__/PatientDetailPage.test.ts",
+    "working_tree_status": "clean tracked, not a dirty inventory path",
+    "working_tree_sha256": "636a3195ccd5ae71c0e6dcabbb35d8053082cff2ac0035b341071b65d787597c",
+    "origin_main_diff": "byte-identical to origin/main",
+    "used_as": "Parent-page behavior regression reference only; not counted in the original 386 dirty-path denominator."
+  },
+  "source_diff": {
+    "baseline": "origin/main:apps/spa/src/pages/patients/PatientDetailPage.vue",
+    "numstat": "3\t27\tapps/spa/src/pages/patients/PatientDetailPage.vue",
+    "assessment": "The changed page is a small presentation extraction: timeline template/style and a local interface move to PatientTimeline360. Patient data loading and mutations remain in the parent."
+  },
+  "test_execution": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config vitest.config.ts src/pages/patients/__tests__/PatientDetailPage.test.ts src/pages/patients/__tests__/PatientTimeline360.test.ts",
+    "working_directory": "apps/spa",
+    "started_at_utc": "2026-09-23T07:56:10Z",
+    "finished_at_utc": "2026-09-23T07:56:13Z",
+    "test_files_passed": 2,
+    "tests_passed": 12,
+    "tests_failed": 0,
+    "environment": "Standalone SPA Vitest/JSDOM config. Parent page domain services and router are mocked; the new child suite stubs DsCard and RouterLink. No database global setup, provider or live network call was observed."
+  },
+  "architecture_observations": [
+    "PatientTimeline360 is a display-only seam; parent passes a readonly event feed, and the child emits no workflow intent or mutation. Parent-generated links point to the focal encounter or medical-record route.",
+    "PatientDetailPage increments a load generation per patient route and checks both generation and route patient id after asynchronous loads; unmount invalidates the generation. This prevents stale results from another route from repopulating the current page.",
+    "The parent fetches encounterService.list() and medicalRecordsService.listAll() without a patient filter and then filters the returned summaries in the browser. Targeted API inspection found the encounter endpoint requires encounters.read and scopes listAll to the account but returns the unpaginated set when pagination parameters are omitted. The medical-record endpoint requires medical-records.read and listAll is account-scoped; its returned items are record summaries plus entry counts, not clinical entry bodies.",
+    "Those broad list responses expose account-scoped encounter/record identifiers, patient/owner identifiers, encounter reasons/status/dates and record counts to the browser before current-patient filtering. This is a data-minimization and payload-size concern, not evidence of cross-account or cross-tenant access; the page calls predate the small timeline extraction in this diff.",
+    "The page test exercises its many service paths through mocks. It does not prove API authorization, per-patient response minimization, data retention, or durable persistence. The focused child test checks only display and stubbed link output."
+  ],
+  "findings_and_limits": [
+    {
+      "id": "M02-PATIENT-ACCOUNT-WIDE-READS",
+      "classification": "HOLD_DATA_MINIMIZATION_AND_SCOPE",
+      "observation": "PatientDetailPage loads all account encounter summaries and all account medical-record summaries, then filters to the current patient client-side. The read endpoints enforce module permission/account scope, but do not receive this patient id in the calls inspected; /encounters is unpaginated when the client omits pagination.",
+      "required_followup": "Product/Security/Platform should confirm the account-wide response contract or provide patient-filtered bounded endpoints and verify the page can build its timeline without fetching unrelated patient summaries. This is an existing parent behavior, not introduced by the timeline extraction."
+    },
+    {
+      "id": "M02-PATIENT-BASELINE-FIXTURE-PROVENANCE",
+      "classification": "HOLD_SENSITIVITY_PROVENANCE",
+      "observation": "The clean baseline page test contains CPF-shaped and phone-shaped contact fixtures. They appear synthetic, but provenance was not established in this review.",
+      "required_followup": "Confirm synthetic provenance or replace with clearly reserved test values before external publication; no real-person claim is made."
+    }
+  ],
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "hold_reason": "The three dirty paths are hash-stable and focused tests pass, but the existing account-wide patient summary reads need data-minimization disposition; fixture provenance, browser/AT/visual behavior, remaining inventory review and independent critique remain open."
+  },
+  "limitations": [
+    "The 12 tests use JSDOM and mocked domain services; they do not establish runtime data access, patient-level filtering, server authorization, browser route behavior, screen-reader output or responsive visuals.",
+    "The clean parent-page test is baseline-identical and is reference evidence, not a path counted in the original 386-path denominator.",
+    "The CPF-shaped and phone-shaped fixtures were observed only in a limited source scan; provenance is unresolved and no complete PII review was performed.",
+    "This review is focused on the timeline extraction and its parent loading boundary; it is not a complete certification of the large patient page's billing, clinical, prescription, attachment or mutation workflows.",
+    "This is a primary-operator review, not independent privacy, clinical, backend, accessibility or candidate acceptance."
+  ]
+}

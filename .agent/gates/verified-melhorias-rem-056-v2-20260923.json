@@ -1,0 +1,80 @@
+{
+  "record_id": "GATE-VERIFIED-MELHORIAS-REM-056-LOCAL-V2-20260923",
+  "timestamp": "2026-09-23T05:20:39.104482Z",
+  "gate_id": "VERIFIED",
+  "scope": "Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.",
+  "scope_ref": "REM-056",
+  "version": 2,
+  "criteria": [
+    {
+      "id": "V-001-ACCEPTANCE-EVIDENCE",
+      "description": "O validador local lê o roadmap W3 selecionado pela governança e confere os requisitos documentais de recovery REM-024.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-056-LOCAL-RECOVERY-20260923",
+        ".agent/evidence/rem-056-local-verification-recovery-20260923.txt",
+        "infra/scripts/validate-backup-restore.mjs",
+        "docs/2026-09-23-roadmap-melhorias.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Confirma consistência do checker e dos documentos locais; não executa restauração."
+    },
+    {
+      "id": "V-002-REGRESSION-RISK",
+      "description": "O comando focal passou seis testes totais (um positivo e cinco mutações negativas), quinze checks estáticos e git diff --check.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-056-LOCAL-RECOVERY-20260923",
+        ".agent/evidence/rem-056-local-verification-recovery-20260923.txt",
+        "infra/scripts/validate-backup-restore.test.mjs"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Execução local na worktree compartilhada; nenhum SHA candidato foi congelado."
+    },
+    {
+      "id": "V-003-LIMITATIONS-AUTHORITY",
+      "description": "Escopo e fronteiras de autoridade estão explícitos: somente checker local, sem banco compartilhado ou target externo.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-056-LOCAL-RECOVERY-20260923",
+        ".agent/evidence/rem-056-local-verification-recovery-20260923.txt",
+        ".agent/backlog.json",
+        ".agent/evidence/m50-rem-crosswalk-20260923.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Restore/rollback real, certificação de target e medição RPO/RTO seguem REM-024/M-14."
+    }
+  ],
+  "evidence": [
+    ".agent/verification.jsonl#VER-REM-056-LOCAL-RECOVERY-20260923",
+    ".agent/evidence/rem-056-local-verification-recovery-20260923.txt",
+    ".agent/evidence/m03-backup-gate-20260923.json",
+    ".agent/evidence/rem-056-gate-recovery-20260923.md",
+    "infra/scripts/validate-backup-restore.mjs",
+    "infra/scripts/validate-backup-restore.test.mjs"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.",
+    "decision": "The user-authorized local work does not include target operations, destructive recovery drills, credentials, or release decisions.",
+    "evidence_ref": ".agent/plans/melhorias-20260923.md",
+    "expires_or_revalidates": "Revalidate if checker code, selected roadmap, REM-024 clauses, or the acceptance boundary changes."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS",
+  "next_action": "REM-056:ADJUDICATE",
+  "revalidation_triggers": [
+    "The checker, its negative mutation fixtures, the governance-selected W3 roadmap, or REM-024 requirements change.",
+    "A local result is used to claim real restore, rollback, target certification, tenant/RLS recovery, or RPO/RTO proof.",
+    "The checker is transferred to or interpreted against a frozen candidate SHA."
+  ],
+  "supersedes": "GATE-VERIFIED-MELHORIAS-REM-056-LOCAL-20260923"
+}

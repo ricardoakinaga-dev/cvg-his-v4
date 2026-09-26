@@ -1,0 +1,27 @@
+REM-028 — extração presentation-bound do painel de filtros de reports
+Data: 2026-09-22
+Runtime: Node v22.23.2; pnpm 10.33.0; Linux local; worktree dirty compartilhado preservado.
+
+Escopo executado:
+- Extraído `ReportFilterPanel.vue` para filtros de período, texto/status, auditoria, inventário e modo de cancelamento.
+- O painel recebe estado/flags/opções tipados e emite `update-filter`, `change-cancellation-view`, `apply` e `reset`.
+- A página continua dona da ref de filtros, persistência/leitura da URL, `reportKey`, labels/decoders, execução, serviços, server state e loading.
+- A atualização de filtros usa eventos explícitos; nenhum `v-model` muta prop no componente presentation-bound.
+- Adicionado teste focal cobrindo update page-owned, filtros específicos e intents de aplicar/limpar.
+
+Verificações executadas:
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/reports/__tests__/ReportFilterPanel.test.ts src/pages/reports/__tests__/ReportWorkbenchToolbar.test.ts src/pages/reports/__tests__/ReportExportAction.test.ts src/pages/reports/__tests__/ReportExportRecovery.test.ts src/pages/reports/__tests__/ReportQueryStatus.test.ts src/pages/reports/__tests__/ReportResultTable.test.ts src/pages/reports/__tests__/ReportWorkbenchPage.test.ts` — PASS, 7 arquivos / 90 testes.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit` — PASS.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa lint` — PASS, 0 erros e 32 warnings preexistentes de `no-explicit-any`.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa build` — PASS, Vite/PWA com 851 módulos transformados.
+- `git diff --check` — PASS.
+- Auditoria estática do boundary — PASS: `ReportFilterPanel.vue`, `ReportWorkbenchToolbar.vue` e `ReportExportAction.vue` não contêm referências runtime a services, router ou stores.
+
+Artefatos e fingerprints:
+- `apps/spa/src/pages/reports/ReportWorkbenchPage.vue` — sha256 `7bb9fee752a7f91c07e665f15b596af15461d4ee9c721d3b2be5209d36d730b3`; 2807 linhas.
+- `apps/spa/src/pages/reports/ReportFilterPanel.vue` — sha256 `b4a023ea5ceb703e8a7dd0459129e8adac50e7dbd88f9020de983de42ea83479`; 318 linhas.
+- `apps/spa/src/pages/reports/ReportWorkbenchToolbar.vue` — sha256 `1ff7d422c00d09b27b56d60efeacd8c0e67fb7470823f408b67c255ee2b5524c`; 53 linhas.
+- `apps/spa/src/pages/reports/__tests__/ReportFilterPanel.test.ts` — sha256 `8c6b1492d8416c2508379cdfe4fdefce4fe3c432a53c655fb3e21b71836f2db7`; 66 linhas.
+
+Resultado: `PASS_WITH_CONDITIONS` para esta fatia local. A prova browser/visual não foi executada porque o runtime/API local permanece unhealthy; não houve pixel diff, inspeção real de foco/teclado, dark/mobile ou atualização de snapshots. A suíte SPA integral pós-seam, a crítica adversarial E7 e a aprovação de owners continuam abertas. Nenhuma decisão de release foi inferida.
+Próxima ação: selecionar a próxima superfície restante de REM-028 após este gate.

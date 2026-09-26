@@ -1,0 +1,59 @@
+{
+  "gate_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-047-20260922",
+  "task": "REM-047",
+  "timestamp": "2026-09-22T10:34:24.000000Z",
+  "gate_type": "VERIFIED",
+  "decision": "PASS_WITH_CONDITIONS",
+  "criteria": [
+    {
+      "id": "V-REM047-001",
+      "criterion": "O pacote chaos deixou de declarar ausência de testes e cobre engine, faults, experiments e métricas com testes executáveis",
+      "status": "PASS",
+      "observed": "Native node:test TAP 11/11 no Node 22.23.2"
+    },
+    {
+      "id": "V-REM047-002",
+      "criterion": "shared/contracts possui contrato runtime executável e shared/types executa os testes existentes mais o envelope runtime",
+      "status": "PASS",
+      "observed": "shared/contracts 1/1 native TAP; shared/types 2 files/25 Vitest tests"
+    },
+    {
+      "id": "V-REM047-003",
+      "criterion": "Scripts de teste, typecheck/build e lint semântico estão wired sem dependência externa",
+      "status": "PASS",
+      "observed": "Três packages typecheck/build/lint verdes; no-tests placeholders removidos"
+    },
+    {
+      "id": "V-REM047-004",
+      "criterion": "Regressões de infraestrutura e políticas adjacentes permanecem verdes",
+      "status": "PASS",
+      "observed": "root-test-runner-contract 5/5; skip policy 36 allowlisted; dependency policy 69 manifests; diff check"
+    },
+    {
+      "id": "V-REM047-005",
+      "criterion": "Nenhum aceite target-bound, humano ou de release foi inferido",
+      "status": "PASS_WITH_CONDITIONS",
+      "observed": "Somente testes sintéticos locais; limites registrados na evidência"
+    }
+  ],
+  "evidence": ".agent/evidence/rem-047-test-implementation-20260922.txt",
+  "artifacts": [
+    "packages/chaos/package.json",
+    "packages/chaos/src/chaos-engine.test.ts",
+    "packages/chaos/src/faults.test.ts",
+    "packages/chaos/src/experiments.test.ts",
+    "packages/shared/contracts/package.json",
+    "packages/shared/contracts/src/upload-limits.test.ts",
+    "packages/shared/types/package.json",
+    "packages/shared/types/src/types.test.ts",
+    "packages/shared/types/src/event-envelope.test.ts",
+    "tests/unit/infra/root-test-runner-contract.test.ts"
+  ],
+  "limitations": [
+    "Sem target/shared infrastructure, provider real, game-day, recovery/RPO/RTO, CI/OCI, UAT, browser/a11y, release, go/no-go ou crítica independente fresca.",
+    "Interfaces TypeScript e aliases type-only não constituem comportamento runtime; a prova aplicável é typecheck e os exports runtime cobertos.",
+    "O gate é candidate-bound e local; drift dos manifests, testes ou runtime deve reabrir REM-047."
+  ],
+  "next_action": "REM-047:REOPEN-IF-DRIFT",
+  "status": "DONE_LOCAL"
+}

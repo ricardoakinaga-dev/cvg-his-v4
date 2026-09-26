@@ -1,0 +1,151 @@
+{
+  "evidence_id": "M21-ATTACHMENT-CONTENT-READ-ROUTE-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T10:28:02Z",
+  "scope": "M-21/M-23 extraction of authenticated and signed GET /attachments/:attachmentId/content from the API dispatcher.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to this dirty worktree at the recorded HEAD; it is not candidate or release evidence."
+  },
+  "extraction": {
+    "source_path": "apps/api/src/server.ts",
+    "server_lines_before": 3815,
+    "server_lines_after": 3773,
+    "server_line_delta": -42,
+    "dispatch_placement": "The content handler remains after attachment list and download-URL handlers and before attachment POST; signed token verification and tenant-account setup remain earlier in the dispatcher.",
+    "behavior_preserved": [
+      "Exact GET /attachments/:attachmentId/content matcher and method fallthrough.",
+      "Malformed ID validation, normal attachments.read principal lookup, and signed-download principal bypass preserve their prior order.",
+      "Account ownership and signed attachment-ID checks retain opaque not-found behavior; non-available scan state keeps the 409 envelope.",
+      "Content is fetched only after the scan check; empty content remains not found.",
+      "MIME type, byte length, sanitized content-disposition, nosniff header, audit actor/action/fields, persistence wait, 200 status, and binary response are preserved."
+    ],
+    "dependency_boundary": "Attachment service, verified signed claims, principal lookup, audit append, and audit persistence are injected by API composition."
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/routes/attachment-content-read-route.ts",
+      "sha256": "303cd27dc8e9269e365ea2fc320c11e7fbd1d691c0102cbf44c1de8e902d896e",
+      "physical_lines": 93
+    },
+    {
+      "path": "apps/api/src/routes/attachment-content-read-route.test.ts",
+      "sha256": "8b7fd65d334bb3d4542d02cd769196739243feb498a8170cbb84f340167ed3ea",
+      "physical_lines": 289
+    },
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "c705819d427cdcb90fb907fd4158040c9d7ac018fa48cdf24d921ef75386ed63",
+      "physical_lines": 3773
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "ce7569c729c88f86c7115697a4041233b34f69d972f078523e28273fce8c08f7",
+      "server_budget": {
+        "current_lines": 3773,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      }
+    },
+    {
+      "path": "apps/api/src/server.test.ts",
+      "sha256": "6310fa592496b8200661d7c8e2ed7557740dab2beb4f0389bb5957795c38263c",
+      "physical_lines": 6481
+    }
+  ],
+  "checks": [
+    {
+      "command": "export PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH; unset DATABASE_URL TEST_DATABASE_URL DATABASE_URL_TEST; node --import tsx --test apps/api/src/routes/attachment-content-read-route.test.ts apps/api/src/helpers/attachment-download-token.test.ts",
+      "result": "PASS, 8/8 tests: six attachment-content route tests plus two signed-token helper tests for tenant binding, wrong secrets/tampering, and expiration.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "export PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH; unset DATABASE_URL TEST_DATABASE_URL DATABASE_URL_TEST; NODE_ENV=test node --import tsx --test --test-name-pattern='cross-account attachment download requests return opaque 404 while the owner can retrieve content' apps/api/src/server.test.ts",
+      "result": "PASS, 1/1 in-process API test; covers foreign-account opaque 404, owner and signed content retrieval, invalid/expired signed tokens returning 401, and a valid mismatched attachment claim returning 404 without extra storage access.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "export PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH; unset DATABASE_URL TEST_DATABASE_URL DATABASE_URL_TEST; pnpm --filter @cvg-his-v2/api exec tsc -p tsconfig.json --noEmit",
+      "result": "PASS with no diagnostics.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "export PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH; pnpm complexity:check",
+      "result": "PASS; server.ts=3,773, cap=8,323, previous maximum=8,335.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "pnpm exec prettier --check apps/api/src/server.ts apps/api/src/routes/attachment-content-read-route.ts apps/api/src/routes/attachment-content-read-route.test.ts docs/engineering/complexity-hotspots.json; git diff --check -- apps/api/src/server.ts apps/api/src/routes/attachment-content-read-route.ts apps/api/src/routes/attachment-content-read-route.test.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS; all matched files use Prettier style and scoped tracked-diff whitespace check is clean.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    }
+  ],
+  "independent_review": {
+    "result": "PASS",
+    "critic_id": "critic_m21_attachment_content_i2",
+    "independence": "Fresh read-only I2 source comparison; exact hashes matched before and after, and route, token-helper, HTTP, and API typecheck commands were independently rerun.",
+    "reviewed_sha256": [
+      {
+        "path": "apps/api/src/server.ts",
+        "sha256": "c705819d427cdcb90fb907fd4158040c9d7ac018fa48cdf24d921ef75386ed63"
+      },
+      {
+        "path": "apps/api/src/server.test.ts",
+        "sha256": "6310fa592496b8200661d7c8e2ed7557740dab2beb4f0389bb5957795c38263c"
+      },
+      {
+        "path": "apps/api/src/routes/attachment-content-read-route.ts",
+        "sha256": "303cd27dc8e9269e365ea2fc320c11e7fbd1d691c0102cbf44c1de8e902d896e"
+      },
+      {
+        "path": "apps/api/src/routes/attachment-content-read-route.test.ts",
+        "sha256": "8b7fd65d334bb3d4542d02cd769196739243feb498a8170cbb84f340167ed3ea"
+      },
+      {
+        "path": "apps/api/src/helpers/attachment-download-token.test.ts",
+        "sha256": "42e46cf0c2f1bf26c69a3cc854f66dd622750e684f9663fa2504710ba93384e5"
+      },
+      {
+        "path": "docs/engineering/complexity-hotspots.json",
+        "sha256": "ce7569c729c88f86c7115697a4041233b34f69d972f078523e28273fce8c08f7"
+      }
+    ],
+    "findings": "No extraction regressions. Exact dispatch, early token verification and account context, authenticated versus signed access, account/attachment checks, scan/content gates, headers, audit persistence, and binary response remain correct. Added tests cover signed-ID mismatch, missing content, invalid/expired tokens, and token tampering/expiry."
+  },
+  "limitations": [
+    "Route and API integration tests use in-memory services; PostgreSQL/RLS and real storage behavior are not established.",
+    "The worktree remains dirty and no candidate SHA, CI, target, UAT, or release acceptance is asserted."
+  ],
+  "independent_review_history": [
+    {
+      "result": "PASS",
+      "critic_id": "critic_m21_attachment_content_i1",
+      "independence": "Fresh read-only I1 source comparison; hashes matched before and after, and both requested focused test commands were rerun.",
+      "reviewed_sha256": [
+        {
+          "path": "apps/api/src/server.ts",
+          "sha256": "c705819d427cdcb90fb907fd4158040c9d7ac018fa48cdf24d921ef75386ed63"
+        },
+        {
+          "path": "apps/api/src/routes/attachment-content-read-route.ts",
+          "sha256": "303cd27dc8e9269e365ea2fc320c11e7fbd1d691c0102cbf44c1de8e902d896e"
+        },
+        {
+          "path": "apps/api/src/routes/attachment-content-read-route.test.ts",
+          "sha256": "501b77407b22cf1e323186aa392d2abcb4a0ea20dcdaa241c5c4a2980984efd7"
+        },
+        {
+          "path": "docs/engineering/complexity-hotspots.json",
+          "sha256": "ce7569c729c88f86c7115697a4041233b34f69d972f078523e28273fce8c08f7"
+        }
+      ],
+      "findings": "No extraction regressions found. The reviewer confirmed exact dispatch placement, verified signed-claim handling, account/ID checks, scan gate, sanitized headers, audit persistence ordering, status/body behavior, and passed both requested focused suites."
+    }
+  ]
+}

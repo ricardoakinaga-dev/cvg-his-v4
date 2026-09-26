@@ -1,0 +1,160 @@
+{
+  "version": 1,
+  "goals": [
+    {
+      "goalId": "c9478a07-e1f4-4185-8345-15682b2b1916",
+      "runId": "5eea76fd-dc19-4518-b80b-4a7766275718",
+      "condition": "CVG-HIS V4 Agente 1 — Plataforma e release: implementar e verificar M-01, M-02, M-03, M-07, M-08, M-09, M-10, M-19, M-20, M-30, M-37, M-38, M-39, M-43, M-48, M-49, M-50 com evidência por item (DONE / PASS local delimitado / IMPLEMENTADO aguardando revisão / BLOCKED / NOT_PROVEN), entregando tabela final de 17 itens, SHA candidato+manifesto se M-02 completa, checks y límites, archivos modificados e integramiento, y bloqueos externos precisos. Não declarar o programa pronto com gates abertos.",
+      "successCriteria": "",
+      "constraints": "",
+      "mode": "normal",
+      "sessionID": "ses_f2dfff1c9ffewP3LNEvrzIFhx1",
+      "turnCount": 1,
+      "startedAt": 1790229654600,
+      "pausedAt": 0,
+      "totalTokens": 168491,
+      "usage": {
+        "input": 1060837,
+        "output": 148572,
+        "reasoning": 45743,
+        "cacheRead": 8734144,
+        "cacheWrite": 0,
+        "cost": 0,
+        "costKnown": true
+      },
+      "options": {
+        "maxTurns": 300,
+        "maxDurationMs": 14400000,
+        "maxTokens": 200000,
+        "maxCostUsd": 0,
+        "minDelayMs": 1500,
+        "maxRecentMessages": 50,
+        "noProgressTokenThreshold": 50,
+        "noProgressTurnsBeforePause": 2,
+        "noToolCallTurnsBeforePause": 2,
+        "noInterruptOnUserMessage": false,
+        "noContinueWhileChildrenActive": false,
+        "budgetWrapupRatio": 0.8,
+        "warnTurnsRemaining": 3,
+        "warnDurationMsRemaining": 60000,
+        "warnTokensRemaining": 25000,
+        "maxPromptFailures": 3,
+        "resultRetentionMs": 604800000,
+        "maxStoredResults": 200
+      },
+      "lastStatus": "Goal paused after user interruption. Run /goal resume to continue.",
+      "lastAssistantText": "Root is green; workspaces race because parallel packages share one ephemeral DB. Isolating DB names per process in `tests/setup/env.ts`.",
+      "lastAssistantMessageID": "msg_0d22e0bb10012cpd5m5kPHHnrw",
+      "lastContinueAt": 1790230596140,
+      "lastProgressAt": 1790255834792,
+      "noProgressTurns": 0,
+      "noToolCallTurns": 0,
+      "blockedReason": "",
+      "budgetWrapupSent": false,
+      "stopped": true,
+      "stopReason": "user interrupted",
+      "promptFailures": 0,
+      "formatFailures": 0,
+      "compactionEpoch": 2,
+      "stalledCompactions": 0,
+      "lastCompactionEventID": "evt_0d23948f30015oukChucm776t3",
+      "messageSeenSinceCompaction": true,
+      "compactionSourceAssistantMessageID": "",
+      "executionContext": {
+        "agent": "build",
+        "model": {
+          "providerID": "opencode",
+          "modelID": "mimo-v2.6-flash-free"
+        }
+      },
+      "continuationClaim": null,
+      "messageIDs": [
+        "msg_0d353053a001oeNfchcFJ8lAR9",
+        "msg_0d3534c83001WJp15sUenv9m0B",
+        "msg_0d353a3f7001KTAk0JeASsOXPz",
+        "msg_0d3541b5f001MH2R7sVQEXpoQG",
+        "msg_0d354cf6e001DA4Ka0BcoKjefx",
+        "msg_0d35b7027001sgx4UD6nuKUALu",
+        "msg_0d35d189e001mBrGvWOy3LxYvT",
+        "msg_0d35dd0b90014EMMLb6FhVTLvR",
+        "msg_0d35e59a800196tR51QnK7IfIV",
+        "msg_0d35ed92e001zscZepzhcB2ocI",
+        "msg_0d35f24640010KNh01xYa02q10",
+        "msg_0d360fd930012jfk02ulEoR639",
+        "msg_0d361f2ca001UVBFejH6yJwSJ3",
+        "msg_0d3622e87001ojNamYa3YZLMDH",
+        "msg_0d362ca39001rws0voCAKsQ0fk",
+        "msg_0d363aa6600186MClXnwY3734s",
+        "msg_0d36b64310017qpyUisCSTzafZ",
+        "msg_0d36c380b001SFfJQQpczUkZ1i",
+        "msg_0d36d316b001lerOXFOvuMzsBI",
+        "msg_0d36dff10001rqCnm61AatDu3C",
+        "msg_0d36e41e4001IB32FGi9RelrX5",
+        "msg_0d377b2c5001dyKgmCmPz5w0pR",
+        "msg_0d377d02f001PT2dBiZmxxexxs",
+        "msg_0d3782a85001pPbVZbNcXZkgwP",
+        "msg_0d378eda60015lOwGi5ete5SIH",
+        "msg_0d3798c550016TdpFBE2ecibs4",
+        "msg_0d37a20120017RLDDP7ZyACA1y",
+        "msg_0d37ace5b001wTIETdrdqI2b2u",
+        "msg_0d37bbf24001oWPsXBzs7IrOOm",
+        "msg_0d37f1666001xFUqDHelLozDHt",
+        "msg_0d37f6fdc001nFcR617100YbaR",
+        "msg_0d3805963001rRit5mDQpnf0nP",
+        "msg_0d380fd2c001u9Fms1SjWHx261",
+        "msg_0d3818be7001JF4dfgJ8FNovjm",
+        "msg_0d381fcc1001sAQM5c2oAulNSO",
+        "msg_0d382c3e4001stohna4MUtTe5j",
+        "msg_0d3890ea8001xYUPY96WXVZuk7",
+        "msg_0d389c9f7001OWeQ8JMUEr6DAi",
+        "msg_0d38adcf0001IrrmO5zdut4uBi",
+        "msg_0d38bbef1001frXf34xDpV6Xxd",
+        "msg_0d38c5d58001aZ8XXGOymVj84C",
+        "msg_0d38cadb90016fRQ4Sln6THifw",
+        "msg_0d38d3871001PzZVAy0ACq4iky",
+        "msg_0d38e437b001H7q675N0KU1rRA"
+      ],
+      "history": [
+        {
+          "type": "set",
+          "detail": "Goal created via agent tool with limits: 300 auto-continues, 14400s, 200,000 context tokens.",
+          "timestamp": 1790229654603
+        },
+        {
+          "type": "auto-continue",
+          "detail": "Sent auto-continue prompt 1/300.",
+          "timestamp": 1790230596150
+        },
+        {
+          "type": "paused",
+          "detail": "Paused auto-continue after a real user message arrived; latest instruction wins.",
+          "timestamp": 1790233364851
+        },
+        {
+          "type": "paused",
+          "detail": "Paused after OpenCode reported that the active turn was aborted.",
+          "timestamp": 1790255915575
+        }
+      ],
+      "checkpoints": [
+        {
+          "summary": "Starting the isolated test DB for M-07 and fixing the CI contract mismatch.",
+          "timestamp": 1790230596118
+        },
+        {
+          "summary": "Root is green; workspaces race because parallel packages share one ephemeral DB. Isolating DB names per process in `tests/setup/env.ts`.",
+          "timestamp": 1790233364850
+        }
+      ],
+      "lastCheckpoint": {
+        "summary": "Root is green; workspaces race because parallel packages share one ephemeral DB. Isolating DB names per process in `tests/setup/env.ts`.",
+        "timestamp": 1790233364850
+      },
+      "skipNextTerminalCheck": false,
+      "focused": true
+    }
+  ],
+  "results": [],
+  "archives": [],
+  "orderedSessions": []
+}

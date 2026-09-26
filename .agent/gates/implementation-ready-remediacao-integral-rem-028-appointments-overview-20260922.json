@@ -1,0 +1,124 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-REM-028-APPOINTMENTS-OVERVIEW-20260922",
+  "timestamp": "2026-09-22T05:40:00.000000Z",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "preparação candidate-bound do overview/query da agenda, preservando page ownership de URL, filtros, sessão e actions",
+  "scope_ref": "REM-028",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-APPT-OVERVIEW-001",
+      "description": "Overview primário, enriquecimento opcional, caches, generation/stale-response, loading/error, 403 e unmount foram mapeados contra os services e testes focais existentes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-overview-preparation-20260922.txt",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+        "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts",
+        "apps/spa/src/services/scheduling.ts",
+        "apps/spa/src/services/owner.ts",
+        "apps/spa/src/services/patient.ts",
+        "apps/spa/src/services/services.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A inspeção não substitui a regressão após a implementação."
+    },
+    {
+      "id": "IR-APPT-OVERVIEW-002",
+      "description": "Foi selecionado composable/controller candidate-bound com loaders injetados e getters de parâmetros/permissão; router, query/contexto, sessão e actions permanecem na page.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-overview-preparation-20260922.txt",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+        "apps/spa/src/pages/appointments/agendaContext.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A auditoria estática do novo boundary será executada após a implementação."
+    },
+    {
+      "id": "IR-APPT-OVERVIEW-003",
+      "description": "Known-bads e verificação proporcional estão explícitos: publicação sem esperar enriquecimento, fallback opcional, limpeza de resultado stale/failed, 403 fail-closed e reconciliação do drawer.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-overview-preparation-20260922.txt",
+        "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Browser/visual, E7, owners e suíte SPA integral continuam fora desta preparação."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-028-appointments-overview-preparation-20260922.txt",
+    "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+    "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts",
+    "apps/spa/src/pages/appointments/agendaContext.ts",
+    "apps/spa/src/services/scheduling.ts",
+    "apps/spa/src/services/owner.ts",
+    "apps/spa/src/services/patient.ts",
+    "apps/spa/src/services/services.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "O composable e seu teste focal ainda não foram implementados.",
+    "Browser/visual/a11y real continua condicionado pelo /health da API local indisponível.",
+    "Crítica adversarial E7, revisão de owners e suíte SPA integral pós-seam permanecem abertas."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-028-APPOINTMENTS-OVERVIEW-BROWSER",
+      "description": "Executar browser/visual com API saudável após os seams da agenda, incluindo loading, erro, empty, partial enrichment, filtro, foco e responsividade.",
+      "non_blocking": true,
+      "impact": "Bloqueia claim visual/a11y e fechamento integral de REM-028, mas não a implementação local reversível.",
+      "owner": "frontend/design",
+      "due_or_trigger": "Antes do VERIFIED integral de REM-028 ou atualização de baseline visual.",
+      "verification_method": "Playwright focal/interação e inspeção de artefatos atuais.",
+      "due_at": "2026-09-23T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-overview-preparation-20260922.txt",
+        "playwright-spa.config.ts"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-028-APPOINTMENTS-OVERVIEW-OWNER",
+      "description": "O contrato candidate-bound de server state e enriquecimento aguarda revisão identificada dos owners de scheduling/frontend/design.",
+      "non_blocking": true,
+      "impact": "Não bloqueia implementação local reversível; bloqueia aceite organizacional do contrato.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de promover o composable a compromisso de roadmap ou aceitar alteração no contrato de overview.",
+      "verification_method": "Registrar revisão/decisão do owner e superseder a condição.",
+      "due_at": "2026-09-24T12:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-overview-preparation-20260922.txt",
+        "docs/engineering/OWNERSHIP_AND_COMPLEXITY.md"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "inspeção e implementação local reversível do composable candidate-bound de overview da agenda",
+    "decision": "A instrução autoriza inspeção e implementação local; não autoriza aceite visual humano, target, UAT, release ou autoridade externa.",
+    "evidence_ref": ".agent/evidence/rem-028-appointments-overview-preparation-20260922.txt",
+    "expires_or_revalidates": "Revalidar se o seam tocar router/query, permission source, action workflow ou novo contrato de server state."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-028:IMPLEMENT-APPOINTMENTS-OVERVIEW-SEAM",
+  "revalidation_triggers": [
+    "Ler route/query, criar store universal ou mover sessão/permission source para o composable.",
+    "Aguardar owner/patient/services antes de publicar o overview primário.",
+    "Remover request generation, stale invalidation, fallback opcional, 403 fail-closed ou reconciliação da seleção.",
+    "Atualizar snapshots enquanto a API/health E2E estiver indisponível.",
+    "Avançar para owner acceptance, CI remoto, target, UAT ou release."
+  ],
+  "supersedes": ".agent/gates/verified-remediacao-integral-rem-028-appointments-action-20260922.json"
+}

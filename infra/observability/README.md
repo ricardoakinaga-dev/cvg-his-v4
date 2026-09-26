@@ -280,12 +280,16 @@ fallback em memória nem `UPDATE` direto da API na tabela de deliveries.
 ### 9.1 Verificar se API ou worker está expondo métricas
 
 ```bash
-curl -s -H "Authorization: Bearer ${METRICS_AUTH_TOKEN:?set METRICS_AUTH_TOKEN}" \
-  http://localhost:3003/metrics | head -50
+set -o pipefail
+
+curl --fail --silent --show-error \
+  -H "Authorization: Bearer ${METRICS_AUTH_TOKEN:?set METRICS_AUTH_TOKEN}" \
+  http://localhost:3003/metrics | sed -n '1,50p'
 
 # O worker usa a mesma credencial do collector na rede interna.
-curl -s -H "Authorization: Bearer ${METRICS_AUTH_TOKEN:?set METRICS_AUTH_TOKEN}" \
-  http://localhost:3002/metrics | head -50
+curl --fail --silent --show-error \
+  -H "Authorization: Bearer ${METRICS_AUTH_TOKEN:?set METRICS_AUTH_TOKEN}" \
+  http://localhost:3002/metrics | sed -n '1,50p'
 ```
 
 ### 9.2 Verificar traces estão sendo exportados
@@ -295,8 +299,11 @@ Verificar logs da API procurando por `span` exportado ou erros de conexão OTLP.
 ### 9.3 Validar SLOs
 
 ```bash
-curl -s -H "Authorization: Bearer ${METRICS_AUTH_TOKEN:?set METRICS_AUTH_TOKEN}" \
-  http://localhost:3003/slos | jq .
+set -o pipefail
+
+curl --fail --silent --show-error \
+  -H "Authorization: Bearer ${METRICS_AUTH_TOKEN:?set METRICS_AUTH_TOKEN}" \
+  http://localhost:3003/slos | jq -e '.report.slos | type == "array"'
 ```
 
 ---

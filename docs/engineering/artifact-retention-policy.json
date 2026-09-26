@@ -1,0 +1,119 @@
+{
+  "schema_version": 1,
+  "owner": "LT/QA",
+  "purpose": "Classificar artefatos locais, limitar crescimento e impedir exclusão automática de evidência legal ou ativa.",
+  "managed_roots": [
+    "artifacts",
+    "coverage",
+    "test-results",
+    "playwright-report",
+    ".agent/evidence",
+    ".agent/gates",
+    ".agent/archive"
+  ],
+  "acl_profiles": {
+    "restricted-owner-only": {
+      "directory_mode": "0700",
+      "file_mode": "0600",
+      "external_sharing": "deny-by-default",
+      "workflow_upload": "explicit-job-retention-only"
+    },
+    "restricted-active-evidence": {
+      "directory_mode": "0700",
+      "file_mode": "0600",
+      "external_sharing": "deny-by-default",
+      "workflow_upload": "sha-bound-and-explicit"
+    },
+    "restricted-legal-hold": {
+      "directory_mode": "0700",
+      "file_mode": "0600",
+      "external_sharing": "deny-by-default",
+      "workflow_upload": "owner-approved-only"
+    }
+  },
+  "classes": [
+    {
+      "id": "legal-hold",
+      "description": "Preservação legal ou operacional explícita; nunca candidata a limpeza por TTL/quota.",
+      "prefixes": [".agent/archive", "artifacts/legal-hold"],
+      "retention_days": null,
+      "quota_bytes": null,
+      "acl_profile": "restricted-legal-hold",
+      "protected": true
+    },
+    {
+      "id": "active-evidence",
+      "description": "Evidência vinculada a gates, auditorias, release, remediation ou runs SHA-bound ainda consultáveis.",
+      "prefixes": [
+        ".agent/evidence",
+        ".agent/gates",
+        "artifacts/access-governance",
+        "artifacts/audit-20260912-deep",
+        "artifacts/audit-governance",
+        "artifacts/auditoria-2026-09-13-atual",
+        "artifacts/auditoria-2026-09-14",
+        "artifacts/auditoria-checkpoint-prod-001-005-2026-09-13",
+        "artifacts/consolidacao-2026-09-05",
+        "artifacts/lgpd-governance",
+        "artifacts/observability-governance",
+        "artifacts/planejamento-state-of-art-2026-09-14",
+        "artifacts/playwright",
+        "artifacts/release",
+        "artifacts/remediation",
+        "artifacts/repository-cleanup",
+        "artifacts/security",
+        "artifacts/state-of-art",
+        "artifacts/triple-a",
+        "artifacts/usability"
+      ],
+      "retention_days": null,
+      "quota_bytes": 68719476736,
+      "acl_profile": "restricted-active-evidence",
+      "protected": true
+    },
+    {
+      "id": "generated-run",
+      "description": "Saídas locais reproduzíveis de testes e relatórios transitórios, sem evidência ativa registrada.",
+      "prefixes": ["test-results", "playwright-report"],
+      "retention_days": 14,
+      "quota_bytes": 8589934592,
+      "acl_profile": "restricted-owner-only",
+      "protected": false
+    },
+    {
+      "id": "coverage-run",
+      "description": "Cobertura local gerada; artefatos com checksum, manifest ou evidence permanecem protegidos.",
+      "prefixes": ["coverage"],
+      "retention_days": 30,
+      "quota_bytes": 12884901888,
+      "acl_profile": "restricted-owner-only",
+      "protected": false
+    },
+    {
+      "id": "unknown",
+      "description": "Superfície não classificada; falha fechada até classificação e autoridade do owner.",
+      "prefixes": [],
+      "retention_days": null,
+      "quota_bytes": null,
+      "acl_profile": "restricted-owner-only",
+      "protected": true
+    }
+  ],
+  "protection_rules": {
+    "unknown_class_is_protected": true,
+    "protected_path_segments": [".active-evidence", ".legal-hold"],
+    "protected_file_patterns": [
+      "^SHA256SUMS(?:\\..*)?$",
+      "^CHECKSUMS(?:\\..*)?$",
+      "^metadata\\.json$",
+      "^manifest(?:[-_.].*)?$",
+      "(?:^|[-_.])evidence(?:[-_.]|$)"
+    ],
+    "deletion_requires": [
+      "dry-run reviewed by owner",
+      "explicit authority for the exact scope",
+      "legal-hold and active-evidence checks passed",
+      "recoverable archive or rollback confirmed"
+    ]
+  }
+}

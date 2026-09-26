@@ -93,7 +93,8 @@ export class PagarMePixAdapter implements PixProvider {
   async #request<T>(
     method: 'GET' | 'POST' | 'DELETE',
     path: string,
-    body?: Record<string, unknown>
+    body?: Record<string, unknown>,
+    extraHeaders: Record<string, string> = {}
   ): Promise<T> {
     const url = `${this.#baseUrl}${path}`;
     const options: RequestInit = {
@@ -102,6 +103,7 @@ export class PagarMePixAdapter implements PixProvider {
         Authorization: this.#authHeader(),
         'Content-Type': 'application/json',
         'User-Agent': 'cvg-his-v2-pix-adapter/1.0',
+        ...extraHeaders,
       },
     };
 
@@ -147,7 +149,8 @@ export class PagarMePixAdapter implements PixProvider {
     const qrCodeResponse = await this.#request<PagarMeQrCodeResponse>(
       'POST',
       '/core/v5/pix/qr_codes',
-      body
+      body,
+      input.idempotencyKey ? { 'Idempotency-Key': input.idempotencyKey } : {}
     );
 
     const transactionId = createCorrelationId('pix') as PixTransactionId;

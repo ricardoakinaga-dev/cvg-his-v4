@@ -299,537 +299,43 @@
               </section>
             </details>
 
-            <section v-if="selectedView === 'list'" class="agenda-appointment-list" aria-label="Agendamentos em ordem cronológica">
-              <p class="agenda-appointment-list__count" role="status">{{ chronologicalItems.length }} agendamento(s)</p>
-              <EmptyState
-                v-if="!chronologicalItems.length"
-                icon="📅"
-                title="Nenhum agendamento neste período"
-                description="Altere a data ou os filtros para consultar outros agendamentos."
-              />
-              <ol v-else class="agenda-appointment-list__items">
-                <li v-for="item in chronologicalItems" :key="item.id">
-                  <button type="button" class="agenda-appointment-row" :data-focus-key="`appointment-${item.id}`" @click="openAppointmentDetails(item)">
-                    <time :datetime="item.scheduledAt" class="agenda-appointment-row__time">
-                      <strong>{{ timeLabel(item.scheduledAt) }}</strong>
-                      <span>{{ appointmentDateLabel(item.scheduledAt) }}</span>
-                    </time>
-                    <span class="agenda-appointment-row__identity">
-                      <strong>{{ patientName(item.patientId) }}</strong>
-                      <span>Tutor: {{ ownerName(item.ownerId) }}</span>
-                      <span>{{ item.serviceName || item.specialty || item.reason }}</span>
-                    </span>
-                    <span class="agenda-appointment-row__operation">
-                      <strong>{{ operationalLabel(item) }}</strong>
-                      <span>{{ appointmentResponsibleLabel(item) }}</span>
-                      <span
-                        v-if="item.conflicts.length"
-                        class="agenda-appointment-row__alert"
-                        :class="{ 'agenda-appointment-row__alert--critical': item.conflicts.some(conflict => conflict.severity === 'critical') }"
-                      >{{ item.conflicts.length }} {{ item.conflicts.length === 1 ? 'alerta' : 'alertas' }} · Verificar conflito</span>
-                    </span>
-                    <span class="agenda-appointment-row__details">Ver detalhes →</span>
-                  </button>
-                </li>
-              </ol>
-            </section>
-
-            <template v-else-if="viewMode === 'month'">
-              <section class="month-board">
-                <div class="month-board__weekdays">
-                  <span v-for="weekday in weekdayLabels" :key="weekday">{{ weekday }}</span>
-                </div>
-                <div class="month-grid">
-                  <DsCard
-                    v-for="day in monthCalendarDays"
-                    :key="day.date"
-                    class="month-cell"
-                    :class="{
-                      'month-cell--muted': !day.inCurrentMonth,
-                      'month-cell--selected': day.date === referenceDate
-                    }"
-                  >
-                    <button
-                      type="button"
-                      class="month-cell__header"
-                      :aria-current="day.date === referenceDate ? 'date' : undefined"
-                      @click="selectDate(day.date)"
-                    >
-                      <strong>{{ day.dayNumber }}</strong>
-                      <span>{{ appointmentsByDay(day.date).length }} ag.</span>
-                    </button>
-                    <div class="month-cell__body">
-                      <div class="month-cell__availability">
-                        {{ availableSlotsByDay(day.date) }} horários livres
-                      </div>
-                      <button
-                        v-if="canManageScheduling"
-                        type="button"
-                        class="month-cell__empty-surface"
-                        :aria-label="`Criar agendamento em ${day.date}`"
-                        @click="openSlotCreateFlow({ date: day.date })"
-                      >
-                        Criar no dia {{ day.dayNumber }}
-                      </button>
-                      <button
-                        v-for="item in appointmentsByDay(day.date).slice(0, 5)"
-                        :key="item.id"
-                        type="button"
-                        class="month-item"
-                        @click="openAppointmentDetails(item)"
-                      >
-                        <span>{{ timeLabel(item.scheduledAt) }}</span>
-                        <strong>{{ patientName(item.patientId) }}</strong>
-                        <small
-                          >{{ ownerName(item.ownerId) }} · {{ appointmentTypeLabel(item) }}</small
-                        >
-                        <small>{{ appointmentResponsibleLabel(item) }}</small>
-                        <small class="month-item__next">{{ nextStepForAppointment(item) }}</small>
-                      </button>
-                      <button
-                        v-if="canManageScheduling"
-                        type="button"
-                        class="month-create-slot"
-                        @click="openSlotCreateFlow({ date: day.date })"
-                      >
-                        + Novo agendamento
-                      </button>
-                      <button
-                        v-if="appointmentsByDay(day.date).length > 5"
-                        type="button"
-                        class="month-item__more month-item__more--action"
-                        :aria-label="`Ver os ${appointmentsByDay(day.date).length - 5} compromissos adicionais de ${day.date}`"
-                        @click="setViewMode('list')"
-                      >
-                        +{{ appointmentsByDay(day.date).length - 5 }} compromissos
-                      </button>
-                    </div>
-                  </DsCard>
-                </div>
-              </section>
-            </template>
-
-            <template v-else-if="viewMode === 'week'">
-              <section class="week-board">
-                <div
-                  class="time-matrix"
-                  role="grid"
-                  aria-label="Grade semanal de agendamentos"
-                  :style="{
-                    gridTemplateColumns: `72px repeat(${visibleDays.length}, minmax(150px, 1fr))`
-                  }"
-                >
-                  <div class="time-matrix__corner">Horário</div>
-                  <div
-                    v-for="day in visibleDays"
-                    :key="`${day.date}-header`"
-                    class="time-matrix__column-title time-matrix__column-title--day"
-                  >
-                    <strong>{{ day.label }}</strong>
-                    <span>{{ dayGridSummary(day.date) }}</span>
-                  </div>
-
-                  <div class="time-matrix__hour time-matrix__hour--all-day">Dia inteiro</div>
-                  <div
-                    v-for="day in visibleDays"
-                    :key="`${day.date}-all-day`"
-                    class="time-matrix__slot time-matrix__slot--all-day"
-                  >
-                    <button
-                      v-if="canManageScheduling"
-                      type="button"
-                      class="time-matrix__empty-button time-matrix__empty-button--compact"
-                      :aria-label="`Criar agendamento livre em ${day.label}`"
-                      @click="openSlotCreateFlow({ date: day.date })"
-                    >
-                      Disponível dia inteiro
-                    </button>
-                    <span v-else class="time-matrix__empty">Disponível dia inteiro</span>
-                  </div>
-
-                  <template v-for="hour in timelineHours" :key="`week-${hour}`">
-                    <div class="time-matrix__hour">{{ formatHour(hour) }}</div>
-
-                    <div
-                      v-for="day in visibleDays"
-                      :key="`${day.date}-${hour}`"
-                      class="time-matrix__slot"
-                    >
-                      <div v-if="weekBlocksBySlot(day.date, hour).length" class="timeline-blocks">
-                        <div
-                          v-for="block in weekBlocksBySlot(day.date, hour)"
-                          :key="block.id"
-                          class="timeline-block"
-                        >
-                          {{ block.title }}
-                        </div>
-                      </div>
-
-                      <div
-                        v-if="appointmentsByWeekSlot(day.date, hour).length"
-                        class="timeline-items"
-                      >
-                        <div
-                          v-for="item in visibleAppointmentsByWeekSlot(day.date, hour)"
-                          :key="item.id"
-                          class="timeline-item"
-                          :class="{
-                            [`timeline-item--${item.operational.stage}`]: true,
-                            'timeline-item--dense': isDenseWeekSlot(day.date, hour)
-                          }"
-                        >
-                          <button
-                            type="button"
-                            class="timeline-item__surface"
-                            :aria-label="appointmentCardAriaLabel(item)"
-                            @click="openAppointmentDetails(item)"
-                          >
-                          <span class="timeline-item__head">
-                            <span
-                              >{{ timeLabel(item.scheduledAt) }} ·
-                              {{ item.durationMinutes || 30 }} min</span
-                            >
-                            <span
-                              class="status-pill"
-                              :class="`status-pill--${item.operational.stage}`"
-                            >
-                              {{ operationalLabel(item) }}
-                            </span>
-                          </span>
-                          <span class="timeline-item__patient">{{ patientName(item.patientId) }}</span>
-                          <span v-if="!isDenseWeekSlot(day.date, hour)">{{
-                            ownerName(item.ownerId)
-                          }}</span>
-                          <small v-if="!isDenseWeekSlot(day.date, hour)">{{
-                            item.serviceName || item.specialty || item.reason
-                          }}</small>
-                          <span v-if="!isDenseWeekSlot(day.date, hour)" class="timeline-item__ops">
-                            <span>{{ appointmentResponsibleLabel(item) }}</span>
-                            <span>{{ queueBridgeLabel(item) }}</span>
-                            <strong>{{ nextStepForAppointment(item) }}</strong>
-                          </span>
-                          </button>
-                        </div>
-                        <button
-                          v-if="hiddenWeekSlotCount(day.date, hour) > 0"
-                          type="button"
-                          class="timeline-slot-summary timeline-slot-summary--action"
-                          :aria-label="`Ver ${hiddenWeekSlotCount(day.date, hour)} agendamentos adicionais`"
-                          @click="setViewMode('list')"
-                        >
-                          +{{ hiddenWeekSlotCount(day.date, hour) }} adicionais
-                        </button>
-                      </div>
-
-                      <button
-                        v-if="canManageScheduling && hasAvailableWeekSlot(day.date, hour)"
-                        type="button"
-                        class="time-matrix__empty-button"
-                        :class="{
-                          'time-matrix__empty-button--compact':
-                            appointmentsByWeekSlot(day.date, hour).length > 0
-                        }"
-                        :aria-label="`Criar agendamento livre em ${day.label} às ${formatHour(hour)}`"
-                        @click="
-                          openSlotCreateFlow({
-                            date: day.date,
-                            hour,
-                            practitionerStaffId: firstAvailablePractitionerForWeekSlot(
-                              day.date,
-                              hour
-                            )
-                          })
-                        "
-                      >
-                        {{
-                          appointmentsByWeekSlot(day.date, hour).length > 0
-                            ? 'Horário livre'
-                            : 'Disponível'
-                        }}
-                      </button>
-                      <button
-                        v-else-if="canManageScheduling"
-                        type="button"
-                        class="time-matrix__empty-button"
-                        :aria-label="`Criar agendamento em ${day.label} às ${formatHour(hour)}`"
-                        @click="openSlotCreateFlow({ date: day.date, hour })"
-                      >
-                        Disponível
-                      </button>
-                      <span v-else class="time-matrix__empty">Disponível</span>
-                    </div>
-                  </template>
-                </div>
-              </section>
-            </template>
-
-            <template v-else>
-              <section v-for="day in visibleDays" :key="day.date" class="day-board">
-                <div class="day-board__header">
-                  <div>
-                    <strong>{{ day.label }}</strong>
-                    <p>{{ dayGridSummary(day.date) }}</p>
-                  </div>
-                  <DsButton
-                    v-if="canManageScheduling"
-                    variant="ghost"
-                    size="sm"
-                    @click="selectDate(day.date)"
-                  >
-                    Fixar data
-                  </DsButton>
-                </div>
-
-                <div
-                  class="time-matrix"
-                  role="grid"
-                  aria-label="Grade diária de agendamentos"
-                  :style="{
-                    gridTemplateColumns: `72px repeat(${columnCount}, minmax(180px, 1fr))`
-                  }"
-                >
-                  <div class="time-matrix__corner">Horário</div>
-                  <div
-                    v-for="column in professionalColumns"
-                    :key="`${day.date}-${column.id}-header`"
-                    class="time-matrix__column-title"
-                  >
-                    <strong>{{ column.label }}</strong>
-                    <span>{{ appointmentsByColumn(day.date, column.id).length }}</span>
-                  </div>
-
-                  <div class="time-matrix__hour time-matrix__hour--all-day">Dia inteiro</div>
-                  <div
-                    v-for="column in professionalColumns"
-                    :key="`${day.date}-${column.id}-all-day`"
-                    class="time-matrix__slot time-matrix__slot--all-day"
-                  >
-                    <button
-                      v-if="canManageScheduling"
-                      type="button"
-                      class="time-matrix__empty-button time-matrix__empty-button--compact"
-                      :aria-label="slotAriaLabel(day.label, column.label, 9)"
-                      @click="
-                        openSlotCreateFlow({ date: day.date, practitionerStaffId: column.id })
-                      "
-                    >
-                      Disponível dia inteiro
-                    </button>
-                    <span v-else class="time-matrix__empty">Disponível dia inteiro</span>
-                  </div>
-
-                  <template v-for="hour in timelineHours" :key="`${day.date}-${hour}`">
-                    <div class="time-matrix__hour">{{ formatHour(hour) }}</div>
-
-                    <div
-                      v-for="column in professionalColumns"
-                      :key="`${day.date}-${column.id}-${hour}`"
-                      class="time-matrix__slot"
-                    >
-                      <div
-                        v-if="blocksBySlot(day.date, column.id, hour).length"
-                        class="timeline-blocks"
-                      >
-                        <div
-                          v-for="block in blocksBySlot(day.date, column.id, hour)"
-                          :key="block.id"
-                          class="timeline-block"
-                        >
-                          {{ block.title }}
-                        </div>
-                      </div>
-
-                      <div
-                        v-if="appointmentsBySlot(day.date, column.id, hour).length"
-                        class="timeline-items"
-                      >
-                        <div
-                          v-for="item in visibleAppointmentsBySlot(day.date, column.id, hour)"
-                          :key="item.id"
-                          class="timeline-item"
-                          :class="{
-                            [`timeline-item--${item.operational.stage}`]: true,
-                            'timeline-item--dense': isDenseSlot(day.date, column.id, hour)
-                          }"
-                        >
-                          <button
-                            type="button"
-                            class="timeline-item__surface"
-                            :aria-label="appointmentCardAriaLabel(item)"
-                            @click="openAppointmentDetails(item)"
-                          >
-                          <span class="timeline-item__head">
-                          <span
-                              >{{ timeLabel(item.scheduledAt) }} ·
-                              {{ item.durationMinutes || 30 }} min</span
-                            >
-                            <span
-                              class="status-pill"
-                              :class="`status-pill--${item.operational.stage}`"
-                            >
-                              {{ operationalLabel(item) }}
-                            </span>
-                          </span>
-                          <span class="timeline-item__patient">{{ patientName(item.patientId) }}</span>
-                          <span v-if="!isDenseSlot(day.date, column.id, hour)">{{
-                            ownerName(item.ownerId)
-                          }}</span>
-                          <small v-if="!isDenseSlot(day.date, column.id, hour)">{{
-                            item.serviceName || item.specialty || item.reason
-                          }}</small>
-                          <small
-                            v-if="!isDenseSlot(day.date, column.id, hour)"
-                            class="timeline-item__meta"
-                          >
-                            {{ appointmentTypeLabel(item) }} · {{ appointmentSectorLabel(item) }}
-                          </small>
-                          <span
-                            v-if="!isDenseSlot(day.date, column.id, hour)"
-                            class="timeline-item__ops"
-                          >
-                            <span>{{ appointmentResponsibleLabel(item) }}</span>
-                            <span>{{ queueBridgeLabel(item) }}</span>
-                            <strong>{{ nextStepForAppointment(item) }}</strong>
-                          </span>
-
-                          <span
-                            v-if="!isDenseSlot(day.date, column.id, hour) && item.conflicts.length"
-                            class="timeline-item__conflicts"
-                          >
-                            <span
-                              v-for="conflict in item.conflicts.slice(0, 2)"
-                              :key="`${item.id}-${conflict.type}-${conflict.startsAt}`"
-                              >
-                                {{ conflict.message }}
-                              </span>
-                            </span>
-                          </button>
-
-                          <div
-                            v-if="!isDenseSlot(day.date, column.id, hour)"
-                            class="timeline-item__actions"
-                            @click.stop
-                          >
-                            <DsButton
-                              variant="ghost"
-                              size="sm"
-                              :disabled="Boolean(actionLoadingId)"
-                              @click="openAppointmentDetails(item)"
-                              >Ver</DsButton
-                            >
-                            <DsButton
-                              v-if="canCheckIn(item)"
-                              variant="success"
-                              size="sm"
-                              :disabled="Boolean(actionLoadingId)"
-                              :loading="actionLoadingId === item.id && actionKind === 'checkin'"
-                              @click="checkIn(item)"
-                            >
-                              Check-in
-                            </DsButton>
-                            <DsButton
-                              v-if="canMarkNoShow(item)"
-                              variant="danger"
-                              size="sm"
-                              :disabled="Boolean(actionLoadingId)"
-                              :loading="actionLoadingId === item.id && actionKind === 'noshow'"
-                              @click="markNoShow(item)"
-                            >
-                              No-show
-                            </DsButton>
-                            <DsButton
-                              v-if="shouldShowQueueAction(item)"
-                              variant="secondary"
-                              size="sm"
-                              tag="a"
-                              to="/queue"
-                            >
-                              Ver fila
-                            </DsButton>
-                            <DsButton
-                              v-if="shouldShowEncounterAction(item)"
-                              variant="secondary"
-                              size="sm"
-                              @click="openEncounter(item)"
-                            >
-                              {{ encounterActionLabel(item) }}
-                            </DsButton>
-                          </div>
-                        </div>
-                        <button
-                          v-if="hiddenSlotCount(day.date, column.id, hour) > 0"
-                          type="button"
-                          class="timeline-slot-summary timeline-slot-summary--action"
-                          :aria-label="`Ver ${hiddenSlotCount(day.date, column.id, hour)} agendamentos adicionais`"
-                          @click="setViewMode('list')"
-                        >
-                          +{{ hiddenSlotCount(day.date, column.id, hour) }} adicionais
-                        </button>
-                      </div>
-
-                      <button
-                        v-else-if="canManageScheduling"
-                        type="button"
-                        class="time-matrix__empty-button"
-                        :aria-label="slotAriaLabel(day.label, column.label, hour)"
-                        @click="
-                          openSlotCreateFlow({
-                            date: day.date,
-                            hour,
-                            practitionerStaffId: column.id
-                          })
-                        "
-                      >
-                        Disponível
-                      </button>
-                      <span v-else class="time-matrix__empty">Disponível</span>
-                    </div>
-                  </template>
-                </div>
-              </section>
-            </template>
-
-            <section v-if="selectedView !== 'list' && legendItems.length > 0" class="appointments-legend">
-              <strong>Legenda operacional</strong>
-              <div class="appointments-legend__items">
-                <span
-                  v-for="item in legendItems"
-                  :key="item.label"
-                  class="appointments-legend__pill"
-                  :class="`appointments-legend__pill--${item.tone}`"
-                >
-                  {{ item.label }}
-                </span>
-              </div>
-            </section>
+            <AgendaCalendarOrList
+              :selected-view="selectedView"
+              :view-mode="viewMode"
+              :reference-date="referenceDate"
+              :items="filteredItems"
+              :blocks="overview?.blocks ?? []"
+              :professional-columns="professionalColumns"
+              :can-manage-scheduling="canManageScheduling"
+              :owner-cache="ownerCache"
+              :patient-cache="patientCache"
+              :action-loading-id="actionLoadingId"
+              :action-kind="actionKind"
+              :can-check-in="canCheckIn"
+              :can-mark-no-show="canMarkNoShow"
+              :should-show-queue-action="shouldShowQueueAction"
+              :should-show-encounter-action="shouldShowEncounterAction"
+              :encounter-action-label="encounterActionLabel"
+              @open-appointment="openAppointmentDetails"
+              @create-slot="openSlotCreateFlow"
+              @select-date="selectDate"
+              @change-view="setViewMode"
+              @check-in="checkIn"
+              @no-show="markNoShow"
+              @open-encounter="openEncounter"
+            />
           </template>
         </section>
       </div>
     </template>
 
-    <AppointmentClientSelectorModal
-      :open="showClientSelector"
-      @close="closeClientSelector"
-      @selected="handleClientSelected"
+    <AppointmentCreateFlow
+      :open="showCreateFlow"
+      :slot-preset="pendingSlotPreset"
+      :professionals="overview?.professionals ?? []"
+      @close="closeCreateFlow"
+      @created="handleCreated"
     />
-
-    <DsModal :open="showQuickCreate" title="Criar agendamento" size="lg" @close="closeQuickCreate">
-      <AppointmentQuickCreateForm
-        v-if="showQuickCreate"
-        submit-label="Salvar e voltar ao cockpit"
-        :preset-owner-id="selectedClient?.id ?? ''"
-        :hide-owner-selection="Boolean(selectedClient)"
-        :lock-owner-selection="Boolean(selectedClient)"
-        :restrict-patients-to-owner="Boolean(selectedClient)"
-        :owner-snapshot="selectedClient"
-        :preset-scheduled-at="quickCreatePreset.scheduledAt"
-        :preset-duration-minutes="quickCreatePreset.durationMinutes"
-        :preset-practitioner-staff-id="quickCreatePreset.practitionerStaffId"
-        :professionals="overview?.professionals ?? []"
-        @created="handleCreated"
-        @cancel="closeQuickCreate"
-      />
-    </DsModal>
 
     <AppointmentDetailsDrawer
       :appointment="selectedAppointment"
@@ -852,28 +358,19 @@
 <script setup lang="ts">
 import { computed, inject, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import './AppointmentsListPage.css';
-import { startOfMonth, buildVisibleDays, buildMonthCalendar } from './appointmentCalendar';
 import {
-  timeLabel,
-  formatHour,
-  buildSlotScheduledAt,
-  slotAriaLabel
+  buildMonthCalendar,
+  buildVisibleDays,
+  startOfMonth
 } from './appointmentCalendar';
 import {
   appointmentNeedsAttention,
-  appointmentResponsibleLabel,
-  appointmentSectorLabel,
-  appointmentTypeLabel,
   createAgendaGridHelpers,
   deriveMarkers,
   isActiveQueueStage,
   isQueueLinked,
-  nextStepForAppointment,
   normalizeText,
-  operationalLabel,
-  queueBridgeLabel,
-  statusLabel,
-  timelineHours
+  statusLabel
 } from './agendaPresentation';
 import { useRoute, useRouter } from 'vue-router';
 import { agendaContextKey, emptyAgendaContext, isAgendaPath, localCalendarDate, readAgendaContext, writeAgendaQuery, type AgendaContext } from './agendaContext';
@@ -881,7 +378,6 @@ import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
-import DsModal from '@cvg-his-v2/design-system/vue/DsModal.vue';
 import DsSpinner from '@cvg-his-v2/design-system/vue/DsSpinner.vue';
 import EmptyState from '@/components/EmptyState.vue';
 import AppPageHeader, {
@@ -889,23 +385,23 @@ import AppPageHeader, {
   type PageBreadcrumb,
   type PageNextStep
 } from '@/components/AppPageHeader.vue';
-import AppointmentClientSelectorModal from '@/components/appointments/AppointmentClientSelectorModal.vue';
+import AgendaCalendarOrList from './AgendaCalendarOrList.vue';
+import { createAppointmentActionController } from './appointmentActionController';
+import AppointmentCreateFlow from './AppointmentCreateFlow.vue';
+import { useAppointmentsOverview } from './useAppointmentsOverview';
 import AppointmentDetailsDrawer from '@/components/appointments/AppointmentDetailsDrawer.vue';
-import AppointmentQuickCreateForm from '@/components/appointments/AppointmentQuickCreateForm.vue';
 import { apiRequest, ApiError } from '@/services/api';
 import { appointmentService } from '@/services/appointment';
 import { getSchedulingOverview, checkInQueue, noShowQueueEntry } from '@/services/scheduling';
 import { ownerService } from '@/services/owner';
 import { patientService } from '@/services/patient';
-import { servicesService, type ServiceSummary } from '@/services/services';
+import { servicesService } from '@/services/services';
 import { clinicalLabels } from '@/utils/labels';
 import type {
   AppointmentStatus,
   AppointmentSummary,
-  SchedulingCockpitAppointmentSummary,
-  SchedulingOverviewResponse
+  SchedulingCockpitAppointmentSummary
 } from '@/types/appointment';
-import type { OwnerSummary } from '@/types/owner';
 
 interface SessionAccessResponse {
   access?: {
@@ -919,31 +415,16 @@ interface AppointmentSlotPreset {
   practitionerStaffId?: string;
 }
 
-interface QuickCreatePresetState {
-  scheduledAt: string;
-  practitionerStaffId: string;
-  durationMinutes: number;
-}
-
 const router = useRouter();
 const route = useRoute();
 const contextMemory = inject(agendaContextKey, { current: null });
 const initialContext = readAgendaContext(route.query, contextMemory.current ?? emptyAgendaContext());
-let overviewRequest = 0;
 let disposed = false;
-const loading = ref(false);
 const error = ref('');
 const permissionCodes = ref<string[] | null>(null);
-const overview = ref<SchedulingOverviewResponse | null>(null);
-const services = ref<ServiceSummary[]>([]);
-const showClientSelector = ref(false);
-const showQuickCreate = ref(false);
-const selectedClient = ref<OwnerSummary | null>(null);
+const showCreateFlow = ref(false);
 const selectedAppointment = ref<SchedulingCockpitAppointmentSummary | null>(null);
-const actionLoadingId = ref('');
-const actionKind = ref<'cancel' | 'checkin' | 'noshow' | ''>('');
 const pendingSlotPreset = ref<AppointmentSlotPreset | null>(null);
-let actionGeneration = 0;
 
 const viewMode = ref<'day' | 'week' | 'month'>(initialContext.view === 'list' ? 'day' : initialContext.view);
 const selectedView = ref<'list' | 'day' | 'week' | 'month'>(initialContext.view);
@@ -960,19 +441,6 @@ const localFilters = ref({
   marker: initialContext.marker
 });
 const selectedStatuses = ref<AppointmentStatus[]>(initialContext.statuses);
-const ownerCache = ref<Record<string, string>>({});
-const patientCache = ref<Record<string, string>>({});
-const quickCreatePreset = computed<QuickCreatePresetState>(() => {
-  const slotPreset = pendingSlotPreset.value;
-  return {
-    scheduledAt: slotPreset ? buildSlotScheduledAt(slotPreset.date, slotPreset.hour) : '',
-    practitionerStaffId:
-      slotPreset?.practitionerStaffId && slotPreset.practitionerStaffId !== 'unassigned'
-        ? slotPreset.practitionerStaffId
-        : '',
-    durationMinutes: 30
-  };
-});
 const selectedAppointmentOwnerName = computed(() =>
   selectedAppointment.value ? ownerName(selectedAppointment.value.ownerId) : ''
 );
@@ -987,18 +455,6 @@ const viewOptions = [
   { value: 'day' as const, label: 'Dia' }
 ];
 
-const vetusLegendItems = [
-  { label: 'Folga', tone: 'time_off' },
-  { label: 'Aberto', tone: 'scheduled' },
-  { label: 'Confirmado', tone: 'checked_in' },
-  { label: 'Executado', tone: 'completed' },
-  { label: 'Cancelado', tone: 'cancelled' },
-  { label: 'Não compareceu', tone: 'no_show' },
-  { label: 'Vacina', tone: 'vaccine' },
-  { label: 'Vermífugo', tone: 'deworming' },
-  { label: 'Retorno', tone: 'return' }
-];
-
 const weekdayLabels = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
 
 const canReadScheduling = computed(
@@ -1007,6 +463,46 @@ const canReadScheduling = computed(
 const canManageScheduling = computed(
   () => permissionCodes.value?.includes('scheduling.manage') ?? false
 );
+const appointmentsOverview = useAppointmentsOverview({
+  canReadScheduling: () => canReadScheduling.value,
+  isDisposed: () => disposed,
+  getParams: () => ({
+    viewMode: viewMode.value,
+    referenceDate: `${viewMode.value === 'month' ? startOfMonth(referenceDate.value) : referenceDate.value}T00:00:00.000Z`,
+    statuses: [...selectedStatuses.value],
+    practitionerStaffId: filters.value.practitionerStaffId || undefined,
+    serviceId: filters.value.serviceId || undefined,
+    unit: filters.value.unit || undefined,
+    specialty: filters.value.specialty || undefined,
+    search: filters.value.search.trim() || undefined
+  }),
+  getSelectedAppointmentId: () => selectedAppointment.value?.id,
+  setSelectedAppointment: (appointment) => {
+    selectedAppointment.value = appointment;
+  },
+  isForbiddenError: (candidate) => candidate instanceof ApiError && candidate.status === 403,
+  onForbidden: () => {
+    permissionCodes.value = [];
+  },
+  setError: (message) => {
+    error.value = message;
+  },
+  services: {
+    getOverview: getSchedulingOverview,
+    listServices: () => servicesService.list(),
+    getOwner: (ownerId) => ownerService.getById(ownerId),
+    getPatient: (patientId) => patientService.getById(patientId)
+  }
+});
+const {
+  loading,
+  overview,
+  services,
+  ownerCache,
+  patientCache,
+  loadOverview: loadOverviewData,
+  invalidate: invalidateOverviewData
+} = appointmentsOverview;
 const professionalColumns = computed(() => [
   { id: 'unassigned', label: 'Sem profissional' },
   ...(overview.value?.professionals ?? []).map((professional) => ({
@@ -1041,28 +537,7 @@ const agendaGrid = createAgendaGridHelpers({
   blocks: () => overview.value?.blocks ?? [],
   professionalColumns: () => professionalColumns.value
 });
-const {
-  appointmentsByDay,
-  availableSlotsByDay,
-  dayGridSummary,
-  appointmentsByColumn,
-  appointmentsBySlot,
-  visibleAppointmentsBySlot,
-  hiddenSlotCount,
-  isDenseSlot,
-  blocksByColumn,
-  blocksBySlot,
-  weekBlocksBySlot,
-  appointmentsByWeekSlot,
-  hasAvailableWeekSlot,
-  firstAvailablePractitionerForWeekSlot,
-  visibleAppointmentsByWeekSlot,
-  hiddenWeekSlotCount,
-  isDenseWeekSlot
-} = agendaGrid;
-const chronologicalItems = computed(() => [...filteredItems.value].sort(
-  (a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt) || a.id.localeCompare(b.id)
-));
+const { availableSlotsByDay } = agendaGrid;
 const activeQueueCount = computed(
   () => filteredItems.value.filter((item) => isActiveQueueStage(item.operational.stage)).length
 );
@@ -1076,9 +551,6 @@ const agendaAttentionCount = computed(
   () => filteredItems.value.filter((item) => appointmentNeedsAttention(item)).length
 );
 
-function appointmentDateLabel(value: string) {
-  return new Date(value).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-}
 const normalizedReferenceDate = computed(() =>
   viewMode.value === 'month' ? startOfMonth(referenceDate.value) : referenceDate.value
 );
@@ -1109,7 +581,6 @@ const miniCalendarLabel = computed(() =>
   })
 );
 const miniCalendarDays = computed(() => buildMonthCalendar(referenceDate.value));
-const monthCalendarDays = computed(() => buildMonthCalendar(referenceDate.value));
 const totalAvailableSlots = computed(() =>
   visibleDays.value.reduce((total, day) => total + availableSlotsByDay(day.date), 0)
 );
@@ -1118,8 +589,6 @@ const markerOptions = computed(() =>
     a.localeCompare(b, 'pt-BR')
   )
 );
-
-const legendItems = computed(() => vetusLegendItems);
 
 const headerBreadcrumbItems = computed<PageBreadcrumb[]>(() => [
   { key: 'home', label: 'Início', to: '/' },
@@ -1364,21 +833,10 @@ watch(() => route.query, (query) => {
   if (canReadScheduling.value && overviewContext(next) !== overviewContext(current)) void loadOverview();
 });
 
-function isCurrentOverview(request: number) {
-  return !disposed && canReadScheduling.value && request === overviewRequest;
-}
-
 function invalidateOverview() {
-  overviewRequest += 1;
-  actionGeneration += 1;
-  loading.value = false;
-  actionLoadingId.value = '';
-  actionKind.value = '';
-  overview.value = null;
+  invalidateOverviewData();
+  appointmentActionController.invalidate();
   selectedAppointment.value = null;
-  services.value = [];
-  ownerCache.value = {};
-  patientCache.value = {};
   error.value = '';
 }
 
@@ -1394,127 +852,40 @@ onBeforeUnmount(() => {
   invalidateOverview();
 });
 
-async function loadReferenceData(items: SchedulingCockpitAppointmentSummary[], request: number) {
-  const ownerIds = [...new Set(items.map((item) => item.ownerId))];
-  const patientIds = [...new Set(items.map((item) => item.patientId))];
-
-  await Promise.all([
-    Promise.all(
-      ownerIds.map(async (ownerId) => {
-        if (!ownerCache.value[ownerId]) {
-          try {
-            const owner = await ownerService.getById(ownerId);
-            if (isCurrentOverview(request)) ownerCache.value[ownerId] = owner.fullName;
-          } catch {
-            if (isCurrentOverview(request)) ownerCache.value[ownerId] = `Tutor ${ownerId.slice(0, 6)}`;
-          }
-        }
-      })
-    ),
-    Promise.all(
-      patientIds.map(async (patientId) => {
-        if (!patientCache.value[patientId]) {
-          try {
-            const patient = await patientService.getById(patientId);
-            if (isCurrentOverview(request)) patientCache.value[patientId] = patient.name;
-          } catch {
-            if (isCurrentOverview(request)) patientCache.value[patientId] = `Paciente ${patientId.slice(0, 6)}`;
-          }
-        }
-      })
-    )
-  ]);
-}
-
 async function loadOverview() {
   if (disposed || !canReadScheduling.value) {
     invalidateOverview();
     return;
   }
-
-  const request = ++overviewRequest;
-  overview.value = null;
-  loading.value = true;
-  error.value = '';
-
-  try {
-    void servicesService.list().catch(() => []).then((result) => {
-      if (isCurrentOverview(request)) services.value = result;
-    });
-    const overviewResponse = await getSchedulingOverview({
-        viewMode: viewMode.value,
-        referenceDate: `${normalizedReferenceDate.value}T00:00:00.000Z`,
-        statuses: [...selectedStatuses.value],
-        practitionerStaffId: filters.value.practitionerStaffId || undefined,
-        serviceId: filters.value.serviceId || undefined,
-        unit: filters.value.unit || undefined,
-        specialty: filters.value.specialty || undefined,
-        search: filters.value.search.trim() || undefined
-      });
-
-    if (!isCurrentOverview(request)) return;
-    overview.value = overviewResponse;
-    void loadReferenceData(overviewResponse.items, request);
-    if (selectedAppointment.value) {
-      selectedAppointment.value =
-        overviewResponse.items.find((item) => item.id === selectedAppointment.value?.id) ?? null;
-    }
-  } catch (loadError) {
-    if (!isCurrentOverview(request)) return;
-    if (loadError instanceof ApiError && loadError.status === 403) {
-      permissionCodes.value = [];
-      return;
-    }
-    error.value = loadError instanceof Error ? loadError.message : 'Erro ao carregar agenda';
-  } finally {
-    if (isCurrentOverview(request)) loading.value = false;
-  }
+  await loadOverviewData();
 }
+
+const appointmentActionController = createAppointmentActionController({
+  canManageScheduling: () => canManageScheduling.value,
+  loadOverview,
+  setError: (message) => {
+    error.value = message;
+  },
+  services: {
+    checkInQueue,
+    noShowQueueEntry,
+    cancelAppointment: (id, reason) => appointmentService.cancel(id, reason)
+  }
+});
+
+const {
+  actionLoadingId,
+  actionKind,
+  canCheckIn,
+  canCancel: canCancelFromAgenda,
+  canMarkNoShow,
+  checkIn,
+  markNoShow,
+  cancel: cancelAppointmentFromAgenda
+} = appointmentActionController;
 
 function openAppointmentDetails(item: SchedulingCockpitAppointmentSummary) {
   selectedAppointment.value = item;
-}
-
-function appointmentCardAriaLabel(item: SchedulingCockpitAppointmentSummary): string {
-  return `${patientName(item.patientId)}, ${timeLabel(item.scheduledAt)}, ${operationalLabel(item)}. Pressione Enter ou Espaço para ver os detalhes.`;
-}
-
-function canCheckIn(item: SchedulingCockpitAppointmentSummary) {
-  return (
-    item.operational.stage === 'scheduled' &&
-    item.status === 'scheduled' &&
-    canManageScheduling.value
-  );
-}
-
-function canCancelFromAgenda(item: SchedulingCockpitAppointmentSummary) {
-  return ['scheduled', 'checked_in'].includes(item.status) && canManageScheduling.value;
-}
-
-function canMarkNoShow(item: SchedulingCockpitAppointmentSummary) {
-  return (
-    item.operational.stage === 'scheduled' &&
-    item.status === 'scheduled' &&
-    canManageScheduling.value
-  );
-}
-
-function beginAppointmentAction(
-  item: SchedulingCockpitAppointmentSummary,
-  kind: Exclude<typeof actionKind.value, ''>
-): number | null {
-  if (actionLoadingId.value) return null;
-  const generation = ++actionGeneration;
-  actionLoadingId.value = item.id;
-  actionKind.value = kind;
-  error.value = '';
-  return generation;
-}
-
-function finishAppointmentAction(generation: number) {
-  if (generation !== actionGeneration) return;
-  actionLoadingId.value = '';
-  actionKind.value = '';
 }
 
 function shouldShowQueueAction(item: SchedulingCockpitAppointmentSummary) {
@@ -1534,99 +905,25 @@ function openEncounter(item: SchedulingCockpitAppointmentSummary) {
   router.push(`/encounters/${item.operational.encounterId}`);
 }
 
-async function checkIn(item: SchedulingCockpitAppointmentSummary) {
-  const generation = beginAppointmentAction(item, 'checkin');
-  if (generation === null) return;
-
-  try {
-    await checkInQueue({
-      appointmentId: item.id,
-      patientId: item.patientId,
-      ownerId: item.ownerId,
-      reason: item.reason,
-      priority: 'medium'
-    });
-    await loadOverview();
-  } catch (actionError) {
-    if (generation === actionGeneration) {
-      error.value = actionError instanceof Error ? actionError.message : 'Erro ao realizar check-in';
-    }
-  } finally {
-    finishAppointmentAction(generation);
-  }
-}
-
-async function markNoShow(item: SchedulingCockpitAppointmentSummary) {
-  const generation = beginAppointmentAction(item, 'noshow');
-  if (generation === null) return;
-
-  try {
-    if (item.operational.queueEntryId) {
-      await noShowQueueEntry(item.operational.queueEntryId);
-    } else {
-      await appointmentService.cancel(item.id, 'No-show registrado pela agenda');
-    }
-    await loadOverview();
-  } catch (actionError) {
-    if (generation === actionGeneration) {
-      error.value = actionError instanceof Error ? actionError.message : 'Erro ao registrar no-show';
-    }
-  } finally {
-    finishAppointmentAction(generation);
-  }
-}
-
-async function cancelAppointmentFromAgenda(item: SchedulingCockpitAppointmentSummary) {
-  const generation = beginAppointmentAction(item, 'cancel');
-  if (generation === null) return;
-
-  try {
-    await appointmentService.cancel(item.id, 'Cancelado pela agenda operacional');
-    await loadOverview();
-  } catch (actionError) {
-    if (generation === actionGeneration) {
-      error.value =
-        actionError instanceof Error ? actionError.message : 'Erro ao cancelar agendamento';
-    }
-  } finally {
-    finishAppointmentAction(generation);
-  }
-}
-
 function openCreateFlow() {
   selectedAppointment.value = null;
   pendingSlotPreset.value = null;
-  selectedClient.value = null;
-  showClientSelector.value = true;
+  showCreateFlow.value = true;
 }
 
 function openSlotCreateFlow(slotPreset: AppointmentSlotPreset) {
   selectedAppointment.value = null;
   pendingSlotPreset.value = slotPreset;
-  selectedClient.value = null;
-  showClientSelector.value = true;
+  showCreateFlow.value = true;
 }
 
-function handleClientSelected(owner: OwnerSummary) {
-  selectedClient.value = owner;
-  showClientSelector.value = false;
-  showQuickCreate.value = true;
-}
-
-function closeClientSelector() {
-  showClientSelector.value = false;
-  selectedClient.value = null;
-  pendingSlotPreset.value = null;
-}
-
-function closeQuickCreate() {
-  showQuickCreate.value = false;
-  selectedClient.value = null;
+function closeCreateFlow() {
+  showCreateFlow.value = false;
   pendingSlotPreset.value = null;
 }
 
 async function handleCreated(appointment: AppointmentSummary) {
-  closeQuickCreate();
+  closeCreateFlow();
   await loadOverview();
   selectedAppointment.value =
     overview.value?.items.find((item) => item.id === appointment.id) ?? null;
@@ -2733,7 +2030,11 @@ onMounted(async () => {
     order: 1;
   }
 
-  .appointments-cockpit__main:has(.agenda-appointment-list) > .agenda-appointment-list {
+  .appointments-cockpit__main:has(.agenda-appointment-list) > .appointments-cockpit__sidebar {
+    order: 1;
+  }
+
+  .appointments-cockpit__main:has(.agenda-appointment-list) > .agenda-calendar-or-list {
     order: 2;
   }
 

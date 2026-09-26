@@ -1,0 +1,2240 @@
+{
+  "evidence_id": "M02-CONTENT-SCOPE-REVIEW-20260923-01",
+  "recorded_at": "2026-09-23T08:44:59Z",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "original_inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PARTIAL; source/content review covers 386/386 original inventory paths in rounds 1–41 plus the round-30 README correction. REM-010 remains IN_PROGRESS/PARTIAL: classification/content review is complete, but independent critique, final provenance/sensitivity audit and candidate-bound refresh remain open. No candidate or overlay has been created.",
+  "inventory_path_coverage": {
+    "original_paths": 386,
+    "path_counted_as_reviewed": 386,
+    "path_count_pending_content_review": 0,
+    "basis": "Reconciled path-level union: initial 258; rounds 1–12 add 54; round 13 adds 0; rounds 14–19 add 10; rounds 20–29 add 28; round 30 adds 0; round 31 adds 1; round 32 adds 2; round 33 adds 2; round 34 adds 3; round 35 adds 6; round 36 adds 3; round 37 adds 4; round 38 adds 4; round 39 adds 4; round 40 adds 6; round 41 adds 1. Total 386/386, 0 pending. Clean baseline reference tests are excluded."
+  },
+  "control_evidence_and_gates": {
+    "reviewer": "/root/m02_inventory_scout",
+    "review_observed_start": "2026-09-23T05:56:14Z",
+    "review_observed_end": "2026-09-23T05:56:15Z",
+    "path_hash_recheck_start": "2026-09-23T05:59:50.757285Z",
+    "path_hash_recheck_end": "2026-09-23T05:59:50.775312Z",
+    "total": 174,
+    "present": 174,
+    "git_status_drift": 0,
+    "dispositions": {
+      "INCLUDE": 167,
+      "HOLD_D": 6,
+      "HOLD_O": 1
+    },
+    "json_files_parsed": 88,
+    "empty_files": 0,
+    "byte_identical_duplicates": 0,
+    "control_ledger_references": 173,
+    "sensitive_pattern_scan": {
+      "private_key_markers": 0,
+      "jwt": 0,
+      "cloud_or_github_tokens": 0,
+      "credential_literals": 0,
+      "email_patterns": 0,
+      "cpf_patterns": 0,
+      "local_home_path_occurrences": 127,
+      "files_with_local_home_path_occurrence": 50,
+      "limitation": "Pattern scan only; no full PII review. Local paths are not presented as credentials and are not repeated as values here."
+    },
+    "notes": [
+      "INCLUDE means retain as an audit record linked by a control ledger, not independent approval of the claim recorded.",
+      "The 6 hash-drift files stay HOLD-D until stabilized and included in a refreshed candidate-bound inventory.",
+      "The REM-016 run JSON stays HOLD-O because no current control ledger refers to it; it is distinct from the linked final run and is preserved, not deleted.",
+      "The 50 local-home-path flagged files remain subject to privacy review before any external publication."
+    ],
+    "paths": [
+      {
+        "path": ".agent/evidence/m01-history-reconciliation-20260923.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "a170e5667ca5f62f793a124d1fc026db70d9a6adcb04c03f0fd361099edc19f7",
+        "current_sha256": "5e993b21971531c3d6c7bd11e6d4cad4eaf3f162ee5c1af0b9e062724841213d",
+        "sha_matches_inventory": false,
+        "disposition": "HOLD_D_HASH_DRIFT"
+      },
+      {
+        "path": ".agent/evidence/m01-reconciliation-critique-20260923.md",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "c510257c655ce2c5c6dbb77ea8a0f0f4a2e87276bb9918fb2f0bf08d5920eed4",
+        "current_sha256": "08a0549c50997fb1054c43b689c0325df238e18289a49b7adab50dc039fde94f",
+        "sha_matches_inventory": false,
+        "disposition": "HOLD_D_HASH_DRIFT"
+      },
+      {
+        "path": ".agent/evidence/m03-backup-gate-20260923.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "8308adc69128bf67ef5250dcccc1d8c698ce443a86e714669c056cd9454e19a2",
+        "current_sha256": "808bdddf19a50eed6321848c1f3d7166944e243d34e49ac6c8c527709c70c75c",
+        "sha_matches_inventory": false,
+        "disposition": "HOLD_D_HASH_DRIFT"
+      },
+      {
+        "path": ".agent/evidence/m50-crosswalk-review-20260923.md",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "964fc4cb45bf344ddd7c3ee17a8a9c352cacda61eeb85141ee176d6be772c6a9",
+        "current_sha256": "4ca5d0d1b5b313ef0575f020c92e9aca7dac5065bbe1601b50f7894d3ebd49d9",
+        "sha_matches_inventory": false,
+        "disposition": "HOLD_D_HASH_DRIFT"
+      },
+      {
+        "path": ".agent/evidence/m50-rem-crosswalk-20260923.md",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "d6e260ce7e0ab47046bfcf75e0347f9333dd9264c8f6cb30b71e73739a178d90",
+        "current_sha256": "ba8bd38eb67cfa36bfdaab7a8154944e197d424c37a5c1be266dcede11b2c0eb",
+        "sha_matches_inventory": false,
+        "disposition": "HOLD_D_HASH_DRIFT"
+      },
+      {
+        "path": ".agent/evidence/rem-001-control-reconciliation-failure-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "6b4de8e3dd400612d926d7572164a8862711d35c2c943561441fe24364b385eb",
+        "current_sha256": "6b4de8e3dd400612d926d7572164a8862711d35c2c943561441fe24364b385eb",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-001-verification-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "d572fee025f205d09d6d21b8bf02d1c60f7f1b813df1a81de0be532f85ee7936",
+        "current_sha256": "d572fee025f205d09d6d21b8bf02d1c60f7f1b813df1a81de0be532f85ee7936",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-002-control-pointer-recovery-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "07b21d11d97f5f47140b80d2c9414105ced18be3340a0d46b0e0f5eb0a5f1051",
+        "current_sha256": "07b21d11d97f5f47140b80d2c9414105ced18be3340a0d46b0e0f5eb0a5f1051",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-002-history-rewrite-20260923.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "42e84270f276aa6da2db6f651c377e7d08aa579ae97ef5da643fdb473a8d6692",
+        "current_sha256": "42e84270f276aa6da2db6f651c377e7d08aa579ae97ef5da643fdb473a8d6692",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-003-runtime-baseline-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "2926f5666dc131b347290922883439c8d6fc67df53b578940b5de2ca456c1240",
+        "current_sha256": "2926f5666dc131b347290922883439c8d6fc67df53b578940b5de2ca456c1240",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-004-005-aggregate-repair-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "c850d108a1e2e49ad5d04dd2900ea2ab594006e4e62cc96818e5cf51c2ff0b39",
+        "current_sha256": "c850d108a1e2e49ad5d04dd2900ea2ab594006e4e62cc96818e5cf51c2ff0b39",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-004-005-contracts-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "f2b02b8deb944a0ccfb308b997d184bfc87c5d964fa65613a0f76c23f9432877",
+        "current_sha256": "f2b02b8deb944a0ccfb308b997d184bfc87c5d964fa65613a0f76c23f9432877",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-006-007-current-rerun-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "efef6f4d7c16be160cba605a433a78d4e006c859037b3fdcb7f7d0f5b89183b3",
+        "current_sha256": "efef6f4d7c16be160cba605a433a78d4e006c859037b3fdcb7f7d0f5b89183b3",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-006-behavioral-tests-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "6c001dd6876e98bb5366d9993908cec063d5a06c7d73175b2cc9d70f4cef8788",
+        "current_sha256": "6c001dd6876e98bb5366d9993908cec063d5a06c7d73175b2cc9d70f4cef8788",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-006-branch-threshold-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "d2d17212da6a64fe0e14a92386759abd53a26e085f326f8f5d41deef7ddb8a01",
+        "current_sha256": "d2d17212da6a64fe0e14a92386759abd53a26e085f326f8f5d41deef7ddb8a01",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-006-coverage-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "d98f8db8c858c8ccbd7129f53eed71698560480cf22ae1ec0a47b1a1f8734816",
+        "current_sha256": "d98f8db8c858c8ccbd7129f53eed71698560480cf22ae1ec0a47b1a1f8734816",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-006-coverage-rerun-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "7faccbb52a3170f5add97228b73ea27b6bce13ce386cad33978f66ec4b38e008",
+        "current_sha256": "7faccbb52a3170f5add97228b73ea27b6bce13ce386cad33978f66ec4b38e008",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-006-coverage-rerun-behavioral-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "6573f19ffaaa46b87d0bfb925f53449cc3fcc4e66c23cfbbb2703da87b19273b",
+        "current_sha256": "6573f19ffaaa46b87d0bfb925f53449cc3fcc4e66c23cfbbb2703da87b19273b",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-006-coverage-rerun-four-branches-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "621555055eacd464bb885138451238124342f59c89583916fd04f24902558563",
+        "current_sha256": "621555055eacd464bb885138451238124342f59c89583916fd04f24902558563",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-006-coverage-rerun-response-buffer-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "a8b4666d0859985744d24feec09d3ff8fe28bab9e95d1ce558ab5795e4007779",
+        "current_sha256": "a8b4666d0859985744d24feec09d3ff8fe28bab9e95d1ce558ab5795e4007779",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-006-coverage-rerun-vitest-response-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "c95f0e6ec3b7fb2ade107c2efb87b3e02753f615e8686d351568df974cdd19cb",
+        "current_sha256": "c95f0e6ec3b7fb2ade107c2efb87b3e02753f615e8686d351568df974cdd19cb",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-006-remaining-branches-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "1d007cfadc8c9f60507aa781e9a85665e2ed9bc290ea9449c442cec39bd7108f",
+        "current_sha256": "1d007cfadc8c9f60507aa781e9a85665e2ed9bc290ea9449c442cec39bd7108f",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-006-response-buffer-branches-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "459db3081b8019739b5a0d5d2052f602545682297b1ae3e3cd4c8f182926f306",
+        "current_sha256": "459db3081b8019739b5a0d5d2052f602545682297b1ae3e3cd4c8f182926f306",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-006-vitest-response-buffer-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "f5aca14ef099b38a57d877f8e68c393c9e7a22d8aa2d4825ce8b42c010e319ee",
+        "current_sha256": "f5aca14ef099b38a57d877f8e68c393c9e7a22d8aa2d4825ce8b42c010e319ee",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-007-canonical-current-rerun-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "907c757cdfc482f966299bf6801a0772e69d130c0c633762e3b75af9500d30a7",
+        "current_sha256": "907c757cdfc482f966299bf6801a0772e69d130c0c633762e3b75af9500d30a7",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-007-runner-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "022b35eaf13b9ff0ac4dedec8ecd3d725b466f9fca928629756ca9c383d15b1c",
+        "current_sha256": "022b35eaf13b9ff0ac4dedec8ecd3d725b466f9fca928629756ca9c383d15b1c",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-008-crypto-runtime-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "36936172b4ede00bf7ebcda38bf6dab5591377eeee0a3f47f1cb6b10fa85716e",
+        "current_sha256": "36936172b4ede00bf7ebcda38bf6dab5591377eeee0a3f47f1cb6b10fa85716e",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-009-clean-candidate-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "3fd95fd521cf735cb92bd321eeb8e4fa27f0c585d727df3f51586d46360216a4",
+        "current_sha256": "3fd95fd521cf735cb92bd321eeb8e4fa27f0c585d727df3f51586d46360216a4",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-009-integrated-gate-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "d4205d0c2f1d2c3299dad8a58c97c1cf9e6f0a0d7b72dafbbdcf0937355ef2bf",
+        "current_sha256": "d4205d0c2f1d2c3299dad8a58c97c1cf9e6f0a0d7b72dafbbdcf0937355ef2bf",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-013-semantic-lint-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "4931b865badea0d7ee44e296f645ada1adde058d2d5ba1f8dbb4173df35ab015",
+        "current_sha256": "4931b865badea0d7ee44e296f645ada1adde058d2d5ba1f8dbb4173df35ab015",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-014-skip-policy-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "0c98bc659960ef8d5276012cb88dc5ffe78d782959c8568ff1f152a976827cbd",
+        "current_sha256": "0c98bc659960ef8d5276012cb88dc5ffe78d782959c8568ff1f152a976827cbd",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-015-helm-real-validation-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "3b144117674b6b11ea10c80d9570a62fc8c11d2533d63a7d645785c969f23a42",
+        "current_sha256": "3b144117674b6b11ea10c80d9570a62fc8c11d2533d63a7d645785c969f23a42",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-016-migration-harness-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "bf02903341e19aa33d752935dee809cf8ea37149d8cf2d6b7ce1a8e97ccf0bbf",
+        "current_sha256": "bf02903341e19aa33d752935dee809cf8ea37149d8cf2d6b7ce1a8e97ccf0bbf",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-016-migration-harness-final-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "340de85e0e3703915cd3c0abd1ae15f13f8e812791f3d3d52ce900a9c348d784",
+        "current_sha256": "340de85e0e3703915cd3c0abd1ae15f13f8e812791f3d3d52ce900a9c348d784",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-016-migration-harness-run-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "1c968a5ef3a071e1ee611e09973d96496f580d686e291fed798023a936dc297f",
+        "current_sha256": "1c968a5ef3a071e1ee611e09973d96496f580d686e291fed798023a936dc297f",
+        "sha_matches_inventory": true,
+        "disposition": "HOLD_O_UNLINKED_RECORD"
+      },
+      {
+        "path": ".agent/evidence/rem-017-supply-chain-validation-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "807be0bba28f3793880b8b1cba282482c60921025b71c017bd766c4d8db187a6",
+        "current_sha256": "807be0bba28f3793880b8b1cba282482c60921025b71c017bd766c4d8db187a6",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-026-server-composition-20260921.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "785a6e5686a3e0e1c8f73d4e99114a8719bf480c41fae890fe0e9f2695edabce",
+        "current_sha256": "785a6e5686a3e0e1c8f73d4e99114a8719bf480c41fae890fe0e9f2695edabce",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-027-hotspot-inventory-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "06b4816988e00a912054afa807936f76e5ce97903613dce9fef7230553699288",
+        "current_sha256": "06b4816988e00a912054afa807936f76e5ce97903613dce9fef7230553699288",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-027-hotspot-inventory-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "a754bcc58e084a716850393b955b6703df6f284970a4510b1b6e08024019450f",
+        "current_sha256": "a754bcc58e084a716850393b955b6703df6f284970a4510b1b6e08024019450f",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-027-hotspot-measurement-reconciliation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "97eb35be0285157bfe609f97fed973a73255c4de38f03d6c6af6b99e21824e79",
+        "current_sha256": "97eb35be0285157bfe609f97fed973a73255c4de38f03d6c6af6b99e21824e79",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-appointments-action-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "3c4e527be2cf4bec293274c4e46944da6bd5e7399b0d53eda4e89b4c676260ed",
+        "current_sha256": "3c4e527be2cf4bec293274c4e46944da6bd5e7399b0d53eda4e89b4c676260ed",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-appointments-action-preparation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "143f9e44fd2b895a5ba1b325b8e2fb141a1484407cf58862a0a965b231659f66",
+        "current_sha256": "143f9e44fd2b895a5ba1b325b8e2fb141a1484407cf58862a0a965b231659f66",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-appointments-aggregate-review-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "76d1d49a2151b1d372e15582768eeb957efc3af2af6ea6a18020154695876975",
+        "current_sha256": "76d1d49a2151b1d372e15582768eeb957efc3af2af6ea6a18020154695876975",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-appointments-calendar-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "1397effd0ba6f108e9a0f45f07726c8d84977335b687d789475ccf7afd112e0c",
+        "current_sha256": "1397effd0ba6f108e9a0f45f07726c8d84977335b687d789475ccf7afd112e0c",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-appointments-create-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "bb38c1954cd1c91e8b7f1ba2706d3fff9f5b10465bdd1139eb93bdc87a0e2839",
+        "current_sha256": "bb38c1954cd1c91e8b7f1ba2706d3fff9f5b10465bdd1139eb93bdc87a0e2839",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-appointments-create-preparation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "3fe74e9304729114c2acd87f91c4e1852f171f3c9c889a595e79447df83a0d28",
+        "current_sha256": "3fe74e9304729114c2acd87f91c4e1852f171f3c9c889a595e79447df83a0d28",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-appointments-overview-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "8998db71913733f5f57450a13d0dc69f24e1870bd2c67ed7ef875047f1f7fc7a",
+        "current_sha256": "8998db71913733f5f57450a13d0dc69f24e1870bd2c67ed7ef875047f1f7fc7a",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-appointments-overview-preparation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "c7d746404ad60ea2dd863b2e89b4d1103f6a5cad0238eb022524fcd1793fcce0",
+        "current_sha256": "c7d746404ad60ea2dd863b2e89b4d1103f6a5cad0238eb022524fcd1793fcce0",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-appointments-preparation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "8328e42dbc62cee00ea070ee51d8302708fb96d00afd71a42958015327c7b7e7",
+        "current_sha256": "8328e42dbc62cee00ea070ee51d8302708fb96d00afd71a42958015327c7b7e7",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-clinical-context-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "f426e7506f6529b5e648c56f8f6ac6db374a7f7c77c0414d274d4091bbae3b26",
+        "current_sha256": "f426e7506f6529b5e648c56f8f6ac6db374a7f7c77c0414d274d4091bbae3b26",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-clinical-navigator-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "4c435e2918144ffc414c06bc75615f2556c3e993dd0db6f28cc693affa3b5a06",
+        "current_sha256": "4c435e2918144ffc414c06bc75615f2556c3e993dd0db6f28cc693affa3b5a06",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-counter-sales-cards-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "8ba16b5a20a56f647c8c99af76c1c18f30b499e1bfe9f240820976abe34859d0",
+        "current_sha256": "8ba16b5a20a56f647c8c99af76c1c18f30b499e1bfe9f240820976abe34859d0",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-counter-sales-catalog-payments-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "716319400174f71e603efc8b52ec63cc48ed59a39a6b8b36fb0715d42d484d38",
+        "current_sha256": "716319400174f71e603efc8b52ec63cc48ed59a39a6b8b36fb0715d42d484d38",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-counter-sales-kpi-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "6d1fce874540cf259c7cbcc02b5bdbdfc0f5bed84706a1da7994a57a65f1bac4",
+        "current_sha256": "6d1fce874540cf259c7cbcc02b5bdbdfc0f5bed84706a1da7994a57a65f1bac4",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-counter-sales-workbench-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "6f4a72f7aa6f378e2a25be7eadd356cc8da83323139a9d147eeaa2b1e21bf7f5",
+        "current_sha256": "6f4a72f7aa6f378e2a25be7eadd356cc8da83323139a9d147eeaa2b1e21bf7f5",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-patient-timeline-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "79f836d951bbeff1e2801b9c035688864d9e0422df87af5cdacf8cbac23051c4",
+        "current_sha256": "79f836d951bbeff1e2801b9c035688864d9e0422df87af5cdacf8cbac23051c4",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-reports-export-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "9e2bdb9105ae5ac3ec290efaa73cec29f2735c41af7e588b64f437927a09e2ee",
+        "current_sha256": "9e2bdb9105ae5ac3ec290efaa73cec29f2735c41af7e588b64f437927a09e2ee",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-reports-filter-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "d5ac66d64571c76008f530e5f7ff1fde93b66c0fa2f6fc9dd1e8a2acfdf89135",
+        "current_sha256": "d5ac66d64571c76008f530e5f7ff1fde93b66c0fa2f6fc9dd1e8a2acfdf89135",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-reports-query-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "7ff19ef0d15933ed107235f2b28b9a43b84c5a34ba8d01269c302a97df3a9e7e",
+        "current_sha256": "7ff19ef0d15933ed107235f2b28b9a43b84c5a34ba8d01269c302a97df3a9e7e",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-reports-result-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "e4956095ae749993811c76aa2269b60e64474a2049adb1a2b90dbea442509613",
+        "current_sha256": "e4956095ae749993811c76aa2269b60e64474a2049adb1a2b90dbea442509613",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-reports-shell-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "17cd600d5f3cb09c7bea8e5f8670bcd49333ebfb8280db8dd6641098c25f9dfd",
+        "current_sha256": "17cd600d5f3cb09c7bea8e5f8670bcd49333ebfb8280db8dd6641098c25f9dfd",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-reports-summary-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "e4f8291972fe64b4b72e08407f91e1b6e5a5dfb8796c8d8362e1c88623042b11",
+        "current_sha256": "e4f8291972fe64b4b72e08407f91e1b6e5a5dfb8796c8d8362e1c88623042b11",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "ade0251196c8f3097573c7619d085b803e51d6275336859ede9e200134fd3ade",
+        "current_sha256": "ade0251196c8f3097573c7619d085b803e51d6275336859ede9e200134fd3ade",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-028-visual-revalidation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "2ecfe1285f68e97d5cfe3fac3ceebcaeab131ee5bb8e8396c7112d0e3869f22d",
+        "current_sha256": "2ecfe1285f68e97d5cfe3fac3ceebcaeab131ee5bb8e8396c7112d0e3869f22d",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-029-aggregate-revalidation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "e3b5610b9deca663663bf0f5634fae7613c8031885c80b342d18a859c0be1255",
+        "current_sha256": "e3b5610b9deca663663bf0f5634fae7613c8031885c80b342d18a859c0be1255",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-029-preparation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "fc8477c949834e2eda6a3b0e61f0bcad14dcfa13c590c157c427968fd4713eeb",
+        "current_sha256": "fc8477c949834e2eda6a3b0e61f0bcad14dcfa13c590c157c427968fd4713eeb",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-029-reports-aggregate-verify-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "8bcc7d6c384eb05d3a0a735f2db5f35ce2a8a10b497c3a2d446d524308f7febf",
+        "current_sha256": "8bcc7d6c384eb05d3a0a735f2db5f35ce2a8a10b497c3a2d446d524308f7febf",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "b895ef076af62a45fea049cea23fc08edb868bfc4373afdcfdef0ef95360d892",
+        "current_sha256": "b895ef076af62a45fea049cea23fc08edb868bfc4373afdcfdef0ef95360d892",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-029-reports-persistence-preparation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "72db2046eb0b66d8a46cff9bc200adfb233dc728573fb4fd96bc484fa5d299d5",
+        "current_sha256": "72db2046eb0b66d8a46cff9bc200adfb233dc728573fb4fd96bc484fa5d299d5",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-029-reports-persistence-verify-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "1cf235b063774f4628bd178ca1dbfcf5733cfd8321a51b2b7b5efb8a8a1ba921",
+        "current_sha256": "1cf235b063774f4628bd178ca1dbfcf5733cfd8321a51b2b7b5efb8a8a1ba921",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-029-reports-rendering-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "c81b1ed4d5be68fe56e442b6ced771bb234b1804a50e1028fabac31a0856e938",
+        "current_sha256": "c81b1ed4d5be68fe56e442b6ced771bb234b1804a50e1028fabac31a0856e938",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-029-reports-rendering-preparation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "0dd7eab742628e3f348a3cce5ad3ccd3a6d6f6de4f1f4f3ae21e51052b0879fb",
+        "current_sha256": "0dd7eab742628e3f348a3cce5ad3ccd3a6d6f6de4f1f4f3ae21e51052b0879fb",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-029-worker-report-sources-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "c38916deb0f5c08f226b030575632f509f90f74052744a124f01e03316030a78",
+        "current_sha256": "c38916deb0f5c08f226b030575632f509f90f74052744a124f01e03316030a78",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-029-worker-report-sources-verify-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "eea3b5bb6f119d78b57f0f013675ba34f0eaff63d3b5d9b139e3d4ebed6295fa",
+        "current_sha256": "eea3b5bb6f119d78b57f0f013675ba34f0eaff63d3b5d9b139e3d4ebed6295fa",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-044-preparation-20260923.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "a754bc1f74d688cfd1d4e964da566ae910a16dfa4858a217cc9a9c251f520576",
+        "current_sha256": "a754bc1f74d688cfd1d4e964da566ae910a16dfa4858a217cc9a9c251f520576",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-045-artifact-retention-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "ac86a207f53dc0bec6ba28f2ce96fa31b3632ec0721674a8d8870a5e45a4ba2a",
+        "current_sha256": "ac86a207f53dc0bec6ba28f2ce96fa31b3632ec0721674a8d8870a5e45a4ba2a",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-045-preparation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "5d8826c7afe6e236b2b4dcb860496654054fc207ab8d9d70dfb6060ca92d33f9",
+        "current_sha256": "5d8826c7afe6e236b2b4dcb860496654054fc207ab8d9d70dfb6060ca92d33f9",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-045-revalidation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "b07a6813888a39aa4ceb46cb349a0cd4b5701f31f07f7707e5075029a7a30269",
+        "current_sha256": "b07a6813888a39aa4ceb46cb349a0cd4b5701f31f07f7707e5075029a7a30269",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-046-test-feedback-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "b9bd9a98d1be0f55fdc1ad75c91f09625522e6ed91518f650ee7febf056df96f",
+        "current_sha256": "b9bd9a98d1be0f55fdc1ad75c91f09625522e6ed91518f650ee7febf056df96f",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-047-preparation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "07a203ffe460c571e7b2b43faa044b63e6bdc120151513327f17bd3c73e5a5f2",
+        "current_sha256": "07a203ffe460c571e7b2b43faa044b63e6bdc120151513327f17bd3c73e5a5f2",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-047-test-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "2071015507ebed815934fb3dc664e6a4620063eba2940703fd6f3b7fe85f23ad",
+        "current_sha256": "2071015507ebed815934fb3dc664e6a4620063eba2940703fd6f3b7fe85f23ad",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-048-any-boundaries-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "06ceb6f3393813d37acd44a0385b1187ce2397a545afd8f7a2eb6715e31daa46",
+        "current_sha256": "06ceb6f3393813d37acd44a0385b1187ce2397a545afd8f7a2eb6715e31daa46",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-048-preparation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "76fbbc2778ccc36baa79035d4a88e36703739999d78d9cd11daf203c6aedf1c7",
+        "current_sha256": "76fbbc2778ccc36baa79035d4a88e36703739999d78d9cd11daf203c6aedf1c7",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-049-openapi-esm-implementation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "64997c99c9bf4458730745d8743f6fc7de437d65a7479e5aecd60358cd1ba4ab",
+        "current_sha256": "64997c99c9bf4458730745d8743f6fc7de437d65a7479e5aecd60358cd1ba4ab",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-049-openapi-esm-preparation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "4696a5a0be20599a84b542dcf05b69de6882e53bd95c0d7fbc025a572593b754",
+        "current_sha256": "4696a5a0be20599a84b542dcf05b69de6882e53bd95c0d7fbc025a572593b754",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-050-lockfile-policy-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "b649d541c00feba35f205e1e45431deba57bbb04daf841a44f29083f4da4ff12",
+        "current_sha256": "b649d541c00feba35f205e1e45431deba57bbb04daf841a44f29083f4da4ff12",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-051-fk-test-names-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "ec36e2fb3ce13c54c9ca454f384c2a72f6449013833104f683db8fa8dddc46fc",
+        "current_sha256": "ec36e2fb3ce13c54c9ca454f384c2a72f6449013833104f683db8fa8dddc46fc",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-056-gate-recovery-20260923.md",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "c987e8821386a0cd44612cef498c82d2e5e4e8c9a5a1ac0ad91ffe07304e3ff5",
+        "current_sha256": "0f5f007ba10a8ed1bab860577797e83ed166321e55ce595883dee930e1f0086d",
+        "sha_matches_inventory": false,
+        "disposition": "HOLD_D_HASH_DRIFT"
+      },
+      {
+        "path": ".agent/evidence/rem-056-local-verification-20260923.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "6f3edaab89f4c2b1a8b5f82fb21d20605201c59a0df9328dd7491f267ed6a7e5",
+        "current_sha256": "6f3edaab89f4c2b1a8b5f82fb21d20605201c59a0df9328dd7491f267ed6a7e5",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-056-local-verification-recovery-20260923.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "cf0a39ad3ad1b72a2af4c4a7e660fa478389e6056c892b9fbe593c3e2fda579a",
+        "current_sha256": "cf0a39ad3ad1b72a2af4c4a7e660fa478389e6056c892b9fbe593c3e2fda579a",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/evidence/rem-target-pack-preparation-20260922.txt",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "d3d151721e36cfd7ca7466e112d6b2032366524130dccb1668f429c335a9b9d5",
+        "current_sha256": "d3d151721e36cfd7ca7466e112d6b2032366524130dccb1668f429c335a9b9d5",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/blocked-remediacao-integral-rem-002-wait-authority-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "206a2342ffe1d9ef7c3a72aaccd946904b11b23752886a0525a6d8856005ce38",
+        "current_sha256": "206a2342ffe1d9ef7c3a72aaccd946904b11b23752886a0525a6d8856005ce38",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "a28b7ba5f7ff7172ca8c4c3085d3fe7e22175615d5729117ad84d93c524f5446",
+        "current_sha256": "a28b7ba5f7ff7172ca8c4c3085d3fe7e22175615d5729117ad84d93c524f5446",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-coverage-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "982adc735599c665685e08da710769fadc7f8a054d2018b4683ea9ca062cb522",
+        "current_sha256": "982adc735599c665685e08da710769fadc7f8a054d2018b4683ea9ca062cb522",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-coverage-vitest-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "0cbea331b6df18388316e88a30b1ff7e9019d37c4c55914fc75b95e324498078",
+        "current_sha256": "0cbea331b6df18388316e88a30b1ff7e9019d37c4c55914fc75b95e324498078",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-reconciliation-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "3a695e3bd31a7c6e38ccfa66ee758de823be8ed892a613ac15e7fdd3f275c38b",
+        "current_sha256": "3a695e3bd31a7c6e38ccfa66ee758de823be8ed892a613ac15e7fdd3f275c38b",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-004-revalidation-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "5f6040a7a7b446356828632070a0ff1c7077427746c2dbb8824d97482cf59aab",
+        "current_sha256": "5f6040a7a7b446356828632070a0ff1c7077427746c2dbb8824d97482cf59aab",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-006-revalidation-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "b898efd38e73ddc7f31eccfc04b9693363b3e3d68ae710cf5569b957f30df689",
+        "current_sha256": "b898efd38e73ddc7f31eccfc04b9693363b3e3d68ae710cf5569b957f30df689",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-007-revalidation-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "499e2093077cfc7666671a6c27fad929ded3830fc20db632b5f3a1be3b5ad237",
+        "current_sha256": "499e2093077cfc7666671a6c27fad929ded3830fc20db632b5f3a1be3b5ad237",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-008-preparation-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "0ff2ac3242b5d5929f5c0f497e4050886194c0aa27ebb361cece2004d5d5509f",
+        "current_sha256": "0ff2ac3242b5d5929f5c0f497e4050886194c0aa27ebb361cece2004d5d5509f",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-009-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "44b6796dd948dec0ce54c55259d028c6655367815dc9564e4b650ea38e8e375c",
+        "current_sha256": "44b6796dd948dec0ce54c55259d028c6655367815dc9564e4b650ea38e8e375c",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-013-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "3371a3aeb0798429bac112794613fd1d750b8e53b6ba3eddd804345c590d6d06",
+        "current_sha256": "3371a3aeb0798429bac112794613fd1d750b8e53b6ba3eddd804345c590d6d06",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-014-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "e667d24c5777d12f7515428c3e94123c474f0e5e6e0757960332ac2c38c2e027",
+        "current_sha256": "e667d24c5777d12f7515428c3e94123c474f0e5e6e0757960332ac2c38c2e027",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-015-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "866253ab6d34629f6b480f9f5c65e3ee8f4a7a18bfbe7b258652822805873f2c",
+        "current_sha256": "866253ab6d34629f6b480f9f5c65e3ee8f4a7a18bfbe7b258652822805873f2c",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-016-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "0e7751266d7f6a93abd985a4178136e8e60850b3011e87dd57445f873fcebcd2",
+        "current_sha256": "0e7751266d7f6a93abd985a4178136e8e60850b3011e87dd57445f873fcebcd2",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-017-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "d4f425c569a73426a223c5eb2e3359ec15930c4968c1da347e3f6f02c433bd01",
+        "current_sha256": "d4f425c569a73426a223c5eb2e3359ec15930c4968c1da347e3f6f02c433bd01",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-026-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "3e00650ebfe0f102dc01eca546b5226388af975dacabf4c12e71d9663c8228c0",
+        "current_sha256": "3e00650ebfe0f102dc01eca546b5226388af975dacabf4c12e71d9663c8228c0",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-026-revalidation-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "f274bc2db1871dc43f6b3a73818c5c12b4bbabe96bc35d8f70e6120cb52d9d32",
+        "current_sha256": "f274bc2db1871dc43f6b3a73818c5c12b4bbabe96bc35d8f70e6120cb52d9d32",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-027-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "cb1932e45c84009812ebd59c1f5b88f376434d7c066243275e13987253a07ba8",
+        "current_sha256": "cb1932e45c84009812ebd59c1f5b88f376434d7c066243275e13987253a07ba8",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-028-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "8e222b2c8694390e3d93e13b115be7ddf9f2262974b1ba87f1031fbbc0800f2d",
+        "current_sha256": "8e222b2c8694390e3d93e13b115be7ddf9f2262974b1ba87f1031fbbc0800f2d",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-028-appointments-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "f85b553b05243fd2bd0d5d0d6c289a48ed4ab374529d4eeb109125efe529e14c",
+        "current_sha256": "f85b553b05243fd2bd0d5d0d6c289a48ed4ab374529d4eeb109125efe529e14c",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-028-appointments-action-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "4e661a4d72c3ae54b3ab8cfadd44f5802baa71122eba994f718d5cb825049b8d",
+        "current_sha256": "4e661a4d72c3ae54b3ab8cfadd44f5802baa71122eba994f718d5cb825049b8d",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-028-appointments-create-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "36d5d97a94001fd76eeba5c30bb54d76224409b2eaac35a751ad34aa65d3865d",
+        "current_sha256": "36d5d97a94001fd76eeba5c30bb54d76224409b2eaac35a751ad34aa65d3865d",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-028-appointments-overview-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "64467d5fee016bcbd0a0cd303c7a6c7e1cbeb896fac8e7b5878d4c14d888c7d6",
+        "current_sha256": "64467d5fee016bcbd0a0cd303c7a6c7e1cbeb896fac8e7b5878d4c14d888c7d6",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-029-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "40eac1e6370dfb2086d2e44c6f37593db8b6731dd8bc760f0a0e4b01bf1b4e85",
+        "current_sha256": "40eac1e6370dfb2086d2e44c6f37593db8b6731dd8bc760f0a0e4b01bf1b4e85",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-029-reports-persistence-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "7de152b811640aae6013ceb4eb03a88c87622191d0541098bfeef9c86e9f8052",
+        "current_sha256": "7de152b811640aae6013ceb4eb03a88c87622191d0541098bfeef9c86e9f8052",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-029-reports-rendering-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "60608572f0bd4409dcfd10ea3331fc44c06bae6485bd319478a0e503583af584",
+        "current_sha256": "60608572f0bd4409dcfd10ea3331fc44c06bae6485bd319478a0e503583af584",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-044-20260923.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "8da32221a11e0fa15c65328e3d426cbbcd9f3f187b662e5ef76b625ae65e9b2d",
+        "current_sha256": "8da32221a11e0fa15c65328e3d426cbbcd9f3f187b662e5ef76b625ae65e9b2d",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-045-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "e0df8a1c69b21ea503c3339a3bbf3ce6a1907305acf5e9c9734cbb617e0c533f",
+        "current_sha256": "e0df8a1c69b21ea503c3339a3bbf3ce6a1907305acf5e9c9734cbb617e0c533f",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-047-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "2e1304fc73f037bd256ee3b01b0ac15091a82931131abf5876b360f40c10e41a",
+        "current_sha256": "2e1304fc73f037bd256ee3b01b0ac15091a82931131abf5876b360f40c10e41a",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-048-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "f20234b3cef2628bd551a31e1d7553f2f3667b267ed39631f057d89e15bdb61e",
+        "current_sha256": "f20234b3cef2628bd551a31e1d7553f2f3667b267ed39631f057d89e15bdb61e",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-049-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "654a016f193279942f680dd3333ab2c75f866696b15260ef79362323bb383a1f",
+        "current_sha256": "654a016f193279942f680dd3333ab2c75f866696b15260ef79362323bb383a1f",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-rem-target-pack-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "6445fe10856e6cbdaec7e1a89c8929efc7640d358476a6763933506ebff57fe5",
+        "current_sha256": "6445fe10856e6cbdaec7e1a89c8929efc7640d358476a6763933506ebff57fe5",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/implementation-ready-remediacao-integral-runner-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "7b71892569d4cea6a2ec3147b1a691fe6bb04871af52da19ebca45443d9f055f",
+        "current_sha256": "7b71892569d4cea6a2ec3147b1a691fe6bb04871af52da19ebca45443d9f055f",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/passed-remediacao-integral-rem-002-audit-resolved-20260923.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "b82a9cf9b840ae37534b9eacfe7716a6142cc50f347b2169f5e0e2e6a8b0014d",
+        "current_sha256": "b82a9cf9b840ae37534b9eacfe7716a6142cc50f347b2169f5e0e2e6a8b0014d",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-melhorias-rem-056-20260923.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "bebcb35d32675096f1137b8ece8f0bf832fb31d2c1cdbb0201c22a0e0e108030",
+        "current_sha256": "bebcb35d32675096f1137b8ece8f0bf832fb31d2c1cdbb0201c22a0e0e108030",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-melhorias-rem-056-v2-20260923.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "1210a61d9f8c3435030a97d64bfa0886fc92d02658abd732555f834471b4b140",
+        "current_sha256": "1210a61d9f8c3435030a97d64bfa0886fc92d02658abd732555f834471b4b140",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-001-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "3956de3ad9e0e96fd40c7bfbb2f2fd0e0bc24b2057a9b178603aaff0c620c052",
+        "current_sha256": "3956de3ad9e0e96fd40c7bfbb2f2fd0e0bc24b2057a9b178603aaff0c620c052",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-002-pushed-20260923.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "19690e7864925aa5ecdfb4e28b5258c6e16eb39b471d8f0384a218fa74e84fec",
+        "current_sha256": "19690e7864925aa5ecdfb4e28b5258c6e16eb39b471d8f0384a218fa74e84fec",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-008-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "ec3d81f5aa663b40f0be8572c181b748486ff22f761ba4ae9a237f3281a31e0e",
+        "current_sha256": "ec3d81f5aa663b40f0be8572c181b748486ff22f761ba4ae9a237f3281a31e0e",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-008-revalidation-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "ef3e340470a3d9ca1955b975a9bc39dc100ee26e3cf4bf991b4fc2696fc7f239",
+        "current_sha256": "ef3e340470a3d9ca1955b975a9bc39dc100ee26e3cf4bf991b4fc2696fc7f239",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-009-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "090b5beff932fbe23f725aaa9f1f7609b083c3aa1faeef827d1f2ff7d3dd1cba",
+        "current_sha256": "090b5beff932fbe23f725aaa9f1f7609b083c3aa1faeef827d1f2ff7d3dd1cba",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-009-20260922-clean.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "253c4f91976a20e7023439600ec8944c138fc943cc31c5ef66b9887bc15187c4",
+        "current_sha256": "253c4f91976a20e7023439600ec8944c138fc943cc31c5ef66b9887bc15187c4",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-013-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "582b3ac7ad9006d89b3c8e55abeae1060d999dd7e02178f3a25a185cc0af5c0a",
+        "current_sha256": "582b3ac7ad9006d89b3c8e55abeae1060d999dd7e02178f3a25a185cc0af5c0a",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-014-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "726d918bd776b689bf030819314b94ec503679c01d247267a8596f88c785d942",
+        "current_sha256": "726d918bd776b689bf030819314b94ec503679c01d247267a8596f88c785d942",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-015-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "2ae926f22e4bdacd86b382a0057750ecb10be75bc5479b4e6f813cf675cc7117",
+        "current_sha256": "2ae926f22e4bdacd86b382a0057750ecb10be75bc5479b4e6f813cf675cc7117",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-016-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "22eab92deefc7e028de24d7ff3bd3562066d480384ada4de00406e6900b7e7bf",
+        "current_sha256": "22eab92deefc7e028de24d7ff3bd3562066d480384ada4de00406e6900b7e7bf",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-017-20260921.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "a8cd439215ea0e65516193ec659fded8fd89d7d53b66116f2e6e7f71aed7bd1f",
+        "current_sha256": "a8cd439215ea0e65516193ec659fded8fd89d7d53b66116f2e6e7f71aed7bd1f",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-027-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "929b5d74f37229efb78ff41a7706020c5d1b705fedb55659ecf568238dbe2e5c",
+        "current_sha256": "929b5d74f37229efb78ff41a7706020c5d1b705fedb55659ecf568238dbe2e5c",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-027-hotspot-reconciliation-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "66964b605de9be138d9f5796f818e086232e47957b68b348543e79b2dd62dbcc",
+        "current_sha256": "66964b605de9be138d9f5796f818e086232e47957b68b348543e79b2dd62dbcc",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-appointments-action-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "1bbcbc901c82a8361848f11afdfb1380846c279be9a1e709d7457430994af1ec",
+        "current_sha256": "1bbcbc901c82a8361848f11afdfb1380846c279be9a1e709d7457430994af1ec",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-appointments-aggregate-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "4584d6526ce095815209208e5ed90e036569f9512b50e3a2d240f6779ef0c4f6",
+        "current_sha256": "4584d6526ce095815209208e5ed90e036569f9512b50e3a2d240f6779ef0c4f6",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-appointments-calendar-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "bebf046cc58abcab038529b0c99cb88f737e26b92618359796e5cbfb78fcd429",
+        "current_sha256": "bebf046cc58abcab038529b0c99cb88f737e26b92618359796e5cbfb78fcd429",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-appointments-create-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "232c18cb8d3a6ae4678fcd227157b0fc091007d7a8f084c501ee8d8031cbdf81",
+        "current_sha256": "232c18cb8d3a6ae4678fcd227157b0fc091007d7a8f084c501ee8d8031cbdf81",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-appointments-overview-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "0fe6f9f316f237de3e136fe6e2392b642009cde0e2791e71a26fb3bbb382d188",
+        "current_sha256": "0fe6f9f316f237de3e136fe6e2392b642009cde0e2791e71a26fb3bbb382d188",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-clinical-context-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "e9e29cc77ac8f69907ad94ef508b47ff2bc6fe183256dfa2cfccf14ea548f468",
+        "current_sha256": "e9e29cc77ac8f69907ad94ef508b47ff2bc6fe183256dfa2cfccf14ea548f468",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-clinical-navigator-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "8070bda8dcc802e16032ad85e34e6e47b6a4ffbfd73295696fe9628c8a716740",
+        "current_sha256": "8070bda8dcc802e16032ad85e34e6e47b6a4ffbfd73295696fe9628c8a716740",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-counter-sales-cards-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "671220dd78138f0135ad3248541d587de3011009ca75a0a9b2b697ae8481384b",
+        "current_sha256": "671220dd78138f0135ad3248541d587de3011009ca75a0a9b2b697ae8481384b",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-counter-sales-catalog-payments-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "956c373490a7753c92d048b8bea9e8114cc968f16746032c139bcdf73e5ece8b",
+        "current_sha256": "956c373490a7753c92d048b8bea9e8114cc968f16746032c139bcdf73e5ece8b",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-counter-sales-kpi-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "259fea71077c8d695ae27e56c1ff968dffb689f768410bf7424b770f2a9705bc",
+        "current_sha256": "259fea71077c8d695ae27e56c1ff968dffb689f768410bf7424b770f2a9705bc",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-counter-sales-workbench-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "a0513ff4765c494b0aed4b4ad0ea3a560fa59ca63c05efa76d1dd5da25b37a1f",
+        "current_sha256": "a0513ff4765c494b0aed4b4ad0ea3a560fa59ca63c05efa76d1dd5da25b37a1f",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-patient-timeline-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "e5bd2d21d9afac4d78fdffc055180106295689f29f4a61c0291ee1ebb98b400a",
+        "current_sha256": "e5bd2d21d9afac4d78fdffc055180106295689f29f4a61c0291ee1ebb98b400a",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-reports-export-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "58c887406c8f26ee57df6e66a1cb889bd79f92381f9d347386ca3af158fe3527",
+        "current_sha256": "58c887406c8f26ee57df6e66a1cb889bd79f92381f9d347386ca3af158fe3527",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-reports-filter-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "7cd6d7ecd90f5093e0fb1930c8d1fcbc8c472687e0bda7e5eef48d392fdb51d4",
+        "current_sha256": "7cd6d7ecd90f5093e0fb1930c8d1fcbc8c472687e0bda7e5eef48d392fdb51d4",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-reports-query-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "be8a0441f329a1f06580b3ec27c0682889c1f2b41725282153b0f36cbd9d6671",
+        "current_sha256": "be8a0441f329a1f06580b3ec27c0682889c1f2b41725282153b0f36cbd9d6671",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-reports-result-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "448fccac2774c30b35f9f1a9d3066350489c93be9e50438767c115aced7c2358",
+        "current_sha256": "448fccac2774c30b35f9f1a9d3066350489c93be9e50438767c115aced7c2358",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-reports-shell-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "63f62fad7a565693043015904f6c3f8f5490935a69b676fb4035c98f11fcf323",
+        "current_sha256": "63f62fad7a565693043015904f6c3f8f5490935a69b676fb4035c98f11fcf323",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-reports-summary-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "109083919269f6f29bd95e4f27287776490a9b00d8dd97c37dbbbcf61a442f7d",
+        "current_sha256": "109083919269f6f29bd95e4f27287776490a9b00d8dd97c37dbbbcf61a442f7d",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-028-visual-revalidation-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "b234138d818892118a4d1689b2858f425b6dd91cfd9c918a53604bcd6733d34c",
+        "current_sha256": "b234138d818892118a4d1689b2858f425b6dd91cfd9c918a53604bcd6733d34c",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-029-aggregate-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "70eceeb27ebb1fc21a4c87c60bc5aec5e1d0f66b8d35d0c14637b328a123bfae",
+        "current_sha256": "70eceeb27ebb1fc21a4c87c60bc5aec5e1d0f66b8d35d0c14637b328a123bfae",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-029-aggregate-revalidation-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "545228334237892b6991023e4093004a65a12f8b8ddf37a78f096fbc0348b4c1",
+        "current_sha256": "545228334237892b6991023e4093004a65a12f8b8ddf37a78f096fbc0348b4c1",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-029-reports-persistence-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "f434fdeddccc374360e1d96a601c4b3f576de0205b214ebd8c84ba0fde53eac6",
+        "current_sha256": "f434fdeddccc374360e1d96a601c4b3f576de0205b214ebd8c84ba0fde53eac6",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-029-reports-persistence-verify-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "182683649bf0e61fe0953e68d43668464616c49f1640dd1028b4cfee7740131e",
+        "current_sha256": "182683649bf0e61fe0953e68d43668464616c49f1640dd1028b4cfee7740131e",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-029-reports-rendering-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "fd9b5eb3a30c8826061cf26f0df62ac90ef51ff838abbf60d5bbd14ab22f47d0",
+        "current_sha256": "fd9b5eb3a30c8826061cf26f0df62ac90ef51ff838abbf60d5bbd14ab22f47d0",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-029-worker-report-sources-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "d7127c01b01543c2cdacedef80e5e0434915472974e56835507fce3cb693aa5c",
+        "current_sha256": "d7127c01b01543c2cdacedef80e5e0434915472974e56835507fce3cb693aa5c",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-029-worker-report-sources-verify-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "b550b59e4e4d67a33ad282aa98e8bcc921e89ed49943a0cff8326a2c45ac093b",
+        "current_sha256": "b550b59e4e4d67a33ad282aa98e8bcc921e89ed49943a0cff8326a2c45ac093b",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-045-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "fe01d148e3c270b1754276e616ca58406c43302980600402592259162716dcc5",
+        "current_sha256": "fe01d148e3c270b1754276e616ca58406c43302980600402592259162716dcc5",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-045-revalidation-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "33f92cbfe78fb2a6f11ce7ea2b8c1dab9b614c5b91d7eefc0d0ea4763cd108d5",
+        "current_sha256": "33f92cbfe78fb2a6f11ce7ea2b8c1dab9b614c5b91d7eefc0d0ea4763cd108d5",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-046-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "2b83b9db72a6b23ff1fb5cb3b86a93eac02cd06750118a7c410ca447a8b4dbce",
+        "current_sha256": "2b83b9db72a6b23ff1fb5cb3b86a93eac02cd06750118a7c410ca447a8b4dbce",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-047-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "9529f4c792ade961f102b00a0c52ddb403e8d17848fb1b23be38949b3aa251ef",
+        "current_sha256": "9529f4c792ade961f102b00a0c52ddb403e8d17848fb1b23be38949b3aa251ef",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-048-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "fe5e30e2341fbc4e242e620aeb99bc567f4f5fa04a02478bdfbfb7d515f9cc3c",
+        "current_sha256": "fe5e30e2341fbc4e242e620aeb99bc567f4f5fa04a02478bdfbfb7d515f9cc3c",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-049-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "d6bd88b82cc0adb4c2ce64a200d57bbf96e05f2b09c96e90b9d9baba0246d671",
+        "current_sha256": "d6bd88b82cc0adb4c2ce64a200d57bbf96e05f2b09c96e90b9d9baba0246d671",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-050-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "2092b13fed3cabbf7a499f3f51ff53933ab2807999686fddeb588a1889c8f26b",
+        "current_sha256": "2092b13fed3cabbf7a499f3f51ff53933ab2807999686fddeb588a1889c8f26b",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      },
+      {
+        "path": ".agent/gates/verified-remediacao-integral-rem-051-20260922.json",
+        "git_status_at_review": "??",
+        "git_status_matches_inventory": true,
+        "inventory_sha256": "a58aadc7531d69beba64cc9764f628bda93e2630a4d709c788d4b8cf3c205729",
+        "current_sha256": "a58aadc7531d69beba64cc9764f628bda93e2630a4d709c788d4b8cf3c205729",
+        "sha_matches_inventory": true,
+        "disposition": "INCLUDE_AS_AUDIT_RECORD_AFTER_REFRESHED_CANDIDATE_INVENTORY"
+      }
+    ]
+  },
+  "source_documents": {
+    "reviewer": "/root/m_crosswalk_evidence_critic",
+    "verdict": "PASS",
+    "record_ref": ".agent/evidence/m50-crosswalk-review-20260923.md#M50-SOURCE-DOC-REVIEW-FINAL-20260923",
+    "findings": [
+      "M backlog reconciliation range now includes current REM items including REM-056.",
+      "M-04 is W1 in the crosswalk and living plan, matching the source roadmap.",
+      "The audit uses a portable checkout description and its 55-REM count remains a dated snapshot.",
+      "The High/Medium/Low grouping, 50 unique IDs and 170 explicit REM/PROD status claims match."
+    ],
+    "paths": [
+      {
+        "path": "docs/2026-09-23-backlog-melhorias.md",
+        "sha256": "46532f0e822e877c2ac821e9fee14ae9df5aabb10a0affa88947d8b2733e0abd",
+        "review": "PASS"
+      },
+      {
+        "path": "docs/2026-09-23-lista-50-melhorias.md",
+        "sha256": "1048dfc6b4b7e695405ac07d016bb73c7c8960ccffe0ea394f6278d3f5e1ed90",
+        "review": "PASS"
+      },
+      {
+        "path": "docs/2026-09-23-plano-executivo-melhorias.md",
+        "sha256": "cf3d8c05805125ba806f25464f549b8ab1f9d415215c617b3dc6f1be650fff52",
+        "review": "PASS"
+      },
+      {
+        "path": "docs/2026-09-23-relatorio-auditoria-repositorio.md",
+        "sha256": "a2e5ca5523213158e200c866631980b87611b660d5378dc2ff44f77e4308be02",
+        "review": "PASS"
+      },
+      {
+        "path": "docs/2026-09-23-roadmap-melhorias.md",
+        "sha256": "509c76132f691bac745cb7ea3835dcecdfb475b2fed59759ab1aa22d13b1d4b6",
+        "review": "PASS"
+      },
+      {
+        "path": ".agent/evidence/m50-rem-crosswalk-20260923.md",
+        "sha256": "ba8bd38eb67cfa36bfdaab7a8154944e197d424c37a5c1be266dcede11b2c0eb",
+        "review": "PASS"
+      },
+      {
+        "path": ".agent/plans/melhorias-20260923.md",
+        "sha256": "83a104eea7c57be96e86dad7d5d7b0224366497476c5595dc3b49beeaaa5007a",
+        "review": "PASS"
+      }
+    ],
+    "overlay_disposition": "HOLD until all M-02 paths are reviewed and independently critiqued; no candidate exists."
+  },
+  "workspace_manifest_review_ref": ".agent/evidence/m02-workspace-manifest-review-20260923.json#M02-WORKSPACE-MANIFEST-REVIEW-20260923-01",
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null
+  },
+  "limitations": [
+    "Sixteen post-inventory review/control-evidence files remain outside the historical 386-path denominator and must be included in any refreshed candidate-bound inventory.",
+    "The root/API/worker broad test commands remain HOLD pending side-effect review; focused isolated checks have passed only in the scopes recorded by their round-specific evidence, including the separate SPA suites without a database global setup.",
+    "65 of the original 386 inventory paths remain pending content, scope, sensitivity/provenance, and proportional test review.",
+    "Path/hash inventory and secret-pattern scan are not a substitute for complete semantic, privacy, or candidate-bound review.",
+    "No external CI, credentials, shared DB reset/migration/seed/grants, target, deployment, push or ref mutation occurred.",
+    "The reports Vitest suite made read-only setup queries to the explicitly configured local cvg_his_v2 database; no reset, DDL/DML, migration, seed, or grants occurred. Future DB-backed test commands remain held until an approved disposable target or no-connection guard is available; details are in the source-review artifact.",
+    "Round 2 reviewed API server/worker extraction and ran direct node:test suites only. API HTTP composition, SQL/persistence behavior, and broader Vitest suites remain unverified; the new round-2 evidence artifact is outside the historical 386-path denominator.",
+    "Round 3 found an unresolved report execution/export retention contract: expiresAt is metadata only in inspected getters/load paths and exports have no expiry field or purge path. No policy decision was inferred; the relevant source remains on hold pending Product/Security-DPO direction.",
+    "Round 6 reviewed CounterSalesPage.vue; its clean test is byte-identical to origin/main and is reference evidence, not a dirty inventory path. The async request race, PII-shaped baseline fixture provenance, payment validation boundary, and browser/accessibility behavior remain on hold.",
+    "The counter-sales parent source is now reviewed, but mocked tests do not establish server payment validation, persistence, tenant enforcement, request-race behavior, or real-browser interaction.",
+    "Round 7 reviewed the modified report workbench page; the known-execution export-recovery test does not establish reload durability or real-browser download behavior.",
+    "Round 8 reviewed only clinical context/navigation children; parent record loading/saving/authorization, fixture provenance, browser focus, assistive technology, and visual behavior remain unverified.",
+    "Round 9 used the clean origin/main medical-record page test as reference evidence (49/49) under mocked SPA/JSDOM; it did not establish backend persistence/authorization or browser accessibility/visual behavior, and the CPF-shaped repeated-zero fixture provenance remains unconfirmed.",
+    "Round 10 passed 43/43 focused appointments page/overview tests using the isolated SPA/JSDOM config and mocked services. It does not prove API authorization/tenant isolation, browser/a11y/visual behavior, or fixture provenance; appointment calendar/create/action child paths remain pending.",
+    "Round 11 passed 11/11 focused appointment child/controller tests in mocked SPA/JSDOM. The no-show-versus-cancel domain contract and role=grid keyboard/screen-reader interaction remain holds; backend authorization, idempotency, visual QA, and fixture provenance were not established.",
+    "Round 12 passed 12/12 focused patient detail/timeline tests in mocked SPA/JSDOM. Account-wide encounter and medical-record summary reads before patient filtering remain a data-minimization hold; fixture provenance and browser/AT/visual behavior are unverified.",
+    "Round 13 reviews four original-inventory paths already covered by the initial focused manifest/content evidence; it adds no new path-count coverage. The SPA lint command passed with 32 non-blocking explicit-any warnings and the isolated filesystem-only contract passed 3/3; the round does not verify that every CI/developer pipeline invokes lint and typecheck.",
+    "Round 14 adds three distinct original paths; the root manifest is part of the already-counted initial manifest review. The broad pnpm test aggregate remains held on the shared worktree, and CI migration-harness target implementation is pending review.",
+    "At the round-13 checkpoint, coverage was corrected from 313 to 312/386 (74 pending); after round 14, three new distinct paths raise current coverage to 315/386 (71 pending).",
+    "Round 15 statically reviews the REM-016 migration harness and contract test, adding two unique original paths. The focused test and syntax check did not execute Docker or connect to PostgreSQL; image override trust, unbounded lock-child wait, interruption cleanup, and live migration behavior remain holds.",
+    "Coverage after round 14 was 315/386 (71 pending); round 15 adds two hash-stable original paths, yielding 317/386 (69 pending).",
+    "Round 16 adds two original source/test paths and passes focused 3/3 plus the read-only validator CLI with 36 allowlisted skip occurrences. The allowlist/critical-manifest configuration paths remain separately pending; computed/aliased skip syntax, symlinks, and raw-YAML decoy cases are not fully covered.",
+    "Coverage after round 15 was 317/386 (69 pending); round 16 adds two hash-stable unique paths, yielding 319/386 (67 pending).",
+    "Round 17 reviews the test-skip policy JSON as a distinct original path; its 23 unique allowlist entries account for 36 current skips across seven required shards. The Playwright runner is not structurally bound to the critical manifest, and the large critical-coverage-scope.json remains pending.",
+    "Coverage after round 16 was 319/386 (67 pending); round 17 adds one hash-stable path, yielding 320/386 (66 pending).",
+    "Round 17 cross-review of the validator found the required playwright-postgresql runner label has no explicit branch for coverage-manifest membership/classification checks; this is recorded in round-16 follow-up and round-17 policy evidence.",
+    "Round 18 adds one original tooling path; package build and compiled unit test passed 24/26 with two live Redis tests skipped when the URL was unset. The Redis runner accepts any nonempty target URL, has no subprocess timeout, and does not assert a positive test count; no live Redis test was run.",
+    "Coverage after round 17 was 320/386 (66 pending); round 18 adds one stable path, yielding 321/386 (65 pending)."
+  ],
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T11:06:38Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 304,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 430,
+    "status_sha256": "61cf175e4cc62a82e480311b82f853d7d598061457c0c6486e87ee0b2625a3cb",
+    "note": "Read-only porcelain snapshot after M-02 round 41 and checkpoint validation; all 386 original paths have source/content review. The round-41 review artifact is the forty-fourth post-inventory path. No candidate, overlay or frozen SHA exists."
+  },
+  "post_inventory_paths_not_in_original_386_path_list": [
+    {
+      "path": ".agent/evidence/m02-inventory-20260923.jsonl",
+      "status": "??",
+      "disposition": "Must be included in refreshed candidate-bound inventory; the manifest was created after its own initial scan."
+    },
+    {
+      "path": ".agent/evidence/m02-workspace-manifest-review-20260923.json",
+      "status": "??",
+      "disposition": "Content reviewed in its focused scope; must still be included in refreshed candidate-bound inventory and final critique."
+    },
+    {
+      "path": ".agent/evidence/m02-content-scope-review-20260923.json",
+      "status": "??",
+      "disposition": "This review artifact was created after the 386-path baseline; include it in refreshed inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round1-20260923.json",
+      "status": "??",
+      "disposition": "This bounded review artifact was created after the 386-path baseline; include it in the refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round2-20260923.json",
+      "status": "??",
+      "disposition": "This bounded review artifact was created after the 386-path baseline; include it in the refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round3-20260923.json",
+      "status": "??",
+      "disposition": "This bounded review artifact was created after the 386-path baseline; include it in the refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round4-20260923.json",
+      "status": "??",
+      "disposition": "Round 4 source review artifact created after the original scan; include it in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round5-20260923.json",
+      "status": "??",
+      "disposition": "Round 5 source review artifact created after the original scan; include it in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round6-20260923.json",
+      "status": "??",
+      "disposition": "Round 6 source review artifact created after the original scan; include it in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round7-20260923.json",
+      "status": "??",
+      "disposition": "Round 7 source review artifact created after the original scan; include it in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round8-20260923.json",
+      "status": "??",
+      "disposition": "Round 8 source review artifact created after the original scan; include it in refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round9-20260923.json",
+      "status": "??",
+      "disposition": "Round 9 parent clinical page review artifact created after the original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round10-20260923.json",
+      "status": "??",
+      "disposition": "Round 10 appointments page/overview review artifact created after the original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round11-20260923.json",
+      "status": "??",
+      "disposition": "Round 11 appointment calendar/create/action review artifact created after the original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round12-20260923.json",
+      "status": "??",
+      "disposition": "Round 12 patient page/timeline review artifact created after the original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round13-20260923.json",
+      "status": "??",
+      "disposition": "Round 13 SPA lint-boundary review artifact created after original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round14-20260923.json",
+      "status": "??",
+      "disposition": "Round 14 root test-runner/CI review artifact created after original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round15-20260923.json",
+      "status": "??",
+      "disposition": "Round 15 REM-016 harness static source review artifact created after original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round16-20260923.json",
+      "status": "??",
+      "disposition": "Round 16 test-skip policy source review artifact created after original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round17-20260923.json",
+      "status": "??",
+      "disposition": "Round 17 test-skip policy configuration review artifact created after original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round18-20260923.json",
+      "status": "??",
+      "disposition": "Round 18 Redis shard runner review artifact created after original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round19-20260923.json",
+      "status": "??",
+      "disposition": "Round 19 critical-coverage manifest governance and identity review artifact created after original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round20-20260923.json",
+      "status": "??",
+      "disposition": "Round 20 artifact-retention dry-run source, test, policy and runbook review artifact created after original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round21-20260923.json",
+      "status": "??",
+      "disposition": "Round 21 complexity guard and architecture evidence review artifact created after original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round22-20260923.json",
+      "status": "??",
+      "disposition": "Round 22 remediation target-pack validator/test/runbook review artifact created after original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round23-20260923.json",
+      "status": "??",
+      "disposition": "Round 23 OpenAPI ESM entrypoint, compatibility shim and runtime contract review artifact created after original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round24-20260923.json",
+      "status": "??",
+      "disposition": "Round 24 Git ignore/lockfile policy review artifact created after the original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round25-20260923.json",
+      "status": "??",
+      "disposition": "Round 25 backup/restore checker and test review artifact created after the original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round26-20260923.json",
+      "status": "??",
+      "disposition": "Round 26 API request-body and response-buffer test review artifact created after the original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round27-20260923.json",
+      "status": "??",
+      "disposition": "Round 27 API startup-secret and HTTP helper test review artifact created after the original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round28-20260923.json",
+      "status": "??",
+      "disposition": "Round 28 local document index/governance review artifact created after the original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round29-20260923.json",
+      "status": "??",
+      "disposition": "Round 29 contracts response boundary review artifact created after the original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-readme-correction-round30-20260923.json",
+      "status": "??",
+      "disposition": "Round 30 README status correction record created after original scan; include it and the post-review README hash in refreshed candidate-bound inventory."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round31-20260923.json",
+      "status": "??",
+      "disposition": "Round 31 API server boundary unit-test review artifact created after the original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round32-20260923.json",
+      "status": "??",
+      "disposition": "Round 32 REM-001/REM-044 operational document review artifact created after original scan; include in refreshed candidate-bound inventory and privacy review."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round33-20260923.json",
+      "status": "??",
+      "disposition": "Round 33 review artifact created after the original scan; include it in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round34-20260923.json",
+      "status": "??",
+      "disposition": "Round 34 review artifact created after the original scan; include it in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round35-20260923.json",
+      "status": "??",
+      "disposition": "Round 35 review artifact created after the original scan; include it in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round36-20260923.json",
+      "status": "??",
+      "disposition": "Round 36 review artifact created after the original scan; include it in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round37-20260923.json",
+      "status": "??",
+      "disposition": "Round 37 review artifact created after the original scan; include it in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round38-20260923.json",
+      "status": "??",
+      "disposition": "Round 38 review artifact created after the original scan; include it in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round39-20260923.json",
+      "status": "??",
+      "disposition": "Round 39 source-review artifact created after the original scan; include in any refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round40-20260923.json",
+      "status": "??",
+      "disposition": "Round 40 control-ledger review artifact created after original scan; include in refreshed candidate-bound inventory and independent critique."
+    },
+    {
+      "path": ".agent/evidence/m02-source-review-round41-20260923.json",
+      "status": "??",
+      "disposition": "Round 41 FK integration-test source-review artifact created after original scan; include in refreshed candidate-bound inventory and independent critique."
+    }
+  ],
+  "source_review_round1_ref": ".agent/evidence/m02-source-review-round1-20260923.json#M02-SOURCE-REVIEW-ROUND1-20260923",
+  "source_review_round2_ref": ".agent/evidence/m02-source-review-round2-20260923.json#M02-SOURCE-REVIEW-ROUND2-20260923",
+  "source_review_round2_paths": [
+    "apps/api/src/server.ts",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/scheduled-report-sources.ts",
+    "apps/worker/src/scheduled-report-sources.test.ts"
+  ],
+  "updated_at": "2026-09-23T11:06:38Z",
+  "source_review_round3_ref": ".agent/evidence/m02-source-review-round3-20260923.json#M02-SOURCE-REVIEW-ROUND3-20260923",
+  "source_review_round3_paths": [
+    "packages/modules/reports/src/index.ts",
+    "packages/modules/reports/src/report-database-repository.ts"
+  ],
+  "source_review_round4_paths": [
+    "apps/spa/src/pages/reports/ReportExportAction.vue",
+    "apps/spa/src/pages/reports/ReportExportRecovery.vue",
+    "apps/spa/src/pages/reports/ReportFilterPanel.vue",
+    "apps/spa/src/pages/reports/ReportQueryStatus.vue",
+    "apps/spa/src/pages/reports/ReportResultTable.vue",
+    "apps/spa/src/pages/reports/ReportSummaryDetails.vue",
+    "apps/spa/src/pages/reports/ReportWorkbenchToolbar.vue",
+    "apps/spa/src/pages/reports/__tests__/ReportExportAction.test.ts",
+    "apps/spa/src/pages/reports/__tests__/ReportExportRecovery.test.ts",
+    "apps/spa/src/pages/reports/__tests__/ReportFilterPanel.test.ts",
+    "apps/spa/src/pages/reports/__tests__/ReportQueryStatus.test.ts",
+    "apps/spa/src/pages/reports/__tests__/ReportResultTable.test.ts",
+    "apps/spa/src/pages/reports/__tests__/ReportSummaryDetails.test.ts",
+    "apps/spa/src/pages/reports/__tests__/ReportWorkbenchToolbar.test.ts"
+  ],
+  "source_review_round4_ref": ".agent/evidence/m02-source-review-round4-20260923.json#M02-SOURCE-REVIEW-ROUND4-20260923",
+  "source_review_round5_paths": [
+    "apps/spa/src/pages/sales/CounterSalesCard.vue",
+    "apps/spa/src/pages/sales/CounterSalesCardList.vue",
+    "apps/spa/src/pages/sales/CounterSalesKpiSummary.vue",
+    "apps/spa/src/pages/sales/CounterSalesWorkbench.vue",
+    "apps/spa/src/pages/sales/__tests__/CounterSalesCardList.test.ts",
+    "apps/spa/src/pages/sales/__tests__/CounterSalesKpiSummary.test.ts",
+    "apps/spa/src/pages/sales/__tests__/CounterSalesWorkbench.test.ts"
+  ],
+  "source_review_round5_ref": ".agent/evidence/m02-source-review-round5-20260923.json#M02-SOURCE-REVIEW-ROUND5-20260923",
+  "source_review_round6_paths": [
+    "apps/spa/src/pages/sales/CounterSalesPage.vue"
+  ],
+  "source_review_round6_ref": ".agent/evidence/m02-source-review-round6-20260923.json#M02-SOURCE-REVIEW-ROUND6-20260923",
+  "source_review_round7_paths": [
+    "apps/spa/src/pages/reports/ReportWorkbenchPage.vue"
+  ],
+  "source_review_round7_ref": ".agent/evidence/m02-source-review-round7-20260923.json#M02-SOURCE-REVIEW-ROUND7-20260923",
+  "source_review_round8_paths": [
+    "apps/spa/src/pages/medical-records/ClinicalRecordContextAside.vue",
+    "apps/spa/src/pages/medical-records/ClinicalStepNavigator.vue",
+    "apps/spa/src/pages/medical-records/__tests__/ClinicalRecordContextAside.test.ts",
+    "apps/spa/src/pages/medical-records/__tests__/ClinicalStepNavigator.test.ts"
+  ],
+  "source_review_round8_ref": ".agent/evidence/m02-source-review-round8-20260923.json#M02-SOURCE-REVIEW-ROUND8-20260923",
+  "source_review_round9_ref": ".agent/evidence/m02-source-review-round9-20260923.json#M02-SOURCE-REVIEW-ROUND9-20260923",
+  "source_review_round9_paths": [
+    "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue"
+  ],
+  "source_review_round10_ref": ".agent/evidence/m02-source-review-round10-20260923.json#M02-SOURCE-REVIEW-ROUND10-20260923",
+  "source_review_round10_paths": [
+    "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+    "apps/spa/src/pages/appointments/useAppointmentsOverview.ts",
+    "apps/spa/src/pages/appointments/__tests__/AppointmentsOverview.test.ts"
+  ],
+  "source_review_round11_ref": ".agent/evidence/m02-source-review-round11-20260923.json#M02-SOURCE-REVIEW-ROUND11-20260923",
+  "source_review_round11_paths": [
+    "apps/spa/src/pages/appointments/AgendaCalendarOrList.vue",
+    "apps/spa/src/pages/appointments/AppointmentCreateFlow.vue",
+    "apps/spa/src/pages/appointments/appointmentActionController.ts",
+    "apps/spa/src/pages/appointments/__tests__/AgendaCalendarOrList.test.ts",
+    "apps/spa/src/pages/appointments/__tests__/AppointmentCreateFlow.test.ts",
+    "apps/spa/src/pages/appointments/__tests__/AppointmentActionController.test.ts"
+  ],
+  "source_review_round12_ref": ".agent/evidence/m02-source-review-round12-20260923.json#M02-SOURCE-REVIEW-ROUND12-20260923",
+  "source_review_round12_paths": [
+    "apps/spa/src/pages/patients/PatientDetailPage.vue",
+    "apps/spa/src/pages/patients/PatientTimeline360.vue",
+    "apps/spa/src/pages/patients/__tests__/PatientTimeline360.test.ts"
+  ],
+  "source_review_round13_ref": ".agent/evidence/m02-source-review-round13-20260923.json#M02-SOURCE-REVIEW-ROUND13-20260923",
+  "source_review_round13_paths": [
+    "apps/spa/package.json",
+    "scripts/run-semantic-lint.mjs",
+    ".eslintrc.semantic.cjs",
+    "tests/unit/infra/lint-contract.test.ts"
+  ],
+  "path_count_reconciliation": {
+    "observed_at": "2026-09-23T11:05:32Z",
+    "initial_unique_paths": 258,
+    "round1_through12_unique_increment": 54,
+    "round13_paths_reviewed": 4,
+    "round13_new_unique_paths": 0,
+    "round14_through19_unique_increment": 10,
+    "round20_new_unique_paths": 4,
+    "round21_new_unique_paths": 6,
+    "round22_new_unique_paths": 3,
+    "round23_new_unique_paths": 3,
+    "round24_paths_reviewed": 2,
+    "round24_new_unique_paths": 2,
+    "round25_paths_reviewed": 2,
+    "round25_new_unique_paths": 2,
+    "round26_paths_reviewed": 2,
+    "round26_new_unique_paths": 2,
+    "round27_paths_reviewed": 2,
+    "round27_new_unique_paths": 2,
+    "round28_paths_reviewed": 3,
+    "round28_new_unique_paths": 3,
+    "round29_paths_reviewed": 2,
+    "round29_new_unique_paths": 1,
+    "current_reviewed_paths": 386,
+    "current_pending_paths": 0,
+    "prior_checkpoint_count": 385,
+    "unsubstantiated_increment": 0,
+    "basis": "Initial union 258; rounds 1–12 add 54; round 13 overlaps initial union; rounds 14–19 add 10; rounds 20–29 add 28; round 30 corrects an already-counted README (0); rounds 31–41 add 1, 2, 2, 3, 6, 3, 4, 4, 4, 6 and 1 unique paths respectively. Total 386/386.",
+    "round30_paths_reviewed": 1,
+    "round30_new_unique_paths": 0,
+    "round31_paths_reviewed": 1,
+    "round31_new_unique_paths": 1,
+    "round32_paths_reviewed": 2,
+    "round32_new_unique_paths": 2,
+    "round33_paths_reviewed": 2,
+    "round33_new_unique_paths": 2,
+    "round34_paths_reviewed": 3,
+    "round34_new_unique_paths": 3,
+    "round35_paths_reviewed": 6,
+    "round35_new_unique_paths": 6,
+    "round36_paths_reviewed": 3,
+    "round36_new_unique_paths": 3,
+    "round37_paths_reviewed": 4,
+    "round37_new_unique_paths": 4,
+    "round38_paths_reviewed": 4,
+    "round38_new_unique_paths": 4,
+    "round39_paths_reviewed": 4,
+    "round39_new_unique_paths": 4,
+    "round40_paths_reviewed": 6,
+    "round40_new_unique_paths": 6,
+    "round41_paths_reviewed": 1,
+    "round41_new_unique_paths": 1
+  },
+  "source_review_round14_ref": ".agent/evidence/m02-source-review-round14-20260923.json#M02-SOURCE-REVIEW-ROUND14-20260923",
+  "source_review_round14_paths": [
+    "package.json",
+    "scripts/run-root-test-suite.mjs",
+    "tests/unit/infra/root-test-runner-contract.test.ts",
+    ".github/workflows/ci.yml"
+  ],
+  "source_review_round15_ref": ".agent/evidence/m02-source-review-round15-20260923.json#M02-SOURCE-REVIEW-ROUND15-20260923",
+  "source_review_round15_paths": [
+    "scripts/run-rem016-migration-harness.mjs",
+    "tests/unit/infra/migration-harness-contract.test.ts"
+  ],
+  "source_review_round16_ref": ".agent/evidence/m02-source-review-round16-20260923.json#M02-SOURCE-REVIEW-ROUND16-20260923",
+  "source_review_round16_paths": [
+    "scripts/validate-test-skip-policy.mjs",
+    "tests/unit/infra/test-skip-policy.test.ts"
+  ],
+  "source_review_round17_ref": ".agent/evidence/m02-source-review-round17-20260923.json#M02-SOURCE-REVIEW-ROUND17-20260923",
+  "source_review_round17_paths": [
+    "docs/engineering/test-skip-policy.json"
+  ],
+  "source_review_round18_ref": ".agent/evidence/m02-source-review-round18-20260923.json#M02-SOURCE-REVIEW-ROUND18-20260923",
+  "source_review_round18_paths": [
+    "scripts/run-redis-rate-limiter-shard.mjs"
+  ],
+  "source_review_round19_ref": ".agent/evidence/m02-source-review-round19-20260923.json#M02-SOURCE-REVIEW-ROUND19-20260923",
+  "source_review_round19_paths": [
+    "docs/engineering/critical-coverage-scope.json"
+  ],
+  "source_review_round20_ref": ".agent/evidence/m02-source-review-round20-20260923.json#M02-SOURCE-REVIEW-ROUND20-20260923",
+  "source_review_round20_paths": [
+    "scripts/artifact-retention-dry-run.mjs",
+    "scripts/artifact-retention-dry-run.test.mjs",
+    "docs/engineering/artifact-retention-policy.json",
+    "docs/operations/ARTIFACT_RETENTION_POLICY.md"
+  ],
+  "source_review_round21_ref": ".agent/evidence/m02-source-review-round21-20260923.json#M02-SOURCE-REVIEW-ROUND21-20260923",
+  "source_review_round21_paths": [
+    "scripts/check-complexity-hotspots.mjs",
+    "tests/unit/infra/complexity-hotspots.test.ts",
+    "docs/engineering/complexity-hotspots.json",
+    "docs/engineering/OWNERSHIP_AND_COMPLEXITY.md",
+    "scripts/generate-architecture-concentration-evidence.mjs",
+    "scripts/generate-architecture-concentration-evidence.test.mjs"
+  ],
+  "source_review_round22_ref": ".agent/evidence/m02-source-review-round22-20260923.json#M02-SOURCE-REVIEW-ROUND22-20260923",
+  "source_review_round22_paths": [
+    "scripts/validate-remediation-target-pack.mjs",
+    "scripts/validate-remediation-target-pack.test.mjs",
+    "docs/operations/REM_TARGET_CERTIFICATION_RUNBOOK.md"
+  ],
+  "source_review_round23_ref": ".agent/evidence/m02-source-review-round23-20260923.json#M02-SOURCE-REVIEW-ROUND23-20260923",
+  "source_review_round23_paths": [
+    "scripts/validate-openapi.js",
+    "scripts/validate-openapi.mjs",
+    "tests/integration/openapi-runtime.test.ts"
+  ],
+  "source_review_round24_ref": ".agent/evidence/m02-source-review-round24-20260923.json#M02-SOURCE-REVIEW-ROUND24-20260923",
+  "source_review_round24_paths": [
+    ".gitignore",
+    "tests/unit/infra/lockfile-gitignore.test.ts"
+  ],
+  "source_review_round25_ref": ".agent/evidence/m02-source-review-round25-20260923.json#M02-SOURCE-REVIEW-ROUND25-20260923",
+  "source_review_round25_paths": [
+    "infra/scripts/validate-backup-restore.mjs",
+    "infra/scripts/validate-backup-restore.test.mjs"
+  ],
+  "source_review_round26_ref": ".agent/evidence/m02-source-review-round26-20260923.json#M02-SOURCE-REVIEW-ROUND26-20260923",
+  "source_review_round26_paths": [
+    "tests/unit/api/raw-request-body.test.ts",
+    "tests/unit/api/response-buffer.test.ts"
+  ],
+  "source_review_round27_ref": ".agent/evidence/m02-source-review-round27-20260923.json#M02-SOURCE-REVIEW-ROUND27-20260923",
+  "source_review_round27_paths": [
+    "tests/unit/api/startup-secrets-runtime.test.ts",
+    "tests/unit/http-command-helpers.test.ts"
+  ],
+  "source_review_round28_ref": ".agent/evidence/m02-source-review-round28-20260923.json#M02-SOURCE-REVIEW-ROUND28-20260923",
+  "source_review_round28_paths": [
+    "docs/README.md",
+    "docs/document-governance.json",
+    "docs/430-fonte-de-verdade-documental.md"
+  ],
+  "source_review_round29_ref": ".agent/evidence/m02-source-review-round29-20260923.json#M02-SOURCE-REVIEW-ROUND29-20260923",
+  "source_review_round29_paths": [
+    "packages/contracts/src/integration.ts",
+    "packages/contracts/src/__tests__/integration.test.ts"
+  ],
+  "source_review_round30_ref": ".agent/evidence/m02-readme-correction-round30-20260923.json#M02-README-STATUS-CORRECTION-ROUND30-20260923",
+  "source_review_round30_paths": [
+    "docs/README.md"
+  ],
+  "source_review_round31_ref": ".agent/evidence/m02-source-review-round31-20260923.json#M02-SOURCE-REVIEW-ROUND31-20260923",
+  "source_review_round31_paths": [
+    "tests/unit/infra/api-server-boundaries.test.ts"
+  ],
+  "source_review_round32_ref": ".agent/evidence/m02-source-review-round32-20260923.json#M02-SOURCE-REVIEW-ROUND32-20260923",
+  "source_review_round32_paths": [
+    "docs/2026-09-21-rem-001-backup-manifest.md",
+    "docs/operations/REM_044_GIT_OBJECT_RETENTION_RUNBOOK.md"
+  ],
+  "source_review_round33_ref": ".agent/evidence/m02-source-review-round33-20260923.json#M02-SOURCE-REVIEW-ROUND33-20260923",
+  "source_review_round33_paths": [
+    "docs/2026-09-21-auditoria-profunda-repositorio.md",
+    "docs/2026-09-21-roadmap-remediacao-integral.md"
+  ],
+  "source_review_round34_ref": ".agent/evidence/m02-source-review-round34-20260923.json#M02-SOURCE-REVIEW-ROUND34-20260923",
+  "source_review_round34_paths": [
+    "docs/2026-09-21-backlog-remediacao-integral.md",
+    "docs/2026-09-21-plano-executivo-remediacao-integral.md",
+    "docs/2026-09-21-prompt-codex-remediacao-integral.md"
+  ],
+  "source_review_round35_ref": ".agent/evidence/m02-source-review-round35-20260923.json#M02-SOURCE-REVIEW-ROUND35-20260923",
+  "source_review_round35_paths": [
+    "docs/2026-09-20-auditoria-scorecard-be2dc76a.md",
+    "docs/2026-09-20-auditoria-scorecard-db07cd02.md",
+    "docs/2026-09-20-backlog-nova-rodada-melhorias.md",
+    "docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md",
+    "docs/2026-09-20-reauditoria-candidato-a9ff1b1a.md",
+    "docs/2026-09-20-roadmap-nova-rodada-melhorias.md"
+  ],
+  "source_review_round36_ref": ".agent/evidence/m02-source-review-round36-20260923.json#M02-SOURCE-REVIEW-ROUND36-20260923",
+  "source_review_round36_paths": [
+    "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
+    "docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md",
+    "docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md"
+  ],
+  "source_review_round37_ref": ".agent/evidence/m02-source-review-round37-20260923.json#M02-SOURCE-REVIEW-ROUND37-20260923",
+  "source_review_round37_paths": [
+    "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+    "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md",
+    "docs/2026-09-14-relatorio-completo-estado-construcao.md",
+    "docs/2026-09-14-roadmap-state-of-art-triplo-aaa.md"
+  ],
+  "source_review_round38_ref": ".agent/evidence/m02-source-review-round38-20260923.json#M02-SOURCE-REVIEW-ROUND38-20260923",
+  "source_review_round38_paths": [
+    "docs/2026-09-13-backlog-prontidao-producao.md",
+    "docs/2026-09-13-plano-executivo-prontidao-producao.md",
+    "docs/2026-09-13-relatorio-estado-atual-erp-cvg-his-v4.md",
+    "docs/2026-09-13-roadmap-prontidao-producao.md"
+  ],
+  "source_review_round39_ref": ".agent/evidence/m02-source-review-round39-20260923.json",
+  "source_review_round39_paths": [
+    "docs/2026-09-06-backlog-erp-state-of-art-triplo-aaa.md",
+    "docs/2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md",
+    "docs/2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md",
+    "docs/2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md"
+  ],
+  "source_review_round40_ref": ".agent/evidence/m02-source-review-round40-20260923.json",
+  "source_review_round40_paths": [
+    ".agent/authority.jsonl",
+    ".agent/backlog.json",
+    ".agent/execution-log.jsonl",
+    ".agent/state.json",
+    ".agent/verification.jsonl",
+    ".agent/plans/remediacao-integral-20260921.md"
+  ],
+  "source_review_round41_ref": ".agent/evidence/m02-source-review-round41-20260923.json",
+  "source_review_round41_paths": [
+    "tests/integration/database/fk.test.ts"
+  ]
+}

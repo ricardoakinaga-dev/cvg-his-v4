@@ -1,0 +1,100 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-046-20260922",
+  "timestamp": "2026-09-22T10:09:06.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "verificação candidate-bound de feedback de testes, fail-fast e reutilização de builds",
+  "scope_ref": "REM-046",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-REM046-001",
+      "description": "O caminho CI sinaliza que o build workspace já foi preparado e API/worker pulam somente a recompilação redundante nesse modo, mantendo fallback sem a variável.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-046-test-feedback-20260922.txt", ".github/workflows/ci.yml", "apps/api/package.json", "apps/worker/package.json"],
+      "confidence": "HIGH",
+      "limitations": "A prova é estática/local para o contrato do workflow; o job remoto não foi executado."
+    },
+    {
+      "id": "V-REM046-002",
+      "description": "O runner suprime somente a mensagem JSDOM explicitamente allowlisted e preserva warning desconhecido; reporter dot reduz repetição TAP nos testes nativos.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-046-test-feedback-20260922.txt", "scripts/run-root-test-suite.mjs", "tests/unit/infra/root-test-runner-contract.test.ts", "apps/api/package.json", "apps/worker/package.json"],
+      "confidence": "HIGH",
+      "limitations": "Outros avisos Vue Router permanecem visíveis deliberadamente."
+    },
+    {
+      "id": "V-REM046-003",
+      "description": "O runner mantém a ordem root → workspaces e falha no primeiro estágio não-zero, com mensagem de estágio e exit status.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-046-test-feedback-20260922.txt", "scripts/run-root-test-suite.mjs", "tests/unit/infra/root-test-runner-contract.test.ts"],
+      "confidence": "HIGH",
+      "limitations": "A prova de fail-fast é sintética e local; não substitui a execução integral."
+    },
+    {
+      "id": "V-REM046-004",
+      "description": "Regressões do runner, inventário de cobertura, política de skips e os comandos preparados de API/worker passaram no runtime oficial.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-046-test-feedback-20260922.txt", "tests/unit/infra/root-test-runner-contract.test.ts", "scripts/report-coverage-scope.test.mjs", "scripts/validate-test-skip-policy.mjs"],
+      "confidence": "HIGH",
+      "limitations": "A execução de API/worker é focal e local; não constitui gate completo de todas as workspaces."
+    },
+    {
+      "id": "V-REM046-005",
+      "description": "A alteração não toca runtime de produto, banco, migrations ou contratos externos e preserva os padrões de teste usados pelo inventário de coverage.",
+      "required": true,
+      "status": "PASS_WITH_CONDITIONS",
+      "evidence_refs": [".agent/evidence/rem-046-test-feedback-20260922.txt", "scripts/report-coverage-scope.mjs", "apps/api/package.json", "apps/worker/package.json"],
+      "confidence": "HIGH",
+      "limitations": "Crítica independente, CI/OCI, target, UAT, release e go/no-go permanecem fora do escopo."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-046-test-feedback-20260922.txt",
+    "scripts/run-root-test-suite.mjs",
+    "tests/unit/infra/root-test-runner-contract.test.ts",
+    "apps/api/package.json",
+    "apps/worker/package.json",
+    ".github/workflows/ci.yml",
+    "scripts/report-coverage-scope.mjs"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "A crítica independente E7 continua ausente por restrição de agente único.",
+    "CI/OCI, target, owners, UAT, browser/a11y, release e go/no-go permanecem fora do claim."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM046-DRIFT",
+      "description": "Reabrir REM-046 se os scripts de teste, o runner, a lista de warnings allowlisted ou a etapa de build do CI mudarem.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a correção local; impede aceitar novamente sem prova current.",
+      "owner": "lead",
+      "due_or_trigger": "Drift em scripts/run-root-test-suite.mjs, apps/api/package.json, apps/worker/package.json ou .github/workflows/ci.yml.",
+      "verification_method": "Reexecutar contrato do runner, coverage-scope, política de skips e comandos preparados de API/worker.",
+      "status": "OPEN",
+      "residual_risk": "LOW",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "correção local reversível do feedback de testes",
+    "decision": "A instrução autoriza correção e regressão local; não autoriza CI remoto, target, release ou go/no-go.",
+    "evidence_ref": ".agent/evidence/rem-046-test-feedback-20260922.txt",
+    "expires_or_revalidates": "Revalidar se scripts de teste, workflow ou warnings observados mudarem."
+  },
+  "residual_risk": "LOW",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-046:REOPEN-IF-DRIFT",
+  "revalidation_triggers": [
+    "Alterar o build preparatório do CI ou remover a variável CVG_WORKSPACE_BUILD_PREPARED.",
+    "Adicionar filtros amplos que ocultem warnings inesperados ou trocar o reporter sem regressão.",
+    "Executar push, CI, target, deploy, UAT, release ou decisão humana sem gate específico."
+  ]
+}

@@ -1,0 +1,36 @@
+REM-050 — política de visibilidade do pnpm-lock.yaml
+observed_at: 2026-09-22T09:27:59.000000Z
+task: REM-050
+agent_mode: Direct; agente primário único; sem crítica independente disponível
+
+Baseline conhecido
+- `git ls-files --error-unmatch pnpm-lock.yaml` confirma que o lockfile é
+  versionado.
+- Antes da correção, `git check-ignore -v pnpm-lock.yaml` apontava para a regra
+  nua `pnpm-lock.yaml` no `.gitignore`; o estado era ambíguo para um arquivo que
+  precisa aparecer quando recriado ou alterado.
+- CI, scripts de instalação e a política de dependências usam
+  `pnpm install --frozen-lockfile` e exigem o lockfile presente.
+
+Implementação
+- Removida a regra que ignorava `pnpm-lock.yaml`.
+- Adicionado `tests/unit/infra/lockfile-gitignore.test.ts`, que usa um checkout
+  Git temporário para provar, sem tocar no checkout compartilhado, que:
+  1. lockfile novo aparece como `?? pnpm-lock.yaml`;
+  2. `git check-ignore --no-index` não o trata como ignorado;
+  3. lockfile rastreado modificado aparece como ` M pnpm-lock.yaml`.
+- O helper do teste preserva a coluna inicial de `git status`; a primeira
+  execução revelou e corrigiu esse detalhe de observabilidade.
+
+Verificação
+- teste focal: 1 arquivo / 1 teste PASS;
+- `pnpm validate:dependencies`: PASS — 69 manifests ativos, lockfile e política
+  de specifiers válidos;
+- `git check-ignore -v pnpm-lock.yaml`: exit 1 após a correção;
+- nenhuma alteração em `pnpm-lock.yaml` foi feita, e nenhum checkout externo,
+  push, deploy ou ação destrutiva foi executado.
+
+Limitações
+O resultado é local/condicional. Não prova CI remoto, branch protection, release,
+ou aprovação humana; a crítica independente fresca permanece indisponível sob a
+restrição de agente único.

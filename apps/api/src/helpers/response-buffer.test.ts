@@ -51,3 +51,19 @@ test('response buffer snapshots omit undefined optional fields for JSON-safe ide
   assert.equal(Object.hasOwn(snapshot, 'statusMessage'), false);
   assert.doesNotThrow(() => JSON.stringify(snapshot));
 });
+
+test('response buffer covers optional status/header branches without inventing an envelope', () => {
+  const target = createTarget();
+  const buffered = createBufferedResponse(target);
+
+  buffered.response.writeHead(204, 'No Content', { 'x-cache': 'hit' });
+  buffered.response.statusMessage = 'Accepted';
+  (buffered.response as unknown as { unrelatedProperty?: string }).unrelatedProperty = 'ignored';
+
+  const snapshot = buffered.snapshot();
+  assert.equal(snapshot.statusMessage, 'Accepted');
+  assert.equal(snapshot.headers['x-cache'], 'hit');
+  applyBufferedResponse(target, snapshot);
+  assert.equal(target.statusCode, 204);
+  assert.equal(target.statusMessage, 'Accepted');
+});

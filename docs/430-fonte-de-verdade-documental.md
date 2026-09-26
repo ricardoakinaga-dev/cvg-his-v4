@@ -1,7 +1,7 @@
 # Fonte de verdade documental
 
 **Status:** vigente
-**Validado em:** 2026-09-21
+**Atualizado em:** 2026-09-26 (rodada 2 vigente; conjunto de 21/09 passa a histórico)
 **Owner:** engenharia e produto CVG-HIS
 
 ## Regra central
@@ -12,10 +12,14 @@ Documento nao transforma uma funcionalidade em pronta. O estado real e determina
 
 | Tema                                       | Fonte vigente                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Baseline executiva vigente                 | [`2026-09-20-auditoria-scorecard-db07cd02.md`](./2026-09-20-auditoria-scorecard-db07cd02.md) — 72/100; local complete / external blocked |
-| Plano executivo vigente                    | [`2026-09-20-plano-executivo-nova-rodada-melhorias.md`](./2026-09-20-plano-executivo-nova-rodada-melhorias.md) |
-| Roadmap vigente                            | [`2026-09-20-roadmap-nova-rodada-melhorias.md`](./2026-09-20-roadmap-nova-rodada-melhorias.md) |
-| Backlog vigente                            | [`2026-09-20-backlog-nova-rodada-melhorias.md`](./2026-09-20-backlog-nova-rodada-melhorias.md) |
+| Baseline executiva vigente                 | [`2026-09-26-auditoria-completa-sistema.md`](./2026-09-26-auditoria-completa-sistema.md) — 70/100; não apto para produção com a topologia atual (achado A1) |
+| Baseline anterior (histórica)              | [`2026-09-21-auditoria-profunda-repositorio.md`](./2026-09-21-auditoria-profunda-repositorio.md) — 68/100 |
+| Auditoria complementar da árvore de trabalho | [`2026-09-23-relatorio-auditoria-repositorio.md`](./2026-09-23-relatorio-auditoria-repositorio.md) — 66/100 no estado local ainda sem SHA candidato único; [50 melhorias](./2026-09-23-lista-50-melhorias.md), [plano](./2026-09-23-plano-executivo-melhorias.md), [roadmap](./2026-09-23-roadmap-melhorias.md) e [backlog](./2026-09-23-backlog-melhorias.md) são complementares e não alteram o manifesto vigente |
+| Plano executivo vigente                    | [`2026-09-26-plano-executivo-rodada-2.md`](./2026-09-26-plano-executivo-rodada-2.md) |
+| Roadmap vigente                            | [`2026-09-26-roadmap-rodada-2.md`](./2026-09-26-roadmap-rodada-2.md) |
+| Backlog vigente                            | [`2026-09-26-backlog-rodada-2.md`](./2026-09-26-backlog-rodada-2.md) — 34 itens `R2`; o backlog `REM` de 21/09 é histórico |
+| Controles de privacidade, auth e pagamentos | [`security/PRIVACY_AUTH_AND_PAYMENT_CONTROLS.md`](./security/PRIVACY_AUTH_AND_PAYMENT_CONTROLS.md) — decisão de retenção do tutor, DSR, MFA, Pix, NFS-e e anexos |
+| Prompt Codex (rodada anterior)                       | [`2026-09-21-prompt-codex-remediacao-integral.md`](./2026-09-21-prompt-codex-remediacao-integral.md) — referência histórica da rodada de 21/09 |
 | Quality Bar e overlay AAA                  | [`engineering/QUALITY_BAR.md`](./engineering/QUALITY_BAR.md) e [`engineering/REQUIREMENT_EVIDENCE_MATRIX.md`](./engineering/REQUIREMENT_EVIDENCE_MATRIX.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | Estado de implementacao posterior          | `2026-09-03-implementacao-plano-cvg-his-v4.md` (histórico arquivado: `legado/docs/2026-09-03-implementacao-plano-cvg-his-v4.md`), sem promover gates externos ou substituir a fotografia da reauditoria                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | Checkpoint técnico anterior                | `2026-08-24-handoff-inpatient-bed-status-idempotency.md` — assignment, transferência e status inpatient dentro da fronteira tenant-scoped, com replay/conflict cross-instance, failpoints PostgreSQL de projeção/leito/auditoria, callback clínico aguardado, retry limpo, restart/SIGKILL e leitos reconciliados                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
@@ -40,12 +44,12 @@ posterior os substitui. Nenhuma prova bounded altera sozinha os estados globais
 
 A régua congelada é [QUALITY_BAR_V1.json](triple-a/QUALITY_BAR_V1.json): total ≥97, dimensões críticas ≥95 e zero P0 abertos, além dos gates obrigatórios. Os documentos executivos orientam o programa; o estado operacional continua em `.agent` e deve ser reconciliado em `NR-003` antes da ingestão da nova fila.
 
-A auditoria corrente de 21/09 registra o runtime `74b8669f`, nota conservadora
-72/100 e mantém o release bloqueado. Supply-chain, dependências, segredos,
-backup/restore documental, métricas, upload, worker-health sanitizado, workspace,
-imagens production-shaped e Helm passam localmente; CI/release, target, restore
-aprovado, UAT e autoridades não existem para o candidato. A identidade canônica
-está congelada em `2586f751`; o plano não autoriza produção.
+A auditoria corrente de 21/09 cobre o HEAD `ad2f0373`, atribui 68/100 e mantém
+o release bloqueado. Build, typecheck, workspaces, PostgreSQL crítico e processos
+passam localmente; coverage e complexidade falham, o histórico contém um blob
+de 152.651.034 bytes e não há CI/release, target, restore aprovado, UAT ou
+autoridade para o candidato. A identidade candidate-bound anterior continua em
+`74b8669f`; o novo plano não autoriza produção nem reescrita de histórico.
 
 ## Estados permitidos
 

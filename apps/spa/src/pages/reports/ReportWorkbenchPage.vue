@@ -1,29 +1,21 @@
 <template>
   <div class="report-page">
-    <AppPageHeader
+    <ReportWorkbenchToolbar
       :title="spec.title"
       :breadcrumbs="['Relatórios', spec.group, spec.title]"
       :subtitle="reportSubtitle"
-    >
-      <template v-if="reportKey !== 'dre'" #actions>
-        <DsButton variant="secondary" :loading="loading" @click="loadReport">Atualizar</DsButton>
-        <DsButton
-          v-if="spec.exportable"
-          variant="primary"
-          :loading="exporting"
-          :disabled="loading || loadFailed || !reportReady || serverFiltersChanged || exportPending"
-          @click="exportCurrentReport"
-        >
-          {{ spec.primaryAction }}
-        </DsButton>
-        <DsButton v-else-if="spec.primaryDisabled" variant="primary" disabled>{{
-          spec.primaryAction
-        }}</DsButton>
-        <DsButton v-else variant="primary" tag="a" :to="spec.primaryPath">{{
-          spec.primaryAction
-        }}</DsButton>
-      </template>
-    </AppPageHeader>
+      :show-actions="reportKey !== 'dre'"
+      :loading="loading"
+      :exportable="Boolean(spec.exportable)"
+      :export-label="spec.primaryAction"
+      :export-loading="exporting"
+      :export-disabled="loading || loadFailed || !reportReady || serverFiltersChanged || exportPending"
+      :primary-disabled="Boolean(spec.primaryDisabled)"
+      :primary-label="spec.primaryAction"
+      :primary-path="spec.primaryPath"
+      @refresh="loadReport"
+      @export="exportCurrentReport"
+    />
 
     <section v-if="reportKey === 'dre'" class="report-unavailable" aria-labelledby="dre-unavailable-title">
       <span class="report-unavailable__mark" aria-hidden="true">—</span>
@@ -32,375 +24,63 @@
       <DsButton tag="a" to="/reports/accounts" variant="secondary">Relatórios financeiros</DsButton>
     </section>
     <template v-else>
-    <details class="report-filter-disclosure">
-      <summary>Filtros da consulta</summary>
-    <section class="report-filters">
-      <DsInput
-        v-if="isDeletedSalesCounterSalesReport"
-        id="cancellation-report-view"
-        class="report-filter-mode"
-        :model-value="cancellationReportView"
-        type="select"
-        label="Consultar"
-        :disabled="loading || exporting"
-        @update:model-value="changeCancellationReportView"
-      >
-        <option value="history">Histórico por data de cancelamento</option>
-        <option value="opening-date">Canceladas por data de abertura</option>
-      </DsInput>
-      <DsInput v-model="filters.dateFrom" type="date" :label="dateFromLabel" />
-      <DsInput v-model="filters.dateTo" type="date" :label="dateToLabel" />
-      <p v-if="inventoryPeriodHint" class="report-period-hint">{{ inventoryPeriodHint }}</p>
-      <template v-if="isServiceInvoicesReport">
-        <DsInput
-          v-model="filters.search"
-          label="Cliente, serviço ou código"
-          placeholder="Nome, documento ou código do serviço"
-          :maxlength="200"
-        />
-        <DsInput id="service-invoice-status" v-model="filters.status" type="select" label="Status">
-          <option value="">Todos os status</option>
-          <option value="draft">Rascunho</option>
-          <option value="issued">Emitida</option>
-          <option value="cancelled">Cancelada</option>
-          <option value="error">Erro</option>
-        </DsInput>
-      </template>
-      <template v-if="isAdvancePaymentsReport">
-        <DsInput
-          v-model="filters.search"
-          label="Cliente ou documento"
-          placeholder="Nome ou documento do cliente"
-          :maxlength="200"
-        />
-        <DsInput id="advance-payment-status" v-model="filters.status" type="select" label="Status">
-          <option value="">Todos os status</option>
-          <option value="available">Disponível</option>
-          <option value="partially_compensated">Parcialmente compensado</option>
-          <option value="compensated">Compensado</option>
-        </DsInput>
-      </template>
-      <template v-if="isAppointmentsReport">
-        <DsInput
-          v-model="filters.search"
-          label="ID ou texto do agendamento"
-          placeholder="ID, motivo, unidade ou especialidade"
-          :maxlength="200"
-        />
-        <DsInput
-          id="appointment-report-status"
-          v-model="filters.status"
-          type="select"
-          label="Status"
-        >
-          <option value="">Todos os status</option>
-          <option value="scheduled">Agendado</option>
-          <option value="checked_in">Check-in</option>
-          <option value="completed">Concluído</option>
-          <option value="cancelled">Cancelado</option>
-        </DsInput>
-      </template>
-      <template v-if="isDeletedSalesCounterSalesReport">
-        <DsInput
-          v-model="filters.search"
-          :label="
-            isCancellationHistoryReport ? 'Número, motivo ou responsável' : 'Número ou observação'
-          "
-          :placeholder="
-            isCancellationHistoryReport
-              ? 'Número da comanda, motivo ou ID do responsável'
-              : 'Número da comanda ou texto da observação'
-          "
-          :maxlength="200"
-        />
-      </template>
-      <template
-        v-if="isInventoryMovementsReport || isInventoryProductsReport || isInventoryStockReport"
-      >
-        <DsInput
-          v-model="filters.search"
-          label="Código ou produto"
-          placeholder="SKU ou nome do produto"
-          :maxlength="200"
-        />
-      </template>
-      <template v-if="isInventoryInvoicesReport">
-        <DsInput
-          v-model="filters.search"
-          label="Fornecedor ou referência NF"
-          placeholder="Fornecedor ou referência armazenada"
-          :maxlength="200"
-        />
-        <DsInput
-          id="inventory-invoice-status"
-          v-model="filters.status"
-          type="select"
-          label="Status"
-        >
-          <option value="">Todos os status</option>
-          <option value="draft">Rascunho</option>
-          <option value="approved">Aprovada</option>
-          <option value="partially_received">Parcialmente recebida</option>
-          <option value="received">Recebida</option>
-          <option value="cancelled">Cancelada</option>
-        </DsInput>
-      </template>
-      <template v-if="isAuditAppointments">
-        <DsInput
-          v-model="filters.client"
-          label="Cliente"
-          placeholder="Nome, animal ou id do agendamento"
-        />
-        <DsInput v-model="filters.user" label="Usuário" placeholder="Usuário ou ator auditado" />
-        <label class="report-field">
-          <span>Ação</span>
-          <select v-model="filters.action">
-            <option value="">Selecione a ação</option>
-            <option v-for="action in auditActionOptions" :key="action" :value="action">
-              {{ action }}
-            </option>
-          </select>
-        </label>
-        <label class="report-field">
-          <span>Tipo</span>
-          <select v-model="filters.type">
-            <option value="">Selecione os tipos</option>
-            <option v-for="type in auditTypeOptions" :key="type" :value="type">{{ type }}</option>
-          </select>
-        </label>
-      </template>
-      <div class="report-filters__actions">
-        <DsButton variant="primary" :loading="loading" @click="loadReport">Aplicar</DsButton>
-        <DsButton variant="ghost" @click="resetFilters">Limpar</DsButton>
-      </div>
-    </section>
-    </details>
+    <ReportFilterPanel
+      :filters="filters"
+      :loading="loading"
+      :exporting="exporting"
+      :cancellation-report-view="cancellationReportView"
+      :date-from-label="dateFromLabel"
+      :date-to-label="dateToLabel"
+      :inventory-period-hint="inventoryPeriodHint"
+      :is-deleted-sales-counter-sales-report="isDeletedSalesCounterSalesReport"
+      :is-cancellation-history-report="isCancellationHistoryReport"
+      :is-service-invoices-report="isServiceInvoicesReport"
+      :is-advance-payments-report="isAdvancePaymentsReport"
+      :is-appointments-report="isAppointmentsReport"
+      :is-inventory-movements-report="isInventoryMovementsReport"
+      :is-inventory-products-report="isInventoryProductsReport"
+      :is-inventory-stock-report="isInventoryStockReport"
+      :is-inventory-invoices-report="isInventoryInvoicesReport"
+      :is-audit-appointments="isAuditAppointments"
+      :audit-action-options="auditActionOptions"
+      :audit-type-options="auditTypeOptions"
+      @update-filter="updateReportFilter"
+      @change-cancellation-view="changeCancellationReportView"
+      @apply="loadReport"
+      @reset="resetFilters"
+    />
 
-    <DsAlert v-if="error" variant="danger" dismissible @dismiss="error = ''">
-      {{ error }}
-    </DsAlert>
-
-    <div v-if="exportPending" class="report-export-recovery" role="status" aria-live="polite">
-      <strong>Exportação em reconciliação</strong>
-      <span v-if="pendingExport"
-        >Verifique o artefato persistido antes de iniciar qualquer novo processamento.</span
-      >
-      <div class="report-filters__actions">
-        <DsButton
-          type="button"
-          variant="secondary"
-          :loading="exporting"
-          :disabled="exporting"
-          @click="reconcilePendingExport"
-        >
-          Verificar exportação pendente
-        </DsButton>
-        <DsButton
-          v-if="exportRetryAvailable"
-          type="button"
-          variant="ghost"
-          :loading="exporting"
-          :disabled="exporting"
-          @click="retryPendingExport"
-        >
-          Repetir com a mesma chave
-        </DsButton>
-      </div>
+    <div class="report-status-stack">
+      <ReportQueryStatus
+        :error="error"
+        :success="success"
+        :report-filters-changed="reportFiltersChanged"
+        @dismiss-error="error = ''"
+        @dismiss-success="success = ''"
+      />
+      <ReportExportRecovery
+        :export-pending="exportPending"
+        :has-pending-export="Boolean(pendingExport)"
+        :export-retry-available="exportRetryAvailable"
+        :exporting="exporting"
+        @reconcile-export="reconcilePendingExport"
+        @retry-export="retryPendingExport"
+      />
     </div>
-
-    <DsAlert v-if="success" variant="success" dismissible @dismiss="success = ''">
-      {{ success }}
-    </DsAlert>
-
-    <p v-if="reportFiltersChanged" class="report-query-note" role="status">Filtros alterados. A tabela mostra a última execução server-side; aplique os filtros para atualizar e exportar exatamente o mesmo recorte.</p>
-    <section class="report-results" :data-execution-id="activeServerExecution?.id || undefined">
-      <h2>{{ spec.tableTitle }}</h2>
-      <DataTable
-        :columns="spec.columns"
-        :rows="rows"
-        :loading="loading"
-        :empty-icon="spec.icon"
-        :empty-title="
-          loadFailed
-            ? 'Não foi possível carregar o relatório'
-            : reportHasActiveFilters && reportReady && rows.length === 0
-              ? 'Sem resultados para os filtros'
-              : spec.emptyTitle
-        "
-        :empty-description="
-          loadFailed
-            ? 'Tente novamente para consultar os registros.'
-            : reportHasActiveFilters && reportReady && rows.length === 0
-              ? 'Nenhum registro corresponde ao recorte atual. Limpe os filtros para consultar o período completo.'
-              : spec.emptyDescription
-        "
-        :caption="
-          isChequesReport
-            ? 'Cheques'
-            : isDeletedSalesCounterSalesReport
-              ? spec.tableTitle
-              : spec.tableTitle
-        "
-        variant="hoverable"
-      >
-        <template v-if="loadFailed" #emptyAction>
-          <DsButton variant="secondary" :loading="loading" @click="loadReport">
-            Tentar novamente
-          </DsButton>
-        </template>
-        <template v-else-if="reportHasActiveFilters && reportReady && rows.length === 0" #emptyAction>
-          <DsButton variant="secondary" :loading="loading" @click="resetFilters">
-            Limpar filtros
-          </DsButton>
-        </template>
-        <template #cell-amount="{ row }">
-          <span class="report-money">{{ formatNullableCurrency(row, 'amount') }}</span>
-        </template>
-        <template #cell-amountPaid="{ row }"><span class="report-money">{{ formatNullableCurrency(row, 'amountPaid') }}</span></template>
-        <template #cell-amountOutstanding="{ row }"><span class="report-money">{{ formatNullableCurrency(row, 'amountOutstanding') }}</span></template>
-        <template v-if="isFinancialPayablesReport || isFinancialReceivablesReport" #cell-status="{ row }">{{ financialStatusLabel(stringValue(row, 'status')) }}</template>
-        <template #cell-reconciliationStatus="{ row }">{{ reconciliationLabel(stringValue(row, 'reconciliationStatus')) }}</template>
-        <template #cell-total="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'total')) }}</span>
-        </template>
-        <template #cell-numero="{ row }">
-          {{ numberValue(row, 'numero') }}
-        </template>
-        <template #cell-competencia="{ row }">
-          {{ formatDate(stringValue(row, 'competencia')) }}
-        </template>
-        <template #cell-serviceSubtotal="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'serviceSubtotal')) }}</span>
-        </template>
-        <template #cell-totalIss="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalIss')) }}</span>
-        </template>
-        <template #cell-totalPis="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalPis')) }}</span>
-        </template>
-        <template #cell-totalCofins="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalCofins')) }}</span>
-        </template>
-        <template #cell-totalCsll="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalCsll')) }}</span>
-        </template>
-        <template #cell-totalIrrf="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalIrrf')) }}</span>
-        </template>
-        <template #cell-totalInss="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalInss')) }}</span>
-        </template>
-        <template #cell-totalDocument="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalDocument')) }}</span>
-        </template>
-        <template #cell-revenue="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'revenue')) }}</span>
-        </template>
-        <template #cell-basePrice="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'basePrice')) }}</span>
-        </template>
-        <template #cell-unitCostAmount="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'unitCostAmount')) }}</span>
-        </template>
-        <template #cell-quantityDelta="{ row }">
-          {{ numberValue(row, 'quantityDelta') }}
-        </template>
-        <template #cell-balanceBefore="{ row }">
-          {{ numberValue(row, 'balanceBefore') }}
-        </template>
-        <template #cell-balanceAfter="{ row }">
-          {{ numberValue(row, 'balanceAfter') }}
-        </template>
-        <template #cell-stockValue="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'stockValue')) }}</span>
-        </template>
-        <template #cell-costAmount="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'costAmount')) }}</span>
-        </template>
-        <template #cell-receivedAmount="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'receivedAmount')) }}</span>
-        </template>
-        <template #cell-payableAmount="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'payableAmount')) }}</span>
-        </template>
-        <template #cell-paidAmount="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'paidAmount')) }}</span>
-        </template>
-        <template #cell-totalAmount="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'totalAmount')) }}</span>
-        </template>
-        <template #cell-amountOriginal="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'amountOriginal')) }}</span>
-        </template>
-        <template #cell-originalAmount="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'originalAmount')) }}</span>
-        </template>
-        <template #cell-compensatedAmount="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'compensatedAmount')) }}</span>
-        </template>
-        <template #cell-balance="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'balance')) }}</span>
-        </template>
-        <template #cell-outstandingAmount="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'outstandingAmount')) }}</span>
-        </template>
-        <template #cell-issuedAt="{ row }">
-          {{ formatDate(stringValue(row, 'issuedAt')) }}
-        </template>
-        <template #cell-dueAt="{ row }">
-          {{ formatDate(stringValue(row, 'dueAt')) }}
-        </template>
-        <template #cell-settledAt="{ row }">
-          {{ formatDateTime(stringValue(row, 'settledAt')) }}
-        </template>
-        <template #cell-createdAt="{ row }">
-          {{ formatDate(stringValue(row, 'createdAt')) }}
-        </template>
-        <template #cell-receivedAt="{ row }">
-          {{ formatDate(stringValue(row, 'receivedAt')) }}
-        </template>
-        <template #cell-updatedAt="{ row }">
-          {{ formatDate(stringValue(row, 'updatedAt')) }}
-        </template>
-        <template #cell-expiryDate="{ row }">
-          {{ formatDate(stringValue(row, 'expiryDate')) }}
-        </template>
-        <template #cell-openedAt="{ row }">
-          {{ formatDateTime(stringValue(row, 'openedAt')) }}
-        </template>
-        <template #cell-closedAt="{ row }">
-          {{ formatDateTime(stringValue(row, 'closedAt')) }}
-        </template>
-        <template #cell-occurredAt="{ row }">
-          {{ formatDateTime(stringValue(row, 'occurredAt')) }}
-        </template>
-        <template #cell-recordedAt="{ row }">
-          {{ formatDateTime(stringValue(row, 'recordedAt')) }}
-        </template>
-        <template #cell-scheduledAt="{ row }">
-          {{ formatDateTime(stringValue(row, 'scheduledAt')) }}
-        </template>
-        <template #cell-openingAmount="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'openingAmount')) }}</span>
-        </template>
-        <template #cell-closingAmount="{ row }">
-          <span class="report-money">{{ formatNullableCurrency(row, 'closingAmount') }}</span>
-        </template>
-        <template #cell-runningBalance="{ row }">
-          <span class="report-money">{{ formatCurrency(numberValue(row, 'runningBalance')) }}</span>
-        </template>
-        <template #cell-difference="{ row }">
-          <span class="report-money">{{ formatNullableCurrency(row, 'difference') }}</span>
-        </template>
-      </DataTable>
-    </section>
-    <details v-if="reportReady && cards.length" class="report-summary">
-      <summary>Resumo da consulta</summary>
-      <dl><div v-for="card in cards" :key="card.label"><dt>{{ card.label }}</dt><dd>{{ card.value }}</dd></div></dl>
-    </details>
-    <details v-if="reportNote" class="report-assumptions">
-      <summary>Sobre este relatório</summary><p>{{ reportNote }}</p>
-    </details>
+    <ReportResultTable
+      :spec="spec"
+      :caption="isChequesReport ? 'Cheques' : spec.tableTitle"
+      :rows="rows"
+      :loading="loading"
+      :load-failed="loadFailed"
+      :report-ready="reportReady"
+      :report-has-active-filters="reportHasActiveFilters"
+      :execution-id="activeServerExecution?.id ?? null"
+      :show-financial-status-labels="isFinancialPayablesReport || isFinancialReceivablesReport"
+      @retry="loadReport"
+      @reset-filters="resetFilters"
+    />
+    <ReportSummaryDetails :report-ready="reportReady" :cards="cards" :report-note="reportNote" />
     </template>
   </div>
 </template>
@@ -409,9 +89,13 @@
 import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue';
 import { packagesService, type CustomerPackageDetail } from '@/services/packages';
 
-import AppPageHeader from '@/components/AppPageHeader.vue';
-import DataTable from '@/components/DataTable.vue';
 import type { DataTableColumn, DataTableRow } from '@/components/DataTable.vue';
+import ReportExportRecovery from './ReportExportRecovery.vue';
+import ReportFilterPanel from './ReportFilterPanel.vue';
+import ReportResultTable from './ReportResultTable.vue';
+import ReportQueryStatus from './ReportQueryStatus.vue';
+import ReportSummaryDetails from './ReportSummaryDetails.vue';
+import ReportWorkbenchToolbar from './ReportWorkbenchToolbar.vue';
 import {
   administrativeReportsService,
   type AdministrativeReportsResponse
@@ -428,7 +112,6 @@ import { ApiError } from '@/services/api';
 
 import { patientStatusLabel, sexLabel, speciesLabel } from '@/utils/labels';
 import { buildReportCsv } from '@/utils/report-export';
-import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
 import type { AuditEventSummary } from '@cvg-his-v2/shared-types';
@@ -1493,6 +1176,13 @@ function changeCancellationReportView(value: string | number): void {
   void loadReport();
 }
 
+function updateReportFilter(
+  key: (typeof REPORT_FILTER_KEYS)[number],
+  value: string
+): void {
+  filters.value[key] = value;
+}
+
 async function exportCurrentReport(): Promise<void> {
   if (
     !spec.value.exportable ||
@@ -1798,14 +1488,6 @@ function uniqueSorted(values: string[]): string[] {
   return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b));
 }
 
-function financialStatusLabel(value: string | null): string {
-  if (value === null) return '—';
-  return ({open:'Em aberto', partial:'Parcial', paid:'Pago', cancelled:'Cancelado', settled:'Liquidado'} as Record<string,string>)[value] ?? value;
-}
-function reconciliationLabel(value: string | null): string {
-  if (value === null) return '—';
-  return ({not_required:'Dispensada', pending:'Pendente', reconciled:'Conciliada'} as Record<string,string>)[value] ?? value;
-}
 function appointmentStatusLabel(status: AppointmentReportRow['status']): string {
   const labels: Record<AppointmentReportRow['status'], string> = {
     scheduled: 'Agendado',
@@ -3011,30 +2693,8 @@ function registerSpec(title: string, primaryPath: string, primaryAction: string)
   };
 }
 
-function numberValue(row: DataTableRow, key: string): number {
-  const value = row[key];
-  return typeof value === 'number' ? value : Number(value ?? 0);
-}
-
-function stringValue(row: DataTableRow, key: string): string | null {
-  const value = row[key];
-  return typeof value === 'string' ? value : null;
-}
-
 function formatCurrency(value: number): string {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
-}
-
-function formatNullableCurrency(row: DataTableRow, key: string): string {
-  const value = row[key];
-  return typeof value === 'number' ? formatCurrency(value) : '—';
-}
-
-function formatDate(value: string | null): string {
-  if (!value) return '—';
-  const parsed = new Date(value);
-  if (Number.isNaN(parsed.getTime())) return value;
-  return new Intl.DateTimeFormat('pt-BR', { timeZone: 'UTC' }).format(parsed);
 }
 
 function formatDateTime(value: string | null): string {
@@ -3072,70 +2732,18 @@ onBeforeUnmount(() => { reportRequestId += 1; });
   min-width: 0;
 }
 
-.report-filters {
+.report-status-stack {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(180px, 100%), 1fr));
-  gap: 12px;
-  align-items: end;
-  width: 100%;
-}
-
-.report-filters__actions {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.report-field {
-  display: grid;
-  gap: 6px;
-}
-
-.report-field span {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--color-text-secondary, #475569);
-}
-
-.report-field select {
-  min-height: 42px;
-  padding: 0 12px;
-  border-radius: 12px;
-  border: 1px solid var(--color-border, #e2e8f0);
-  background: var(--color-surface, #ffffff);
-}
-
-.report-kpis {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 12px;
 }
-
-.report-query-note { margin: 0; padding: 12px 16px; border-left: 3px solid var(--color-primary); color: var(--color-text-secondary); font-size: 14px; line-height: 1.5; }
-.report-export-recovery { display: grid; gap: 8px; padding: 14px 16px; border: 1px solid color-mix(in srgb, var(--color-warning, #b7791f) 45%, var(--color-border)); border-radius: 12px; background: color-mix(in srgb, var(--color-warning, #b7791f) 8%, var(--color-surface)); color: var(--color-text); }
-.report-export-recovery span { color: var(--color-text-secondary); font-size: 14px; line-height: 1.5; }
-.report-period-hint { grid-column: 1 / -1; margin: 0; color: var(--color-text-secondary); font-size: 13px; line-height: 1.5; }
-.report-results h2 { margin: 0 0 12px; font-size: 18px; font-weight: 600; }
-.report-money { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .report-page :deep(.data-table) { min-width: 0; }
 .report-page :deep(.data-table th) { white-space: normal; }
-.report-filter-disclosure, .report-summary, .report-assumptions { border: 1px solid var(--color-border); border-radius: 12px; padding: 0 16px 12px; }
-.report-page summary { display: flex; align-items: center; min-height: 44px; font-weight: 600; cursor: pointer; }
-.report-page summary::before { content: '▸'; margin-right: 8px; }
-.report-page details[open] > summary::before { content: '▾'; }
-.report-summary dl { display: flex; flex-wrap: wrap; gap: 20px; margin: 10px 0; }
-.report-summary dl > div { flex: 1 1 180px; }
-.report-summary dt, .report-assumptions p { color: var(--color-text-secondary); font-size: 13px; line-height: 1.6; }
-.report-summary dd { margin: 5px 0 0; font-size: 20px; font-variant-numeric: tabular-nums; }
 .report-unavailable { padding: clamp(20px,4vw,40px); border: 1px solid var(--color-border); border-radius: 20px; background: var(--color-surface); }
 .report-unavailable__mark { display: inline-grid; place-items: center; width: 56px; height: 56px; border-radius: 16px; color: var(--color-primary); background: var(--color-bg-subtle); font-size: 28px; }
 .report-unavailable h2 { margin: 20px 0 10px; font-size: 24px; }
 .report-unavailable p { max-width: 60ch; color: var(--color-text-secondary); line-height: 1.6; margin-bottom: 24px; }
 .report-page :deep(input), .report-page :deep(select), .report-page :deep(button) { min-height: 44px; }
 @media (max-width: 640px) {
-  .report-filter-mode { grid-column: 1 / -1; }
-  .report-filters { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .report-filters__actions { grid-column: 1 / -1; }
   .report-page :deep(.app-page-header__actions) { display: flex; flex-direction: row; flex-wrap: wrap; gap: 8px; }
   .report-page :deep(.app-page-header__actions > .ds-btn) { flex: 1 1 120px; width: auto; }
 }

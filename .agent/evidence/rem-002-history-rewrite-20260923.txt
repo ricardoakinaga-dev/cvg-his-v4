@@ -1,0 +1,51 @@
+REM-002 HISTORY REWRITE / REMOVAL — 2026-09-23
+
+Authority and gate
+- Authority: .agent/authority.jsonl#AUTH-REM-002-HISTORY-REWRITE-20260923
+- Gate: .agent/gates/passed-remediacao-integral-rem-002-audit-resolved-20260923.json
+- Scope: only .gauntlet/state.json in origin/main..HEAD, with the authorized push limited to refs/heads/main.
+- No deployment, target operation, CI/release governance, UAT, unrelated ref, or unrelated destructive action was performed.
+
+Preserved source and rollback
+- Baseline HEAD: ad2f0373f68635f2579253b013a4382219906921
+- Baseline remote main: 363c87efd653dad74afa1a6caf125debc6004641
+- Baseline interval: 79 commits
+- Source: /home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/repository-all-refs.bundle
+- Isolated clone: /tmp/cvg-his-v4-rem002.DOXZ2r/clone
+- Rollback ref in isolated clone: refs/remediation/rem-002-before -> ad2f0373f68635f2579253b013a4382219906921
+- Existing recovery bundle, worktree patch and untracked archive remain in the REM-001 backup.
+
+Executed rewrite
+- Tool: git filter-branch --index-filter in the isolated clone only.
+- Transformation: remove only .gauntlet/state.json from each commit in origin/main..HEAD and add the explicit .gitignore rule for externalized generated state.
+- Candidate ref: refs/heads/rem-002-rewritten
+- Candidate tip: 570920de3d12d9a1043aa2c36102a89d39f04569
+- Candidate interval: 79 commits; total reachable commits 886, equal to the baseline total.
+- Rewritten interval path hits for .gauntlet/state.json: 0/79.
+- Candidate tip contains no .gauntlet/state.json path.
+- Candidate .gitignore contains exactly one .gauntlet/state.json rule.
+
+Object proof
+- Prohibited baseline blob: 152651034 bytes, cd9335c6562fda5acf2e9d958a36c60baea8dec9.
+- Remaining origin ancestor blob: 39584187 bytes, 4888760b692a34322dbb696bca3ec1b0fd8ce571.
+- Candidate reachable blobs >= 104857600 bytes: 0.
+- Candidate object inventory completed over the exact candidate ref; no large blob was found.
+- The source baseline and candidate both report the pre-existing diff-check finding at packages/shared/contracts/src/upload-limits.ts:31 (new blank line at EOF); the rewrite did not introduce or change that product file.
+
+Recovery proof
+- Candidate bundle: /home/ricardo/cvg-his-v4-backups/20260923-remediacao-integral-rem002/rem-002-rewritten.bundle
+- Bundle verification: complete history; ref 570920de3d12d9a1043aa2c36102a89d39f04569 refs/heads/rem-002-rewritten.
+- Candidate bundle SHA-256: 7be6076addcb010dfd1b1a1682dbd9bc99493c92a7df458823d3fd105981711a
+- Fresh recovery clone: /tmp/cvg-his-v4-rem002.DOXZ2r/recovery
+- Recovery clone tip: 570920de3d12d9a1043aa2c36102a89d39f04569
+- Recovery clone total commits: 886
+- Recovery clone contains no .gauntlet/state.json path at tip; fsck --full reported no corruption.
+
+Remote boundary
+- Read-only lease observed immediately before publication: 363c87efd653dad74afa1a6caf125debc6004641 refs/heads/main.
+- Shared worktree remained dirty and was not reset, checked out, stashed, committed, or changed by the rewrite.
+- Dry-run: `git push --porcelain --dry-run --force-with-lease=refs/heads/main:363c87efd653dad74afa1a6caf125debc6004641 publish refs/heads/rem-002-rewritten:refs/heads/main` passed.
+- Actual push: `git push --porcelain --force-with-lease=refs/heads/main:363c87efd653dad74afa1a6caf125debc6004641 publish refs/heads/rem-002-rewritten:refs/heads/main` passed; remote reported `363c87ef..570920de`.
+- Post-push `ls-remote`: `570920de3d12d9a1043aa2c36102a89d39f04569 refs/heads/main`.
+- Post-push fetched remote proof: 886 total commits, 79 commits in the rewritten interval, zero `.gauntlet/state.json` path hits in the interval, zero reachable blobs >=100 MiB, one `.gitignore` rule, and no fsck corruption.
+- The refspec updated only `refs/heads/main`; no tag, unrelated ref or deletion was pushed.

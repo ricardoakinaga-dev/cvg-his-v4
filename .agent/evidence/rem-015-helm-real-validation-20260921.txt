@@ -1,0 +1,29 @@
+# REM-015 — Helm real lint/template — evidência current
+
+Data da coleta: 2026-09-21 (Node 22.23.2; pnpm 10.33.0)
+Escopo: chart canônico `infra/helm/cvg-his-v2`, overlays `dev`, `staging` e `prod`, lint/template local e known-bads de values/schema.
+
+## Diagnóstico e preparação
+
+- F-020 foi reproduzido: o binário `helm` não estava disponível no PATH local; `pnpm validate:helm` sem `REQUIRE_HELM=1` só poderia executar a validação estática.
+- O CI declara Helm `v3.15.4` e SHA256 `11400fecfc07fd6f034863e4e0c4c4445594673fd2a129e701fe41f31170cfa9`.
+- O arquivo oficial `https://get.helm.sh/helm-v3.15.4-linux-amd64.tar.gz` foi baixado para diretório temporário, o SHA declarado conferiu e `helm version --short` respondeu `v3.15.4+gfa9efb0`.
+
+## Verificações executadas
+
+1. `HELM_BIN=<binário temporário verificado> REQUIRE_HELM=1 pnpm validate:helm` — PASS, exit 0; lint e template reais para dev, staging e prod.
+2. O mesmo validador exercitou known-bads que devem falhar fechado: HA local sem RWX, `emptyDir` divergente em HA, RWX sem `storageClass`, limite de upload diferente de 35m, exposição de endpoints privados do collector, Vault de produção sem Secret e chave Vault malformada.
+3. `pnpm exec node --test tests/unit/infra/validate-helm-script.test.mjs` — PASS, 16/16; inclui ausência de Helm, versão near-match e metadata malformada em modo `REQUIRE_HELM`.
+4. `CI=1 pnpm exec vitest run tests/unit/infra/deploy-surface-of-truth.test.ts --config vitest.config.ts --no-file-parallelism` — PASS, 1 arquivo/5 testes.
+5. `CI=1 pnpm validate:deploy-surface` — PASS; superfície canônica `infra/helm/cvg-his-v2`, 231 arquivos escaneados.
+6. `git diff --check` — PASS, exit 0.
+
+## Resultado
+
+O known-bad F-020 local foi corrigido no sentido bounded: a validação não depende mais de um Helm implícito, e o chart foi lintado/renderizado de fato nos três overlays com o binário pinado pelo CI. O teste estático continua complementar e não substitui a execução real.
+
+## Limitações honestas
+
+- Não foram executados `helm install`, `helm upgrade`, `helm rollback`, `kubectl`, cluster compartilhado, namespace real, credential, provider, target, carga, restore ou UAT.
+- O resultado prova lint/template e guardrails locais, não rollout, readiness, migração no target, rollback observado, RPO/RTO, observabilidade ou release readiness.
+- Os overlays staging/prod continuam exigindo Secrets, imagens/digests e infraestrutura fornecidos por autoridade operacional; nenhum valor real foi inventado.

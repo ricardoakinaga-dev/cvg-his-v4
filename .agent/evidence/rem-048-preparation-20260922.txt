@@ -1,0 +1,18 @@
+REM-048 PREPARATION — 2026-09-22T10:41:50.000000Z
+
+Scope and inventory
+- F-030 reports roughly 59 `any` or equivalent occurrences in non-test sources. A current source inventory separates natural-language/string matches from executable typing: payment-gateway provider payloads, prescription repository row casts, design-system generics, SPA view-model casts, route/repository return types and the clinical integration `z.any()` response schema.
+- The highest-value candidate is `apps/api/src/payment-gateway.ts`: twelve executable `any`/`Record<string, any>` uses sit at the external financial provider boundary and are already exercised by `apps/api/src/payment-gateway.test.ts`.
+- A second small candidate is `packages/contracts/src/integration.ts`, where the clinical integration response uses `z.any()` despite the rest of the contract being schema-defined.
+
+Known-bad and selected boundary
+- Current provider JSON is accepted through `any`, so malformed payloads can cross the payment classifier without an explicit unknown-to-record narrowing step.
+- The selected implementation replaces this with `unknown`, `Record<string, unknown>` and runtime record/string guards; it must preserve the existing fail-closed classification and identity checks.
+- The selected contract change replaces the unbounded response schema with `z.unknown()`, preserving permissive runtime acceptance while making the inferred boundary explicitly unknown rather than any.
+- Existing API payment tests and contracts tests are the focal regression surface; no provider is contacted because tests use local fake fetch responses.
+
+Verification plan
+- Node 22.23.2/pnpm 10.33.0: API payment-gateway tests, contracts focal tests, API typecheck/build, contracts typecheck/build, semantic lint, remaining-any inventory, dependency/skip guards and git diff --check.
+- No cosmetic cast is authorized; each replaced any must be narrowed by a predicate or remain intentionally unknown at the boundary.
+
+Result: IMPLEMENTATION_READY with PASS_WITH_CONDITIONS. The next action is REM-048:IMPLEMENT.

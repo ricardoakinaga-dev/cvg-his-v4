@@ -1,0 +1,24 @@
+REM-047 IMPLEMENTATION — 2026-09-22T10:34:24.000000Z
+
+Implemented surface
+- packages/chaos/src/chaos-engine.test.ts covers registration, duplicate protection, lifecycle state, failure state and AsyncLocalStorage context.
+- packages/chaos/src/faults.test.ts covers deterministic delay wiring/cleanup, probability zero, error code, timeout code and resource cleanup.
+- packages/chaos/src/experiments.test.ts covers all six built-in experiments, duplicate start, stop, automatic expiry and Prometheus metric families without external dependencies.
+- packages/shared/contracts/src/upload-limits.test.ts executes the binary/base64/JSON/ingress upload-limit relationship.
+- packages/shared/types/src/event-envelope.test.ts executes canonical envelope defaults, validation, merge protection, readback and identity matching; the existing types.test.ts is now wired by the package Vitest script.
+- The three package manifests no longer declare a no-tests placeholder.
+
+Verification
+- Node 22.23.2/pnpm 10.33.0: chaos native TAP 11/11; shared/contracts native TAP 1/1; shared/types Vitest 2 files/25 tests; all green.
+- chaos, shared/contracts and shared/types typecheck/build passed; semantic lint passed for all three packages.
+- `tests/unit/infra/root-test-runner-contract.test.ts`: 5/5 passed, including synthetic first-failure output.
+- `pnpm validate:test-skips`: PASS, 36 allowlisted occurrences.
+- `pnpm validate:dependencies`: PASS, 69 active manifests.
+- `git diff --check`: PASS.
+
+Safety and limitations
+- Tests are synthetic and local; no provider, database, Redis, worker, target, credentials, shared infrastructure, UAT, deploy, push or release action was performed.
+- The suite proves package contracts and lifecycle behavior, not target-bound chaos readiness, recovery/RPO/RTO, game-day execution, CI/OCI, browser/a11y, owners, release or go/no-go.
+- Type-only interfaces cannot be asserted at runtime; the applicable proof is typecheck plus the runtime exports available in shared/types/shared/contracts.
+
+Result: PASS_WITH_CONDITIONS. REM-047 is DONE only in local scope; reopen if package test scripts or runtime contracts drift.

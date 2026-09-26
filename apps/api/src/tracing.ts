@@ -16,6 +16,7 @@ import {
   type Span as OtelSpan
 } from '@opentelemetry/api';
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import { normalizeHttpMethod, normalizeRoute } from './http-telemetry-normalization.js';
 
 export interface TraceContext {
   traceId: string;
@@ -38,20 +39,21 @@ export interface Span {
 export interface TraceableIncomingMessage extends IncomingMessage {
   traceContext?: TraceContext | null;
   span?: Span;
+  correlationId?: string;
 }
 
 /**
  * Return a safe HTTP target for telemetry.
  *
- * Query strings are intentionally excluded because this application exposes
- * signed download URLs whose credentials are carried in query parameters.
- * Keeping only the pathname prevents bearer tokens, signatures and other
- * request secrets from reaching span attributes or span names.
+ * Query strings and dynamic path values are excluded because signed download
+ * URLs carry credentials in query parameters and resource paths can contain
+ * patient, account, or attachment IDs. Metrics and traces share this bounded
+ * route label so traces retain route-level correlation without raw IDs.
  */
 export function sanitizeHttpTarget(rawUrl: string | undefined): string {
   try {
     const parsed = new URL(rawUrl ?? '/', 'http://localhost');
-    return parsed.pathname || '/';
+    return normalizeRoute(parsed.pathname || '/');
   } catch {
     return '/';
   }
@@ -193,8 +195,9 @@ export async function tracingMiddleware(
 ): Promise<void> {
   const traceableRequest = request as TraceableIncomingMessage;
   const parent = extractTraceContext(request);
+  const method = normalizeHttpMethod(request.method);
   const span = createSpan(
-    `HTTP ${request.method ?? 'UNKNOWN'} ${sanitizeHttpTarget(request.url)}`,
+    `HTTP ${method} ${sanitizeHttpTarget(request.url)}`,
     parent
   );
 

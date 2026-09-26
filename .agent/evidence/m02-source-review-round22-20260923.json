@@ -1,0 +1,166 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND22-20260923",
+  "recorded_at": "2026-09-23T09:22:00Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "scripts/validate-remediation-target-pack.mjs",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "9f85c1dbdd5e9d2df9a79a3c3af00583a63d38192fad5300e79fd43d41c65f35",
+      "current_sha256": "9f85c1dbdd5e9d2df9a79a3c3af00583a63d38192fad5300e79fd43d41c65f35",
+      "sha_matches_inventory": true,
+      "scope_classification": "TOOLING_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Untracked local static checker. It checks existence of 20 hardcoded paths, 15 substring markers in the runbook and string presence for 9 package scripts; it does not execute any listed command or connect to any target. The current implementation maps the required script names to the current package but verifies only that each value is a string, not its command semantics."
+    },
+    {
+      "path": "scripts/validate-remediation-target-pack.test.mjs",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "a2ecc8f20a33d07b54c0a3a484f452a0ea129d3032a1a685f24820a12ae7e41e",
+      "current_sha256": "a2ecc8f20a33d07b54c0a3a484f452a0ea129d3032a1a685f24820a12ae7e41e",
+      "sha_matches_inventory": true,
+      "scope_classification": "TOOLING_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Two Node built-in tests: current preparation passes and removal of REM-025 from a copied temporary runbook fails. The fixture copies the required local files under /tmp and removes the temporary root in finally. No source or target-pack file is changed."
+    },
+    {
+      "path": "docs/operations/REM_TARGET_CERTIFICATION_RUNBOOK.md",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "62eb4f52f1505e909e85b9475708c78da4beb6d12b1da838035ad4de3465a648",
+      "current_sha256": "62eb4f52f1505e909e85b9475708c78da4beb6d12b1da838035ad4de3465a648",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "The document is marked preparation and says the five target cards remain BLOCKED until REM-021 plus exact authority/target parameters. It prohibits target connection, credentials, deploy, restore, rollback, load and worker interruption in this preparation phase; local rehearsals are not target proof. It defines per-card invariants, prerequisites, known-bads, evidence envelope, stop conditions and revalidation."
+    }
+  ],
+  "verification": {
+    "inventory_hash_recheck": {
+      "result": "PASS",
+      "paths_checked": 3,
+      "all_match": true,
+      "candidate_base_present": false
+    },
+    "unit_test": {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" node --test scripts/validate-remediation-target-pack.test.mjs",
+      "result": "PASS",
+      "exit_status": 0,
+      "tests": 2,
+      "passed": 2,
+      "failed": 0,
+      "scope": "Static local files and a copied temporary fixture removed in finally."
+    },
+    "cli": {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm validate:remediation-target-pack",
+      "result": "PASS",
+      "exit_status": 0,
+      "checked_files": 20,
+      "checked_markers": 15,
+      "checked_package_scripts": 9
+    },
+    "current_package_command_values": {
+      "validate:rls": "tsx scripts/validate-rls-coverage.ts",
+      "test:critical:process": "node infra/scripts/run-critical-process-suite.mjs",
+      "ops:backup:check": "node --test infra/scripts/validate-backup-restore.test.mjs && node infra/scripts/validate-backup-restore.mjs",
+      "ops:restore:drill:fixture:representative": "RESTORE_FIXTURE_PROFILE=representative node infra/scripts/run-restore-drill-fixture.mjs",
+      "test:migration-harness": "node scripts/run-rem016-migration-harness.mjs",
+      "ops:install-upgrade:drill": "node infra/scripts/run-install-upgrade-drill.mjs",
+      "test:critical:soak": "node infra/scripts/run-critical-soak.mjs",
+      "benchmark:k6:parse": "node benchmarks/k6/parse-results.js benchmarks/k6/results/performance-report.json",
+      "validate:migration-source": "node scripts/check-migration-source-of-truth.mjs"
+    },
+    "runbook_dependencies_not_bound_by_validator": [
+      {
+        "path": "tests/integration/rls/rls-access-governance.test.ts",
+        "exists": true,
+        "in_required_target_pack_files": false
+      },
+      {
+        "path": "infra/scripts/validate-backup-restore.test.mjs",
+        "exists": true,
+        "in_required_target_pack_files": false
+      },
+      {
+        "path": "benchmarks/k6/parse-results.js",
+        "exists": true,
+        "in_required_target_pack_files": false
+      },
+      {
+        "path": "benchmarks/k6/results/performance-report.json",
+        "exists": false,
+        "in_required_target_pack_files": false
+      },
+      {
+        "path": "scripts/check-migration-source-of-truth.mjs",
+        "exists": true,
+        "in_required_target_pack_files": false
+      }
+    ],
+    "worktree_boundary": {
+      "result": "PASS",
+      "status_hash_unchanged_before_recording": true,
+      "no_target_or_database_connection": true,
+      "no_credentials_or_process_harness_used": true
+    },
+    "checkpoint_validation": {
+      "recorded_at": "2026-09-23T09:23:11Z",
+      "docs_validate": {
+        "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+        "result": "PASS",
+        "exit_status": 0
+      },
+      "json_jsonl_parse": {
+        "result": "PASS",
+        "exit_status": 0,
+        "scope": "State, cumulative M-02 review, round-22 review, execution log and inventory JSONL."
+      },
+      "git_diff_check": {
+        "command": "git diff --check",
+        "result": "PASS",
+        "exit_status": 0
+      },
+      "read_only_controller": {
+        "command": "python3 /home/ricardo/.agents/skills/engineering-framework/scripts/check_state.py --quiet .",
+        "result": "FAIL_PRESERVED_BASELINE",
+        "exit_status": 1,
+        "summary": "RESULT FAIL (pass=6 warn=0 fail=788); no active-plan, REM-010 or gate-v2 finding; the same four preserved REM-056 v1 findings remain. The global controller does not approve a candidate/release."
+      }
+    }
+  },
+  "boundary_review": {
+    "runbook_scope": "This is a preparation checklist. The runbook explicitly says local validators and disposable rehearsals do not prove target RLS, recovery, RPO/RTO, SLO or release; each future external mutation requires exact authority and candidate-bound evidence.",
+    "checker_scope": "The PASS means current paths, markers and package-script names are present in the shared worktree. It does not establish a clean candidate, hash identity, command success or target readiness.",
+    "current_commands": "The nine package script values currently point to the named local validators/runners; this was static inspection only. They were not executed by this checker or review."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-TARGET-PACK-COMMAND-DEPENDENCY-GAP",
+      "classification": "HOLD_PACK_COMPLETENESS",
+      "observation": "The hardcoded required-file list omits files consumed/referenced by its own runbook/package commands: rls-access-governance.test.ts, validate-backup-restore.test.mjs, benchmarks/k6/parse-results.js, the expected performance-report.json input, and check-migration-source-of-truth.mjs. The performance report is absent in the current worktree. The validator still returns PASS for 20 paths."
+    },
+    {
+      "id": "M02-TARGET-PACK-SHALLOW-SCRIPT-BINDING",
+      "classification": "HOLD_COMMAND_SEMANTICS",
+      "observation": "Required package scripts are checked only for string type. Replacing an entry with an empty or unrelated command would still satisfy this validator. Current command strings look aligned by static inspection, but there is no assertion tying them to the required runner files or runbook commands."
+    },
+    {
+      "id": "M02-TARGET-PACK-FILE-IDENTITY",
+      "classification": "HOLD_CANDIDATE_BOUNDARY",
+      "observation": "The checker uses existsSync for file entries and does not require regular files, reject symlinks, or record hashes/head. It is not candidate-bound. The runbook accurately prevents treating this local PASS as target proof."
+    }
+  ],
+  "candidate_actions": [
+    "Keep the runbook status as preparation/BLOCKED until REM-021, exact authority and approved target exist; do not execute its DB/process/benchmark commands in this round.",
+    "Derive required files from the actual script/runbook dependencies, include the omitted fixture/tests/parsers, and validate nonempty command semantics rather than only key presence.",
+    "If this PASS is attached as evidence, label it local preparation and bind it to a candidate only after a clean candidate and hashes exist."
+  ],
+  "limitations": [
+    "The target-pack test/CLI do not execute any required target runner.",
+    "The current RLS, database, backup, migration, process, soak and k6 scripts were not run.",
+    "No external environment, credentials, database, deployment, target action, candidate overlay or frozen SHA was used; self-review only."
+  ]
+}

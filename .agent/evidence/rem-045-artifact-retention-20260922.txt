@@ -1,0 +1,37 @@
+REM-045 IMPLEMENTATION AND VERIFICATION — 2026-09-22
+
+Environment:
+- repository: /home/ricardo/cvg-his-v4
+- runtime: Node v22.23.2
+- package manager: pnpm 10.33.0
+- mode: local candidate-bound; worktree intentionally dirty from prior remediation work
+
+Changes:
+- added docs/engineering/artifact-retention-policy.json with legal-hold, active-evidence, generated-run, coverage-run and fail-closed unknown classes;
+- defined 14-day/8 GiB generated-run and 30-day/12 GiB coverage-run limits, a 64 GiB consultive active-evidence quota and owner-only restricted ACL profiles;
+- added docs/operations/ARTIFACT_RETENTION_POLICY.md documenting the operational boundary;
+- added scripts/artifact-retention-dry-run.mjs; it scans declared roots, reports TTL/quota candidates and intentionally contains no delete/apply mode;
+- added scripts/artifact-retention-dry-run.test.mjs and package script artifacts:retention:dry-run.
+
+Commands and results:
+1. `node --test scripts/artifact-retention-dry-run.test.mjs`
+   PASS — 3 tests, 3 passed, 0 failed.
+   Covered policy validation, expired candidate selection, active/unknown/evidence protection, no mutation and bounded JSON output.
+2. `pnpm artifacts:retention:dry-run`
+   PASS — 418,922 files, 52.2 GiB apparent size, 418,729 protected, 0 scan errors, 0 candidates.
+   Classes observed: legal-hold 11 files/506.5 KiB; active-evidence 418,718 files/52.2 GiB; generated-run 3 files/518.5 KiB; coverage-run 190 files/10.1 MiB.
+3. `pnpm exec prettier --check docs/engineering/artifact-retention-policy.json docs/operations/ARTIFACT_RETENTION_POLICY.md scripts/artifact-retention-dry-run.mjs scripts/artifact-retention-dry-run.test.mjs package.json`
+   PASS — all files formatted.
+4. `git diff --check`
+   PASS — no whitespace errors.
+
+Safety observations:
+- the real dry-run applied no deletion and returned no current candidates; the script refuses execution without `--dry-run` and exposes no apply operation;
+- active evidence and unknown paths are never candidates; protected checksum/manifest/metadata/evidence names are covered by focal tests and policy rules;
+- the large consolidation coverage tree remains intentionally preserved; no cleanup was inferred from its size or quota policy.
+
+Residual limitations:
+- ACL and retention of GitHub/provider storage were not executed or proven;
+- a human owner must authorize any future deletion scope after reviewing a fresh dry-run and recoverability evidence;
+- no external target, credentials, push, deploy, UAT, release or go/no-go action was performed;
+- independent fresh critic E7 is unavailable in single-primary-agent mode, so the local gate remains PASS_WITH_CONDITIONS.

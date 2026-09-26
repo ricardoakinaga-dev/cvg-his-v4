@@ -1,0 +1,78 @@
+{
+  "gate_id": "GATE-IMPLEMENTATION-READY-REMEDIACAO-INTEGRAL-REM-TARGET-PACK-20260922",
+  "task_group": ["REM-022", "REM-023", "REM-024", "REM-025", "REM-030"],
+  "timestamp": "2026-09-22T11:57:41.000000Z",
+  "gate_type": "TARGET_PREPARATION",
+  "decision": "PASS_WITH_CONDITIONS",
+  "criteria": [
+    {
+      "id": "V-REM-TARGET-PACK-001",
+      "criterion": "O contrato local de execução target está documentado por invariante, known-bad, comando de rehearsal, evidência mínima e stop condition.",
+      "status": "PASS",
+      "observed": "O runbook cobre RLS/FORCE RLS, recovery do worker, restore/RPO-RTO, carga/soak/SLO e migrations para REM-022–025/030.",
+      "evidence_refs": [
+        ".agent/evidence/rem-target-pack-preparation-20260922.txt",
+        "docs/operations/REM_TARGET_CERTIFICATION_RUNBOOK.md"
+      ]
+    },
+    {
+      "id": "V-REM-TARGET-PACK-002",
+      "criterion": "As fontes locais, fixtures, políticas e comandos referenciados pelo pacote existem.",
+      "status": "PASS",
+      "observed": "O checker local reconciliou 20 arquivos requeridos e nove scripts package.json; nenhum acesso externo é realizado.",
+      "evidence_refs": [
+        ".agent/evidence/rem-target-pack-preparation-20260922.txt",
+        "scripts/validate-remediation-target-pack.mjs"
+      ]
+    },
+    {
+      "id": "V-REM-TARGET-PACK-003",
+      "criterion": "O checker falha quando uma parte obrigatória do checklist desaparece.",
+      "status": "PASS",
+      "observed": "O teste Node 2/2 passou; a fixture known-bad removendo REM-025 produziu FAIL como esperado.",
+      "evidence_refs": [
+        ".agent/evidence/rem-target-pack-preparation-20260922.txt",
+        "scripts/validate-remediation-target-pack.test.mjs"
+      ]
+    },
+    {
+      "id": "V-REM-TARGET-PACK-004",
+      "criterion": "A preparação não promove prova target nem altera o bloqueio de autoridade.",
+      "status": "PASS_WITH_CONDITIONS",
+      "observed": "Nenhum banco, credential, provider, cluster ou serviço externo foi acessado; os cinco cartões permanecem BLOCKED e nenhum foi marcado DONE.",
+      "evidence_refs": [".agent/evidence/rem-target-pack-preparation-20260922.txt"]
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-target-pack-preparation-20260922.txt",
+    "docs/operations/REM_TARGET_CERTIFICATION_RUNBOOK.md",
+    "scripts/validate-remediation-target-pack.mjs",
+    "scripts/validate-remediation-target-pack.test.mjs"
+  ],
+  "source_hashes": {
+    "docs/operations/REM_TARGET_CERTIFICATION_RUNBOOK.md": "62eb4f52f1505e909e85b9475708c78da4beb6d12b1da838035ad4de3465a648",
+    "scripts/validate-remediation-target-pack.mjs": "9f85c1dbdd5e9d2df9a79a3c3af00583a63d38192fad5300e79fd43d41c65f35",
+    "scripts/validate-remediation-target-pack.test.mjs": "a2ecc8f20a33d07b54c0a3a484f452a0ea129d3032a1a685f24820a12ae7e41e"
+  },
+  "limitations": [
+    "REM-021 ainda não está concluída; não há candidato remoto/release vinculado para executar o target.",
+    "Ambiente, credenciais, perfil de carga, limites RPO/RTO/SLO e owners de target ainda exigem autoridade externa.",
+    "Nenhuma prova de RLS target, crash/restart, restore/rollback, carga/soak ou migration target foi executada.",
+    "A crítica independente fresca E7 permanece ausente por modo de agente primário único.",
+    "CI/OCI, UAT, release e go/no-go permanecem fora do claim."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-TARGET-PACK-AUTHORITY",
+      "description": "Executar os envelopes somente após registro CONFIRMED em .agent/authority.jsonl, target aprovado, credenciais sintéticas e candidato congelado.",
+      "non_blocking": false,
+      "status": "OPEN",
+      "owner": "lead/platform/security/operations",
+      "authority_state": "REQUIRED_BEFORE_TARGET_EXECUTION",
+      "verification_method": "Novo gate por REM, candidate-bound, após observação terminal no target."
+    }
+  ],
+  "residual_risk": "HIGH",
+  "next_action": "REM-002:WAIT-AUTHORITY",
+  "status": "PREPARED_NOT_EXECUTED"
+}

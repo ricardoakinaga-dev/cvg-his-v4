@@ -1,0 +1,110 @@
+{
+  "record_id": "GATE-REM-002-AUDIT-RESOLVED-CONFIRMED-20260923",
+  "timestamp": "2026-09-23T00:23:24.000000Z",
+  "gate_id": "AUDIT_RESOLVED",
+  "scope": "REM-002 history rewrite/removal of the prohibited blob from the publishable interval; local preparation is preserved and external/destructive authority is unresolved.",
+  "scope_ref": "REM-002",
+  "version": 2,
+  "criteria": [
+    {
+      "id": "AR-001-BASELINE-GAPS",
+      "description": "REM-001 preservation evidence is current enough to keep the rewrite boundary recoverable before any destructive action.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/SHA256SUMS",
+        ".agent/gates/verified-remediacao-integral-rem-001-20260922.json",
+        ".agent/evidence/rem-001-verification-20260922.txt"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The prohibited blob is intentionally still reachable until the authorized rewrite is verified."
+    },
+    {
+      "id": "AR-002-RESOLUTION-EVIDENCE",
+      "description": "The requested resolution is bounded to the path and publishable interval identified by the dry-run, with a recoverable source and an isolated execution route.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/history-rewrite-dry-run.txt",
+        "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/large-push-range-objects.txt",
+        "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/bundle-recovery.txt"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No post-rewrite object proof or remote result exists yet; those remain execution evidence."
+    },
+    {
+      "id": "AR-003-ACCEPTANCE-OR-ROUTING",
+      "description": "The human authority decision is explicit, current, and bound to the exact REM-002 gate and scope; execution is routed through post-rewrite verification before any push.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-REM-002-HISTORY-REWRITE-20260923",
+        ".agent/gates/passed-remediacao-integral-rem-002-audit-resolved-20260923.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This authorizes only the exact REM-002 rewrite/removal/push boundary; it does not authorize deployment, target operations, CI/release governance, unrelated refs or unrelated destructive actions."
+    }
+  ],
+  "evidence": [
+    "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/SHA256SUMS",
+    "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/bundle-verify.txt",
+    "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/bundle-recovery.txt",
+    "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/history-rewrite-dry-run.txt",
+    ".agent/authority.jsonl#AUTH-REM-002-HISTORY-REWRITE-20260923",
+    ".agent/evidence/rem-002-control-pointer-recovery-20260922.txt"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "The prohibited .gauntlet/state.json blob remains reachable in the current publishable interval until the rewrite runs.",
+    "Post-rewrite object inventory, recovery clone and remote lease result are not yet observed.",
+    "CI/release, target, UAT, independent critique and go/no-go remain outside this gate."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-002-POST-OBJECT-VERIFY",
+      "description": "Before push, verify the rewritten candidate has no blob >=100 MiB in the exact refs intended for push and that all required commits remain recoverable from a fresh candidate bundle/clone.",
+      "non_blocking": true,
+      "impact": "The local rewrite may proceed, but a failed verification prevents the push action and reopens the gate.",
+      "owner": "Codex acting under the confirmed human authority",
+      "due_or_trigger": "Immediately after the isolated rewrite and before push",
+      "due_at": "2026-09-23T23:59:59.000000Z",
+      "verification_method": "Object-size inventory, ref reachability, commit-count comparison, bundle verification and fresh recovery clone.",
+      "evidence_refs": [],
+      "status": "OPEN",
+      "residual_risk": "LOW",
+      "authority_state": "CONFIRMED"
+    },
+    {
+      "id": "COND-REM-002-REMOTE-LEASE",
+      "description": "Immediately before push, verify the remote main lease still equals the recorded origin/main baseline and push only the exact candidate branch to origin/main with force-with-lease.",
+      "non_blocking": true,
+      "impact": "A changed remote ref or rejected protected-branch policy stops publication without retrying an unsafe push.",
+      "owner": "Codex acting under the confirmed human authority",
+      "due_or_trigger": "Immediately before the authorized push",
+      "due_at": "2026-09-23T23:59:59.000000Z",
+      "verification_method": "Exact ls-remote comparison followed by one force-with-lease push limited to refs/heads/main.",
+      "evidence_refs": [],
+      "status": "OPEN",
+      "residual_risk": "LOW",
+      "authority_state": "CONFIRMED"
+    }
+  ],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "human user",
+    "scope": "REM-002 history rewrite/removal of the prohibited blob from the publishable interval; local preparation is preserved and external/destructive authority is unresolved.",
+    "decision": "Confirmed authority to execute the REM-002 history rewrite/removal of the prohibited blob and the authorized push for this exact scope, after backup and recovery validation.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-REM-002-HISTORY-REWRITE-20260923",
+    "expires_or_revalidates": "Revalidate immediately after any source/control mutation, remote ref change, or verification failure."
+  },
+  "residual_risk": "CRITICAL",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-002:PREPARE-REWRITE",
+  "revalidation_triggers": [
+    "The source/control worktree or backup/recovery evidence changes.",
+    "The public push interval, refs or prohibited blob inventory changes.",
+    "Any post-rewrite verification fails or the remote lease differs from the recorded baseline."
+  ],
+  "supersedes": "GATE-REM-002-AUDIT-RESOLVED-WAIT-AUTHORITY-20260922"
+}

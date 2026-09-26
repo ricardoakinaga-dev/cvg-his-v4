@@ -327,3 +327,53 @@ for(const capture of [false,true]) test(`Core v5 operation_type for capture=${ca
   assert.equal('capture' in sent.payments[0].credit_card,false);
  } finally {globalThis.fetch=originalFetch;}
 });
+
+test('PagarMePaymentGatewayAdapter forwards a per-account provider idempotency key and reuses the persisted charge', async () => {
+  const pixTransactions = new InMemoryPixTransactionRepository();
+  const originalFetch = globalThis.fetch;
+  const idempotencyHeaders: Array<string | null> = [];
+  globalThis.fetch = async (input, init) => {
+    const url = String(input);
+    if (url.endsWith('/core/v5/pix/qr_codes') && init?.method === 'POST') {
+      idempotencyHeaders.push(new Headers(init.headers).get('idempotency-key'));
+      return Response.json({
+        id: 'pagarme-qr-idem',
+        qr_code: '000201pagarme',
+        qr_code_base64: 'cWFk',
+        expires_at: '2026-08-08T00:00:00.000Z'
+      });
+    }
+    return Response.json({ message: 'unexpected request' }, { status: 404 });
+  };
+
+  try {
+    const adapter = new PagarMePaymentGatewayAdapter({
+      apiKey: 'pagarme-key',
+      pixKey: 'pix@example.test',
+      pixTransactions
+    });
+    const input = {
+      accountId: '00000000-0000-4000-8000-000000000001',
+      amount: 150,
+      description: 'Consulta',
+      idempotencyKey: 'client-retry-key'
+    };
+    const first = await adapter.createPixIntent(input);
+    const retried = await adapter.createPixIntent(input);
+    await adapter.createPixIntent({ ...input, accountId: '00000000-0000-4000-8000-000000000002' })
+      .then(
+        () => assert.fail('a charge owned by another account must not be returned'),
+        (error: Error) => assert.match(error.message, /another account/)
+      );
+
+    assert.equal(retried.id, first.id);
+    assert.equal((await pixTransactions.list()).length, 1);
+    assert.equal(idempotencyHeaders.length, 3);
+    assert.ok(idempotencyHeaders[0]?.startsWith('cvg:pix:intent:v1:'));
+    assert.equal(idempotencyHeaders[1], idempotencyHeaders[0]);
+    assert.notEqual(idempotencyHeaders[2], idempotencyHeaders[0]);
+    assert.equal(idempotencyHeaders.some((value) => value?.includes('client-retry-key')), false);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});

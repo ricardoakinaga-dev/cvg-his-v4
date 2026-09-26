@@ -1,0 +1,25 @@
+# REM-006 — branches restantes de response-buffer, verificação focal
+
+timestamp_utc=2026-09-21T17:55:05+00:00
+repository=/home/ricardo/cvg-his-v4
+head=ad2f0373f68635f2579253b013a4382219906921
+runtime=node-v22.23.2
+package_manager=pnpm-10.33.0
+
+## Mudança focal
+
+- `writeHead` com `message` e `maybeHeaders` cobre a cópia de headers condicionada.
+- atribuição/replay de `statusMessage` cobre o setter, o campo opcional do snapshot e a aplicação do status message.
+- Nenhum threshold, exclude, orçamento de complexity ou arquivo de produção foi alterado.
+
+## Verificação
+
+1. `pnpm --filter @cvg-his-v2/api build`: `exit 0` no Node 22.23.2.
+2. `NODE_ENV=test node --test apps/api/dist/helpers/response-buffer.test.js`: `exit 0`; 3 testes passaram.
+3. `git diff --check`: `exit 0`.
+
+## Limites
+
+O coverage integral ainda deve confirmar a barra global de 82%; REM-026 permanece separado.
+
+result=PASS

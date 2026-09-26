@@ -1,0 +1,118 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND39-20260923",
+  "recorded_at": "2026-09-23T10:49:01Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "docs/2026-09-06-backlog-erp-state-of-art-triplo-aaa.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "ad1eb05d3b95693af89bfc17e4ce5a02d8c8adc63a30d07d0a3382e5fd93d75f",
+      "current_sha256": "ad1eb05d3b95693af89bfc17e4ce5a02d8c8adc63a30d07d0a3382e5fd93d75f",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical AAA backlog effective 07/09 defines 50 AAA cards, links the paired executive plan/roadmap/report, and points to the 21/09 backlog as successor. Its 07/09 local check/status claims remain dated; R05 counts are archival."
+    },
+    {
+      "path": "docs/2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "639ff84616bd8e0e48d51345b3dccf55959b9eaf57e529c2f249ddff6595a46e",
+      "current_sha256": "639ff84616bd8e0e48d51345b3dccf55959b9eaf57e529c2f249ddff6595a46e",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical 16-week relative-T0 executive plan sets G0–G6 business and engineering gates and explicitly leaves deployment/go-live/provider/regulatory acceptance to human authority. It is superseded by the 21/09 executive remediation plan."
+    },
+    {
+      "path": "docs/2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "ba04f6496b4d31acbc34782ee2dee5b586b94b85e90ea7519feebcf46c34647d",
+      "current_sha256": "ba04f6496b4d31acbc34782ee2dee5b586b94b85e90ea7519feebcf46c34647d",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical 06/09 baseline with 07/09 addendum retains score 75/100 and NO-GO, bounded local test claims and unresolved target/provider/CI/UAT gates. Its 95/100 static snapshot and later 92/100 readiness addendum are distinct dated values, not a current score series; 21/09 audit supersedes it."
+    },
+    {
+      "path": "docs/2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "719dc637713c8f1a15b1384e176e4551d34f0323e76aec333693c42ecbf49886",
+      "current_sha256": "719dc637713c8f1a15b1384e176e4551d34f0323e76aec333693c42ecbf49886",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical relative-T0 F0–F8 roadmap retains cumulative gates, critical-path dependencies and 07/09 bounded local checkpoint. R05 initial status and its 16-week schedule are archival; the 21/09 remediation roadmap supersedes it."
+    }
+  ],
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "Documentation links/governance and current Triple-A snapshot validators passed after the round-39 review was recorded.",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-06SEP-BASELINE-IS-SUPERSEDED",
+      "classification": "HOLD_SNAPSHOT_PROVENANCE",
+      "observation": "The four 06/09 program documents are marked historical and point to the 21/09 audit/backlog/plan/roadmap. The 75/100 score and 07/09 local evidence are dated snapshots; they do not override the 21/09 formal baseline."
+    },
+    {
+      "id": "M02-06SEP-SCORE-AND-STATUS-ARE-DATED",
+      "classification": "HOLD_HISTORICAL_STATUS",
+      "observation": "The report preserves a 75/100 maturity baseline, while its dated readiness snapshots include 95/100 static and later 92/100 (exit 1). Backlog/roadmap preserve the R05 checkpoint (31 REVIEW, 3 DOING, 16 BLOCKED, 0 DONE). These values describe differing dates/scopes and must not be merged into a current score or live ticket status."
+    },
+    {
+      "id": "M02-06SEP-LOCAL-CLAIMS-BOUNDED",
+      "classification": "SCOPE_LIMIT",
+      "observation": "Historical docs report local test/type/lint/build/security/visual results and explicitly leave target, remote CI, providers, broad parity, restore/operation and human acceptance open. This content review reran none of those claims; only docs:validate and git diff --check were run."
+    },
+    {
+      "id": "M02-06SEP-RELATIVE-T0-PLAN",
+      "classification": "HOLD_HISTORICAL_PLANNING",
+      "observation": "The 16-week executive plan and F0–F8 roadmap are relative to T0 and require explicit scope/owners/environment/authority at G0. Their dates and sequence are not a current committed schedule."
+    },
+    {
+      "id": "M02-06SEP-LIMITED-SENSITIVE-SCAN",
+      "classification": "SCOPE_LIMIT",
+      "observation": "Scoped scan found 0 /home-or-/tmp path patterns, 0 email patterns and 0 CPF patterns across these four documents. This is not full PII/security clearance."
+    }
+  ],
+  "candidate_actions": [
+    "Keep these 06/09–07/09 claims as archival context only; do not promote scores, R05 counts, or historical gate outcomes.",
+    "Use the 21/09 formal remediation package and current .agent control records for present status.",
+    "No referenced local, browser, database, provider, CI, target, release or human-acceptance evidence was recreated."
+  ],
+  "limitations": [
+    "Content/cross-reference review only; referenced tests, scans, target procedures, UAT and operational evidence were not rerun.",
+    "No referenced artifact, target, credential, database, provider or external handoff was recreated.",
+    "The path/email/CPF pattern scan is limited and does not constitute full privacy review.",
+    "Reviewer is not independent; seven original inventory paths and independent inventory critique remain open."
+  ],
+  "checkpoint_validation": {
+    "json_and_jsonl_parse": "PASS (183 JSON and 8 JSONL files under .agent; docs/document-governance.json also parsed)",
+    "git_diff_check": "PASS",
+    "docs_validate": "PASS",
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 38. Exact REM-010 and gate-v2 searches return no finding; the controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T10:50:56Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 302,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 428,
+    "status_sha256": "8c1831e003f98a39b8ce22ffa6ca74551c3164e5b7c80875d168dc287623b1ec",
+    "note": "Read-only porcelain snapshot after M-02 round 39 and checkpoint validation; original 386-path denominator unchanged. Round-39 review artifact is the forty-second post-inventory path. No candidate, overlay or frozen SHA exists."
+  }
+}

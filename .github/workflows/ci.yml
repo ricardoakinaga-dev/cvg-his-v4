@@ -329,6 +329,9 @@ jobs:
           fi
           exit "${drill_status}"
 
+      - name: Run REM-016 migration harness
+        run: pnpm test:migration-harness -- --output artifacts/operations/rem-016-migration-harness.json
+
       - name: Validate static and process contracts
         run: |
           REQUIRE_TEST_DB=1 pnpm vitest run tests/unit/infra/requirement-evidence-matrix.test.ts --config vitest.config.ts
@@ -378,6 +381,15 @@ jobs:
         with:
           name: install-upgrade-${{ github.sha }}
           path: artifacts/operations/install-upgrade/
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload REM-016 migration harness evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: rem-016-migration-harness-${{ github.sha }}
+          path: artifacts/operations/rem-016-migration-harness.json
           if-no-files-found: error
           retention-days: 30
 
@@ -538,6 +550,16 @@ jobs:
     runs-on: ubuntu-22.04
     timeout-minutes: 30
     needs: [build]
+    services:
+      redis:
+        image: redis@sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf
+        ports:
+          - 6380:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 3s
+          --health-timeout 5s
+          --health-retries 10
     steps:
       - name: Checkout
         uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
@@ -566,6 +588,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Validate test skip policy
+        env:
+          BASH_ENV: /dev/null
+        run: pnpm validate:test-skips
+
       - name: Build workspace dependencies
         run: pnpm build
 
@@ -591,10 +618,19 @@ jobs:
           # unset NODE_ENV.
           NODE_ENV: test
           REQUIRE_TEST_DB: 1
+          TEST_DB_EPHEMERAL: 1
+          TEST_DB_SUFFIX: 'ci_${{ github.run_id }}_${{ github.run_attempt }}'
           DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
           DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test
-          TEST_DB_EPHEMERAL: 0
+          CVG_WORKSPACE_BUILD_PREPARED: 1
+          REDIS_RATE_LIMITER_TEST_URL: redis://localhost:6380
 
+      - name: Run mandatory Redis rate-limiter shard
+        run: pnpm test:redis
+        env:
+          REDIS_RATE_LIMITER_TEST_URL: redis://localhost:6380
+
+          BASH_ENV: /dev/null
       - name: Upload unit-test diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
@@ -742,6 +778,15 @@ jobs:
             echo "PostgreSQL did not become ready"
             exit 1
           fi
+
+      - name: Run mandatory PostgreSQL webhook process shard
+        env:
+          DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test_rem014_webhook
+          DATABASE_URL: postgres://postgres:postgres@localhost:5433/cvg_his_v2_test_rem014_webhook
+          REQUIRE_TEST_DB: 1
+          TEST_DB_EPHEMERAL: 1
+          BASH_ENV: /dev/null
+        run: pnpm exec vitest run tests/integration/process/pix-provider-webhook-settlement-e2e.test.ts --config vitest.integration.config.ts --reporter=verbose --no-file-parallelism
 
       - name: Run integration tests
         env:
@@ -891,6 +936,8 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Provision private coverage runner binaries
+        env:
+          BASH_ENV: /dev/null
         shell: bash
         run: |
           set -euo pipefail
@@ -907,50 +954,7 @@ jobs:
           docker run --rm --interactive \
             --volume "${deb_dir}:/out" \
             ubuntu:22.04@sha256:829f6df217bcbae2b371026e81711d1a787c61b2967ad09d015063663ebafbf7 \
-            bash -se <<'CONTAINER_SCRIPT'
-          set -euo pipefail
-          test "$(dpkg --print-architecture)" = amd64
-          export DEBIAN_FRONTEND=noninteractive
-          apt-get update -y -o Acquire::Retries=3
-          apt-get install -y --no-install-recommends ca-certificates curl gnupg
-          install -d -m 0755 /usr/share/keyrings
-          curl --fail --silent --show-error --location \
-            https://www.postgresql.org/media/keys/ACCC4CF8.asc \
-            | gpg --dearmor --output /usr/share/keyrings/postgresql.gpg
-          pgdg_key_fingerprint="$(gpg --show-keys --with-colons /usr/share/keyrings/postgresql.gpg \
-            | awk -F: '$1 == "fpr" { print $10; exit }')"
-          test "${pgdg_key_fingerprint}" = B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8
-          printf '%s\n' \
-            'deb [signed-by=/usr/share/keyrings/postgresql.gpg] https://apt.postgresql.org/pub/repos/apt jammy-pgdg main' \
-            > /etc/apt/sources.list.d/postgresql.list
-          apt-get update -y -o Acquire::Retries=3
-          package_version() {
-            apt-cache policy "$1" | awk '$1 == "Candidate:" { print $2; exit }'
-          }
-          pg_package=postgresql-16
-          pg_version="$(package_version "${pg_package}")"
-          test -n "${pg_version}" && test "${pg_version}" != "(none)"
-          [[ "${pg_version}" == *.pgdg22.04* ]]
-          pg_client_package="${pg_package/postgresql-/postgresql-client-}"
-          pg_client_version="$(package_version "${pg_client_package}")"
-          test -n "${pg_client_version}" && test "${pg_client_version}" != "(none)"
-          packages=("${pg_package}" "${pg_client_package}" libpq5 libxml2 libldap-2.5-0 libicu70 redis-server redis-tools liblzf1 libjemalloc2 lua-cjson lua-bitop liblua5.1-0)
-          package_specs=()
-          for package in "${packages[@]}"; do
-            version="$(package_version "${package}")"
-            if [[ -z "${version}" || "${version}" == "(none)" ]]; then
-              echo "No APT candidate found for ${package}" >&2
-              apt-cache policy "${package}" >&2 || true
-              exit 1
-            fi
-            package_specs+=("${package}=${version}")
-          done
-          echo "Selected private coverage PostgreSQL package: ${pg_package}=${pg_version}"
-          echo "Selected private coverage PostgreSQL client package: ${pg_client_package}=${pg_client_version}"
-          printf '%s\n' "${packages[@]}" > /out/package-manifest
-          cd /out
-          apt-get download "${package_specs[@]}"
-          CONTAINER_SCRIPT
+            bash -se < scripts/provision-private-coverage-binaries.sh
           mapfile -t packages < "${deb_dir}/package-manifest"
           test "${#packages[@]}" -eq 13
           for package in "${packages[@]}"; do
@@ -979,7 +983,7 @@ jobs:
             echo "REDIS_CLI_BIN=${redis_cli}"
             echo "REDIS_SERVER_LIBRARY_PATH=${runtime_lib}"
             echo "LD_LIBRARY_PATH=${runtime_lib}"
-            echo "PATH=${pg_bin}:${runtime_root}/usr/bin:${PATH}"
+            echo "PATH=${PATH}:${pg_bin}:${runtime_root}/usr/bin"
           } >> "${GITHUB_ENV}"
           LD_LIBRARY_PATH="${runtime_lib}" "${pg_bin}/postgres" --version
           LD_LIBRARY_PATH="${runtime_lib}" "${redis_server}" --version
@@ -1028,6 +1032,8 @@ jobs:
         run: pnpm typecheck
 
       - name: Collect, promote and run the real critical coverage checker
+        env:
+          BASH_ENV: /dev/null
         shell: bash
         run: |
           set -uo pipefail
@@ -1600,6 +1606,7 @@ jobs:
           API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
           E2E_ENVIRONMENT: ci-postgresql
           E2E_AUDIT_COMMAND: npx playwright test --config playwright-spa.config.ts
+          BASH_ENV: /dev/null
         run: |
           mkdir -p tmp
           node scripts/prepare-usability-evidence-run.mjs
@@ -1646,6 +1653,7 @@ jobs:
           E2E_DATABASE_MODE: '1'
           API_DISABLE_INCOMPATIBLE_DB_REPOS: '0'
           REQUIRE_TEST_DB: '1'
+          BASH_ENV: /dev/null
         run: >-
           npx playwright test --config playwright.config.ts
           e2e/tests/jornada-clinica-canonica.spec.ts

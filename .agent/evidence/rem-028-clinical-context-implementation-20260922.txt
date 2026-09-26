@@ -1,0 +1,56 @@
+REM-028 — terceira extração local: ClinicalRecordContextAside
+Data: 2026-09-22
+Escopo: implementação e verificação candidate-bound do contexto clínico read-only/aside do prontuário
+Superfície: `apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue`
+Decisão: PASS_WITH_CONDITIONS; validação browser/visual segue aberta
+
+## Mudança
+
+`ClinicalRecordContextAside.vue` recebeu a apresentação do resumo do paciente, tutor,
+status, contagens e ações de navegação. O contrato é composto por props tipadas,
+sem services, stores, rotas ou mutações no módulo. Os destinos de tutor/paciente são
+calculados e fornecidos pelo page, mantendo URL ownership no boundary da página.
+
+`MedicalRecordsDetailPage.vue` continua dono de `record`, `encounter`, `patient`,
+`owner`, entradas, prescrições, `activeClinicalStep`, `useUnsavedChanges`, geração,
+idempotência, dirty guard, read-only, workflows clínicos e todos os serviços. O
+aside apenas renderiza o contexto recebido e links quando o page fornece destino.
+Os estilos do aside foram co-localizados no módulo, preservando valores, tokens,
+breakpoint e semântica existentes; não houve alteração de design tokens ou rotas.
+
+Linhas observadas após a extração: page `3206`, módulo `177`, teste focal `48`.
+
+## Verificações executadas
+
+Runtime: Node v22.23.2, pnpm 10.33.0, worktree compartilhado dirty preservado.
+
+- teste focal do page, navigator e contexto: `3` arquivos, `53` testes, exit 0;
+- `pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit`: exit 0;
+- `pnpm --filter @cvg-his-v2/spa lint`: exit 0, 0 erros e 32 avisos `any`
+  preexistentes fora do módulo novo;
+- `pnpm --filter @cvg-his-v2/spa build`: exit 0, Vite transformou 823 módulos e
+  gerou build/PWA;
+- `git diff --check`: exit 0.
+
+Hashes dos artefatos da extração no momento desta evidência:
+
+- `ClinicalRecordContextAside.vue`: `9d414df37f48385caf5fc2cf107af389faafcf7eb70a5b8f181f98bdb54acf97`;
+- `MedicalRecordsDetailPage.vue`: `a94dc2c8c0ad9c94bda1e40029f5925ca90cc82ce039d0ce441b88fdb53aa6a5`;
+- `ClinicalRecordContextAside.test.ts`: `d8ad499e850950f479b66942b1c526dcac0a72d88b1d1ac0fd0efae780489d6b`.
+
+## Validação visual e limite
+
+Não houve nova tentativa de Playwright para este seam: a tentativa visual anterior
+do mesmo runtime local terminou BLOCKED porque `/health` da API respondeu
+`unhealthy` após 30s. Nenhum snapshot foi atualizado.
+
+Esta verificação prova contrato presentation-bound, teste focal, types, lint, build
+e integração do page, mas não prova foco real no browser, pixel diff, dark/mobile,
+screen reader ou performance. O gate fica condicionado ao runtime E2E saudável e à
+reexecução visual/interativa antes de qualquer claim UX/a11y ou atualização de
+baseline.
+
+## Próxima ação
+
+Continuar pelo shell de apresentação de `CounterSalesPage.vue`, mantendo server
+state, workflow financeiro, URL e efeitos externos no boundary da página.

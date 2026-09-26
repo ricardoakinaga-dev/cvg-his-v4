@@ -1,0 +1,277 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND1-20260923",
+  "recorded_at": "2026-09-23T06:21:07.764591Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PASS_WITH_CONDITIONS; eight original-inventory API/report paths reviewed; no global candidate approval",
+  "paths_reviewed": [
+    {
+      "path": "apps/api/src/helpers/api-server-boundaries.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "67b6111cd4c4c4f4497ebbfd93914359b7aa2bde4ad7c7e1c90271b6ca730df6",
+      "current_sha256": "67b6111cd4c4c4f4497ebbfd93914359b7aa2bde4ad7c7e1c90271b6ca730df6",
+      "sha_matches_inventory": true,
+      "scope_classification": "API_SOURCE_OR_TEST",
+      "content_review": "REVIEWED",
+      "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required"
+    },
+    {
+      "path": "apps/api/src/helpers/api-server-boundaries.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "d81726ba77f0a5ba9cabac8d263435949965ba00d7b0bd8c168cfd9daac089e5",
+      "current_sha256": "d81726ba77f0a5ba9cabac8d263435949965ba00d7b0bd8c168cfd9daac089e5",
+      "sha_matches_inventory": true,
+      "scope_classification": "API_SOURCE_OR_TEST",
+      "content_review": "REVIEWED",
+      "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required"
+    },
+    {
+      "path": "apps/api/src/helpers/response-buffer.test.ts",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "b4faacccc3816c930fbbbdcf7428056f619f1e1163321f82e318bf070d94a9ee",
+      "current_sha256": "b4faacccc3816c930fbbbdcf7428056f619f1e1163321f82e318bf070d94a9ee",
+      "sha_matches_inventory": true,
+      "scope_classification": "API_SOURCE_OR_TEST",
+      "content_review": "REVIEWED",
+      "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required"
+    },
+    {
+      "path": "packages/modules/reports/src/report-renderers.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "c915ae900a84f5229afe2fb01d4f9ef15817f30a82b3ce6764f6d092efc2e1d7",
+      "current_sha256": "c915ae900a84f5229afe2fb01d4f9ef15817f30a82b3ce6764f6d092efc2e1d7",
+      "sha_matches_inventory": true,
+      "scope_classification": "REPORTS_PERSISTENCE_OR_RENDERING",
+      "content_review": "REVIEWED",
+      "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required"
+    },
+    {
+      "path": "packages/modules/reports/src/report-renderers.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "bfd93ee927078f3c42c9217b3e44df494d0c48def1739640718ff921bf660901",
+      "current_sha256": "bfd93ee927078f3c42c9217b3e44df494d0c48def1739640718ff921bf660901",
+      "sha_matches_inventory": true,
+      "scope_classification": "REPORTS_PERSISTENCE_OR_RENDERING",
+      "content_review": "REVIEWED",
+      "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required"
+    },
+    {
+      "path": "packages/modules/reports/src/report-schedule-time.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "9689a8491519c42e08d4b38bf93ab2378d2fc4435dbbaa6189b7c8f60aef9e07",
+      "current_sha256": "9689a8491519c42e08d4b38bf93ab2378d2fc4435dbbaa6189b7c8f60aef9e07",
+      "sha_matches_inventory": true,
+      "scope_classification": "REPORTS_PERSISTENCE_OR_RENDERING",
+      "content_review": "REVIEWED",
+      "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required"
+    },
+    {
+      "path": "packages/modules/reports/src/report-database-repository.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "f6f31e1ce7a58c0b83c1b771df6db2f6c1392a5a81d0760f14f01a36b1a5d87a",
+      "current_sha256": "f6f31e1ce7a58c0b83c1b771df6db2f6c1392a5a81d0760f14f01a36b1a5d87a",
+      "sha_matches_inventory": true,
+      "scope_classification": "REPORTS_PERSISTENCE_OR_RENDERING",
+      "content_review": "REVIEWED",
+      "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required"
+    },
+    {
+      "path": "apps/api/src/payment-gateway.ts",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "495dc51f7112d634b19e842e2b0efa13d219ba0238dafa5f6f65b0e178407563",
+      "current_sha256": "495dc51f7112d634b19e842e2b0efa13d219ba0238dafa5f6f65b0e178407563",
+      "sha_matches_inventory": true,
+      "scope_classification": "API_SOURCE_OR_TEST",
+      "content_review": "REVIEWED",
+      "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; financial/provider boundary requires full candidate-bound review and independent critique"
+    }
+  ],
+  "findings_and_limits": [
+    {
+      "id": "M02-SOURCE-API-BOUNDARY-01",
+      "paths": [
+        {
+          "path": "apps/api/src/helpers/api-server-boundaries.ts",
+          "git_status_at_inventory": "??",
+          "inventory_sha256": "67b6111cd4c4c4f4497ebbfd93914359b7aa2bde4ad7c7e1c90271b6ca730df6",
+          "current_sha256": "67b6111cd4c4c4f4497ebbfd93914359b7aa2bde4ad7c7e1c90271b6ca730df6",
+          "sha_matches_inventory": true,
+          "scope_classification": "API_SOURCE_OR_TEST",
+          "content_review": "REVIEWED",
+          "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required"
+        },
+        {
+          "path": "apps/api/src/helpers/api-server-boundaries.test.ts",
+          "git_status_at_inventory": "??",
+          "inventory_sha256": "d81726ba77f0a5ba9cabac8d263435949965ba00d7b0bd8c168cfd9daac089e5",
+          "current_sha256": "d81726ba77f0a5ba9cabac8d263435949965ba00d7b0bd8c168cfd9daac089e5",
+          "sha_matches_inventory": true,
+          "scope_classification": "API_SOURCE_OR_TEST",
+          "content_review": "REVIEWED",
+          "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required"
+        },
+        {
+          "path": "apps/api/src/helpers/response-buffer.test.ts",
+          "git_status_at_inventory": " M",
+          "inventory_sha256": "b4faacccc3816c930fbbbdcf7428056f619f1e1163321f82e318bf070d94a9ee",
+          "current_sha256": "b4faacccc3816c930fbbbdcf7428056f619f1e1163321f82e318bf070d94a9ee",
+          "sha_matches_inventory": true,
+          "scope_classification": "API_SOURCE_OR_TEST",
+          "content_review": "REVIEWED",
+          "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required"
+        }
+      ],
+      "assessment": "The extracted API helper owns header lookup, field validation, encounter-account lookup and queue synchronization through injected dependencies. Four helper tests use fake services and preserve lookup ordering and close/active transitions. The response-buffer test adds optional status/header coverage using an in-memory ServerResponse double. No external provider, network, or database behavior is invoked by this source/test set."
+    },
+    {
+      "id": "M02-SOURCE-REPORT-RENDERERS-01",
+      "paths": [
+        {
+          "path": "packages/modules/reports/src/report-renderers.ts",
+          "git_status_at_inventory": "??",
+          "inventory_sha256": "c915ae900a84f5229afe2fb01d4f9ef15817f30a82b3ce6764f6d092efc2e1d7",
+          "current_sha256": "c915ae900a84f5229afe2fb01d4f9ef15817f30a82b3ce6764f6d092efc2e1d7",
+          "sha_matches_inventory": true,
+          "scope_classification": "REPORTS_PERSISTENCE_OR_RENDERING",
+          "content_review": "REVIEWED",
+          "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required"
+        },
+        {
+          "path": "packages/modules/reports/src/report-renderers.test.ts",
+          "git_status_at_inventory": "??",
+          "inventory_sha256": "bfd93ee927078f3c42c9217b3e44df494d0c48def1739640718ff921bf660901",
+          "current_sha256": "bfd93ee927078f3c42c9217b3e44df494d0c48def1739640718ff921bf660901",
+          "sha_matches_inventory": true,
+          "scope_classification": "REPORTS_PERSISTENCE_OR_RENDERING",
+          "content_review": "REVIEWED",
+          "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required"
+        }
+      ],
+      "assessment": "The renderer is pure in-memory conversion. Tests cover CSV formula-prefix neutralization and quoting, JSON round-trip, XLSX ZIP signature, PDF signature and escaping. The PDF branch caps rows and text length; no general size bound for CSV/JSON/XLSX was established in this review."
+    },
+    {
+      "id": "M02-SOURCE-REPORT-SCHEDULE-01",
+      "paths": [
+        {
+          "path": "packages/modules/reports/src/report-schedule-time.ts",
+          "git_status_at_inventory": "??",
+          "inventory_sha256": "9689a8491519c42e08d4b38bf93ab2378d2fc4435dbbaa6189b7c8f60aef9e07",
+          "current_sha256": "9689a8491519c42e08d4b38bf93ab2378d2fc4435dbbaa6189b7c8f60aef9e07",
+          "sha_matches_inventory": true,
+          "scope_classification": "REPORTS_PERSISTENCE_OR_RENDERING",
+          "content_review": "REVIEWED",
+          "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required"
+        }
+      ],
+      "assessment": "The helper extracts the same UTC date arithmetic present in origin/main. The existing native month arithmetic maps 2026-01-31 plus one month to 2026-03-03; this review found no schedule product contract resolving month-end intent. No new schedule semantics are attributed to this extraction."
+    },
+    {
+      "id": "M02-SOURCE-REPORT-DB-TEST-01",
+      "paths": [
+        {
+          "path": "packages/modules/reports/src/report-database-repository.test.ts",
+          "git_status_at_inventory": "??",
+          "inventory_sha256": "f6f31e1ce7a58c0b83c1b771df6db2f6c1392a5a81d0760f14f01a36b1a5d87a",
+          "current_sha256": "f6f31e1ce7a58c0b83c1b771df6db2f6c1392a5a81d0760f14f01a36b1a5d87a",
+          "sha_matches_inventory": true,
+          "scope_classification": "REPORTS_PERSISTENCE_OR_RENDERING",
+          "content_review": "REVIEWED",
+          "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; full M-02 disposition and independent candidate-bound critique remain required"
+        }
+      ],
+      "assessment": "The test verifies the public DatabaseReportRepository surface and schedule arithmetic; it does not execute SQL, tenant scoping, claim fencing, or database persistence. The source adapter remains subject to database-backed candidate verification and independent review."
+    },
+    {
+      "id": "M02-SOURCE-PAYMENT-CLASSIFIER-01",
+      "paths": [
+        {
+          "path": "apps/api/src/payment-gateway.ts",
+          "git_status_at_inventory": " M",
+          "inventory_sha256": "495dc51f7112d634b19e842e2b0efa13d219ba0238dafa5f6f65b0e178407563",
+          "current_sha256": "495dc51f7112d634b19e842e2b0efa13d219ba0238dafa5f6f65b0e178407563",
+          "sha_matches_inventory": true,
+          "scope_classification": "API_SOURCE_OR_TEST",
+          "content_review": "REVIEWED",
+          "candidate_overlay_decision": "NOT_APPROVED_BY_THIS_REVIEW; financial/provider boundary requires full candidate-bound review and independent critique"
+        }
+      ],
+      "assessment": "The classifier fails closed to pending on malformed/contradictory provider payloads and requires matching charge identity, amount, payment method, transaction success/status and account/billing evidence before captured/authorized/declined outcomes. Reconciliation rejects ambiguous order listings. The changed code preserves an in-memory transaction boundary and provider fetch is mocked by its source test. No live provider, persistence, or end-to-end settlement was executed; this is a local safety-oriented unit review, not payment certification."
+    }
+  ],
+  "verification_results": [
+    {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec tsx --test apps/api/src/helpers/api-server-boundaries.test.ts apps/api/src/helpers/response-buffer.test.ts",
+      "environment": {
+        "node": "v22.23.2",
+        "pnpm": "10.33.0"
+      },
+      "result": "PASS",
+      "exit_status": 0,
+      "tests": "7/7",
+      "scope": "two isolated Node test files; fake dependencies and in-memory response objects; no Vitest global setup"
+    },
+    {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm --filter @cvg-his-v2/module-reports test",
+      "environment": {
+        "node": "v22.23.2",
+        "pnpm": "10.33.0"
+      },
+      "result": "PASS",
+      "exit_status": 0,
+      "tests": "5 files, 40/40 tests",
+      "vitest_reported_local_start": "2026-09-23 03:14:38 America/Sao_Paulo",
+      "vitest_duration_seconds": 4.83,
+      "limitations": "The suite-level tests use in-memory service fakes; the adapter contract test only constructs the lazy adapter. Vitest globalSetup nevertheless used an explicit database URL and performed read-only setup operations described below."
+    },
+    {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec tsx --test apps/api/src/payment-gateway.test.ts",
+      "environment": {
+        "node": "v22.23.2",
+        "pnpm": "10.33.0"
+      },
+      "result": "PASS",
+      "exit_status": 0,
+      "tests": "11/11",
+      "reported_test_duration_seconds": 0.651649,
+      "scope": "Node test runner with mocked globalThis.fetch, synthetic provider responses, and in-memory card repository; no Vitest global setup and no live provider call"
+    }
+  ],
+  "database_boundary_observation": {
+    "touched": true,
+    "target": {
+      "env_source": "DATABASE_URL",
+      "hostname": "127.0.0.1",
+      "port": 5432,
+      "database": "cvg_his_v2",
+      "credentials": "redacted"
+    },
+    "setup_operations": [
+      "Acquired and released a transient PostgreSQL advisory lock keyed by cvg_his_v2_test_db:cvg_his_v2 on the admin connection.",
+      "SELECT 1 FROM pg_database WHERE datname = $1 on the admin connection.",
+      "SELECT 1 on the configured cvg_his_v2 database connection."
+    ],
+    "mutations_observed": [],
+    "global_setup_output": "Preserving explicit database cvg_his_v2; skipped reset, migrations, seed and grants.",
+    "test_body_database_calls": "None found in the inspected reports test files; DatabaseReportRepository was constructed but no adapter method was called.",
+    "process_state": "Test command exited normally; its PostgreSQL pool process ended and the advisory lock was released in globalSetup finally.",
+    "follow_up": "No further Vitest suites may use this explicit database configuration without an approved disposable target or another established no-connection guard."
+  },
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "global_candidate_status": "BLOCKED_PENDING_COMPLETE_PATH_REVIEW_AND_INDEPENDENT_CRITIQUE"
+  },
+  "limitations": [
+    "This is a bounded content review by the primary operator, not an independent critic.",
+    "The SQL adapter source and full reports service were not fully reviewed in this batch; all unlisted paths remain pending.",
+    "Existing local gate artifacts were not revalidated against a frozen candidate SHA in this review.",
+    "The report suite made a read-only connection to the explicitly configured localhost database during global setup; no DDL/DML, reset, migration, seed or grant was observed.",
+    "The monthly month-end schedule rule remains unspecified in the reviewed source documents.",
+    "Payment-path review is not independent and does not certify provider behavior, capture persistence, distributed idempotency, or settlement against a live/test provider."
+  ],
+  "review_followup_recorded_at": "2026-09-23T06:25:35.618999Z"
+}

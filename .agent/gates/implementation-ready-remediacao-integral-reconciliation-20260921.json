@@ -1,0 +1,129 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-RECONCILIATION-20260921",
+  "timestamp": "2026-09-21T18:04:00.000000+00:00",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "REM-004/REM-005 local contract-test repair and subsequent REM-006 coverage rerun; reversible worktree-only changes",
+  "scope_ref": "REM-004",
+  "version": 2,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "The active remediation ExecPlan and the REM-001 recovery package preserve the repository before local test changes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/plans/remediacao-integral-20260921.md",
+        "docs/2026-09-21-rem-001-backup-manifest.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The package preserves the prohibited blob; no history rewrite is authorized by this gate."
+    },
+    {
+      "id": "IR-002",
+      "description": "The official Node 22.23.2/pnpm 10.33.0 runtime and frozen installation remain current for the local contract evidence.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-003-runtime-baseline-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-003-RUNTIME-20260921"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This proves installation/runtime only, not aggregate quality gates."
+    },
+    {
+      "id": "IR-003",
+      "description": "The local contract repair and coverage reruns stayed within reversible worktree/test scope without changing thresholds or external boundaries.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-004-005-aggregate-repair-20260921.txt",
+        ".agent/evidence/rem-006-coverage-rerun-response-buffer-20260921.txt",
+        ".agent/state.json",
+        ".agent/backlog.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Coverage remains below threshold and the server hotspot is routed to REM-026; neither may be hidden by this revalidation."
+    }
+  ],
+  "evidence": [
+    ".agent/plans/remediacao-integral-20260921.md",
+    ".agent/evidence/rem-001-control-reconciliation-failure-20260921.txt",
+    ".agent/evidence/rem-003-runtime-baseline-20260921.txt",
+    ".agent/evidence/rem-004-005-contracts-20260921.txt",
+    ".agent/evidence/rem-004-005-aggregate-repair-20260921.txt",
+    ".agent/evidence/rem-006-coverage-rerun-response-buffer-20260921.txt",
+    ".agent/backlog.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-REM-LOCAL-BOUNDARY",
+      "description": "Only reversible local worktree/test changes are authorized; history, push, deploy, credentials, target, UAT and release remain outside the gate.",
+      "non_blocking": true,
+      "impact": "The gate permits implementation of the bounded local slice only and cannot imply release readiness.",
+      "owner": "lead",
+      "due_or_trigger": "Before any scope expansion or external action",
+      "due_at": null,
+      "verification_method": "The local boundary was preserved through the recorded contract and coverage reruns; inspect the next action before any mutation.",
+      "evidence_refs": [
+        ".agent/plans/remediacao-integral-20260921.md",
+        ".agent/state.json"
+      ],
+      "status": "SATISFIED",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-COVERAGE-RERUN",
+      "description": "The public aggregate coverage command was rerun after the REM-004/REM-005 expectation repairs with the threshold unchanged.",
+      "non_blocking": true,
+      "impact": "Coverage remains a blocking quality finding for REM-006/REM-009 until the current branch threshold and independent residuals are resolved.",
+      "owner": "lead",
+      "due_or_trigger": "After REM-004 and REM-005 tests are repaired",
+      "due_at": null,
+      "verification_method": "Review the Node 22 coverage rerun records and current coverage summary.",
+      "evidence_refs": [
+        ".agent/evidence/rem-006-coverage-rerun-response-buffer-20260921.txt",
+        ".agent/verification.jsonl#VER-REM-006-COVERAGE-RERUN-RESPONSE-BUFFER-20260921"
+      ],
+      "status": "SATISFIED",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-HOTSPOT-AND-CRITIC",
+      "description": "The server.ts complexity residual remains assigned to REM-026 and no fresh independent critic is simulated in the single-agent path.",
+      "non_blocking": true,
+      "impact": "The current gate is not a final quality or release verdict.",
+      "owner": "lead",
+      "due_or_trigger": "Before REM-009 local gate and final re-audit",
+      "due_at": "2026-09-21T20:30:00.000000+00:00",
+      "verification_method": "Run complexity gate and record a separate review limitation or available critic result.",
+      "evidence_refs": [
+        ".agent/evidence/rem-006-coverage-rerun-response-buffer-20260921.txt"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "REM-004/REM-005 local contract-test repair and subsequent REM-006 coverage rerun; reversible worktree-only changes",
+    "decision": "Local reversible implementation is permitted under the current user instruction; external and destructive boundaries remain blocked.",
+    "evidence_ref": ".agent/plans/remediacao-integral-20260921.md",
+    "expires_or_revalidates": "Revalidate before any threshold, workflow, history, provider, target, deployment, UAT or release-authority change."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-004:REOPEN",
+  "revalidation_triggers": [
+    "The local contract or aggregate coverage evidence regresses.",
+    "The scope expands beyond local test expectations or reversible code changes.",
+    "A source/control-plane mutation changes the candidate or current quality bar."
+  ],
+  "supersedes": "GATE-IR-REMEDIACAO-INTEGRAL-20260921"
+}

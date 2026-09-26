@@ -1,0 +1,93 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND8-20260923",
+  "recorded_at": "2026-09-23T07:27:43.860Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PARTIAL; four extracted clinical context/navigation paths reviewed; parent page workflow, privacy fixture, and browser keyboard/focus behavior remain pending",
+  "paths_reviewed": [
+    {
+      "path": "apps/spa/src/pages/medical-records/ClinicalRecordContextAside.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "9d414df37f48385caf5fc2cf107af389faafcf7eb70a5b8f181f98bdb54acf97",
+      "current_sha256": "9d414df37f48385caf5fc2cf107af389faafcf7eb70a5b8f181f98bdb54acf97",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_PARENT_AND_PRIVACY_HOLDS",
+      "review_notes": "Reviewed component source and corresponding focused component test; parent clinical-record page remains a separate workflow/state boundary.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_CLINICAL_WORKFLOW_AND_FIXTURE_PROVENANCE_REVIEW"
+    },
+    {
+      "path": "apps/spa/src/pages/medical-records/ClinicalStepNavigator.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "1cd938461e3e153f4d127eb02b2ae2b4d13f669bc1f728fb1a7f313a217933f1",
+      "current_sha256": "1cd938461e3e153f4d127eb02b2ae2b4d13f669bc1f728fb1a7f313a217933f1",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_PARENT_AND_PRIVACY_HOLDS",
+      "review_notes": "Reviewed component source and corresponding focused component test; parent clinical-record page remains a separate workflow/state boundary.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_CLINICAL_WORKFLOW_AND_FIXTURE_PROVENANCE_REVIEW"
+    },
+    {
+      "path": "apps/spa/src/pages/medical-records/__tests__/ClinicalRecordContextAside.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "d8ad499e850950f479b66942b1c526dcac0a72d88b1d1ac0fd0efae780489d6b",
+      "current_sha256": "d8ad499e850950f479b66942b1c526dcac0a72d88b1d1ac0fd0efae780489d6b",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_PARENT_AND_PRIVACY_HOLDS",
+      "review_notes": "Reviewed component source and corresponding focused component test; parent clinical-record page remains a separate workflow/state boundary.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_CLINICAL_WORKFLOW_AND_FIXTURE_PROVENANCE_REVIEW"
+    },
+    {
+      "path": "apps/spa/src/pages/medical-records/__tests__/ClinicalStepNavigator.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "b5e317b026eb44903f6271d3a96e29455854f02b8b08ed83f8a53bd67ca3fba8",
+      "current_sha256": "b5e317b026eb44903f6271d3a96e29455854f02b8b08ed83f8a53bd67ca3fba8",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_PARENT_AND_PRIVACY_HOLDS",
+      "review_notes": "Reviewed component source and corresponding focused component test; parent clinical-record page remains a separate workflow/state boundary.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_CLINICAL_WORKFLOW_AND_FIXTURE_PROVENANCE_REVIEW"
+    }
+  ],
+  "test_execution": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config vitest.config.ts src/pages/medical-records/__tests__/ClinicalRecordContextAside.test.ts src/pages/medical-records/__tests__/ClinicalStepNavigator.test.ts",
+    "working_directory": "apps/spa",
+    "started_at_utc": "2026-09-23T07:27:04.483Z",
+    "finished_at_utc": "2026-09-23T07:27:05.949Z",
+    "test_files_passed": 2,
+    "tests_passed": 4,
+    "tests_failed": 0,
+    "environment": "Standalone SPA Vitest/JSDOM config with Vue Test Utils; selected tests mount components only, no direct DB/provider/network imports or calls observed."
+  },
+  "architecture_observations": [
+    "ClinicalRecordContextAside is a read-only props component. Parent supplies summary strings, counts, and optional patient/owner destinations; no domain service or local workflow state is inside the child.",
+    "ClinicalStepNavigator uses a named tablist, roving tabindex, selected state, arrow/Home/End navigation, and focuses the selected tab after emitting. Parent page owns active step and renders one role=tabpanel whose dynamic id and aria-labelledby match the active tab.",
+    "The aside uses sticky positioning and switches to static below 1180px; the navigator changes from four columns to two below 820px. CSS presence was inspected but no browser viewport/visual test was performed.",
+    "The keyboard component test checks selected props and emitted arrow/Home/End events, but it does not assert actual DOM focus movement, screen-reader output, or browser keyboard behavior.",
+    "The focused tests use mock props only and do not cover clinical record data loading, save/validation, authorization, route composition, or clinical API behavior."
+  ],
+  "findings_and_limits": [
+    {
+      "id": "M02-CLINICAL-PII-SHAPED-FIXTURE",
+      "classification": "HOLD_SENSITIVITY_PROVENANCE",
+      "observation": "The new aside component test includes a person name and phone-shaped test value. They appear synthetic, but source provenance was not established in this review.",
+      "required_followup": "Confirm synthetic provenance or substitute clearly reserved test fixtures before external publication."
+    }
+  ],
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "hold_reason": "All four paths are hash-stable and reviewed, but the parent clinical record workflow is still pending; fixture provenance, browser focus/accessibility/visual QA, independent critique, and complete inventory disposition remain open."
+  },
+  "limitations": [
+    "Component tests prove only the exercised props/text/attributes/event emissions in JSDOM; they do not prove focus, assistive technology, viewport behavior, clinical API safety, or persistence.",
+    "Only two extracted components and their two tests are counted in this round; MedicalRecordsDetailPage.vue and its page test remain pending.",
+    "A small manual scan identified test fixture values shaped like contact data; no real-person claim is made, but provenance must be resolved before publication.",
+    "This is primary-operator review, not independent clinical acceptance."
+  ]
+}

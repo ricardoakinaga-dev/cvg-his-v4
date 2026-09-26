@@ -1,0 +1,38 @@
+REM-027 — IMPLEMENTAÇÃO E VERIFICAÇÃO DO INVENTÁRIO DE HOTSPOTS
+Observado em: 2026-09-22T01:56:06.000000Z
+Escopo: manifesto v2, guard fail-closed, known-bads, gerador de evidência e documentação de owners/risco para REM-027.
+
+IMPLEMENTAÇÃO
+- `docs/engineering/complexity-hotspots.json` agora usa schema_version 2 e exige policy explícita para medição current, limite não crescente e ordem `ascending_risk_rank`.
+- Cada hotspot registra `risk_rank`, `risk_level`, `risk_reason`, `current_lines`, `previous_max_lines`, `max_lines`, owner e plano de decomposição.
+- Os oito hotspots estão ordenados por rank de risco; seis limites foram reduzidos ao tamanho medido current e dois permaneceram sem aumento porque já não tinham margem.
+- `scripts/check-complexity-hotspots.mjs` rejeita schema/policy ausentes, owner/plano/risk metadata ausentes, medição stale, limite acima do anterior, rank duplicado/fora de ordem, arquivo ausente e crescimento acima do teto.
+- `tests/unit/infra/complexity-hotspots.test.ts` mantém o known-bad de crescimento/owner e adiciona known-bad de medição stale, limite crescente e rank fora de ordem.
+- `scripts/generate-architecture-concentration-evidence.mjs` expõe rank, nível, motivo, limite anterior e headroom; o teste do gerador cobre esses campos.
+- `docs/engineering/OWNERSHIP_AND_COMPLEXITY.md` documenta a regra v2, a semântica de redução e a limitação de que rank não equivale a aprovação humana.
+
+RESULTADO DO INVENTÁRIO
+- Rank 1: CounterSalesPage.vue, WEB-FIN, HIGH, 3468/3468, redução 0.
+- Rank 2: packages/modules/reports/src/index.ts, REPORTS, HIGH, 2631/2631, redução 0.
+- Rank 3: server.ts, PLAT, HIGH, 8318/8318, redução 17.
+- Rank 4: worker runner, RUNTIME, HIGH, 2139/2139, redução 8.
+- Rank 5: routes.ts, WEB, MEDIUM, 2920/2920, redução 11.
+- Rank 6: PatientDetailPage.vue, WEB-CLIN, MEDIUM, 4075/4075, redução 49.
+- Rank 7: AppointmentsListPage.vue, WEB-SCHED, MEDIUM, 3082/3082, redução 28.
+- Rank 8: ReportWorkbenchPage.vue, WEB-REPORTS, MEDIUM, 3142/3142, redução 44.
+- Medição física e bytes current coincidem para os oito arquivos; todos estão dentro do teto.
+
+VERIFICAÇÃO EXECUTADA
+- Node v22.23.2; pnpm 10.33.0.
+- `pnpm complexity:check`: PASS, 8/8.
+- `CI=1 pnpm exec vitest run tests/unit/infra/complexity-hotspots.test.ts --config vitest.config.ts --no-file-parallelism`: 1 arquivo/4 testes PASS.
+- `node --test scripts/generate-architecture-concentration-evidence.test.mjs`: 1/1 PASS.
+- `ARCHITECTURE_EVIDENCE_DIR=/tmp/rem027-architecture-evidence pnpm architecture:evidence`: 8/8 PASS.
+- `CI=1 pnpm test`: raiz 285 arquivos PASS, 3029 testes PASS e 3 skips allowlisted; workspaces 68/69 concluíram exit 0, incluindo SPA 217/217, API 639/639 e worker.
+- `pnpm docs:validate`: documentação e Triple-A current snapshot PASS.
+- `node --check` dos dois scripts e `git diff --check`: PASS.
+
+LIMITAÇÕES E CONDIÇÕES
+- A classificação de risco é uma decisão operacional local baseada em margem/blast radius/concentração; não representa aceite dos owners WEB-FIN, REPORTS, PLAT, RUNTIME, WEB, WEB-CLIN, WEB-SCHED ou WEB-REPORTS.
+- O guard mede concentração e tendência de teto; não prova decomposição comportamental, contratos públicos, UX/a11y, CI remoto, target, UAT ou release.
+- O worktree compartilhado permaneceu dirty e não foi limpo, stashado, resetado, commitado, pushed ou deployed.

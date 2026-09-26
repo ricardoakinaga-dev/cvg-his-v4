@@ -1,0 +1,114 @@
+{
+  "evidence_id": "M21-NOTIFICATION-READ-ROUTES-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T09:10:07Z",
+  "scope": "M-21/M-23 extraction of GET /notifications and GET /notifications/jobs.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to this dirty worktree at the recorded HEAD; it is not candidate or release evidence."
+  },
+  "extraction": {
+    "source_path": "apps/api/src/server.ts",
+    "server_lines_before": 4021,
+    "server_lines_after": 3982,
+    "server_line_delta": -39,
+    "dispatch_placement": "The notification read dispatcher remains after the inpatient list route and before the notification POST branches.",
+    "path_behavior_preserved": [
+      "pathname === '/notifications' with GET method",
+      "pathname === '/notifications/jobs' with GET method",
+      "non-GET methods and nested paths return unhandled"
+    ],
+    "call_order_preserved": [
+      "requirePrincipal(request, 'notifications.read')",
+      "read status from URLSearchParams without runtime validation",
+      "for GET /notifications, append list audit before repository call",
+      "call listFromRepository(accountId, status ?? undefined), preserving an empty string",
+      "for GET /notifications/jobs, append list_jobs audit before repository call",
+      "call listJobsFromRepository(accountId)",
+      "HTTP 200 with { items } response"
+    ],
+    "dependency_boundary": "Notification persistence, principal authorization, and audit callback are injected."
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/routes/notification-read-routes.ts",
+      "sha256": "a4bee52ce281b0d1e801f91fefbd854b7d4e6d5eb3af02c63902f057bae7dcbe",
+      "physical_lines": 92
+    },
+    {
+      "path": "apps/api/src/routes/notification-read-routes.test.ts",
+      "sha256": "6ed6c080b25dbbbf8e87e245e9fd2b8ada7129c1203b767c8be4e948ef1a896a",
+      "physical_lines": 184
+    },
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "923233f838d16cfa615abe6656347d943aafc51bb0ad1a0ca03bec1d3e731b84",
+      "physical_lines": 3982
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "ad651d78179327b011b1a435edaa1686059b6393561b921c492713c38cce782c",
+      "server_budget": {
+        "current_lines": 3982,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx --test apps/api/src/routes/notification-read-routes.test.ts",
+      "result": "PASS, three focused in-process route tests; collection filtering including status=, audit fields/order, jobs account scope, response shape, and unmatched method/path covered.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsc -p apps/api/tsconfig.json --noEmit",
+      "result": "PASS",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; server.ts=3,982, cap=8,323, previous maximum=8,335.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "pnpm exec prettier --check apps/api/src/server.ts apps/api/src/routes/notification-read-routes.ts apps/api/src/routes/notification-read-routes.test.ts docs/engineering/complexity-hotspots.json && git diff --check -- apps/api/src/server.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    }
+  ],
+  "independent_review": {
+    "result": "PASS",
+    "critic_id": "critic_m21_notifications_i1",
+    "independence": "Fresh I1 context; read-only comparison against the original server branches and focused test rerun.",
+    "reviewed_sha256": [
+      {
+        "path": "apps/api/src/routes/notification-read-routes.ts",
+        "sha256": "a4bee52ce281b0d1e801f91fefbd854b7d4e6d5eb3af02c63902f057bae7dcbe"
+      },
+      {
+        "path": "apps/api/src/routes/notification-read-routes.test.ts",
+        "sha256": "6ed6c080b25dbbbf8e87e245e9fd2b8ada7129c1203b767c8be4e948ef1a896a"
+      },
+      {
+        "path": "apps/api/src/server.ts",
+        "sha256": "923233f838d16cfa615abe6656347d943aafc51bb0ad1a0ca03bec1d3e731b84"
+      },
+      {
+        "path": "docs/engineering/complexity-hotspots.json",
+        "sha256": "ad651d78179327b011b1a435edaa1686059b6393561b921c492713c38cce782c"
+      }
+    ],
+    "findings": "No behavior delta found. Both exact GET matchers, original dispatch placement, authentication, audit fields/order, empty-status propagation, account-scoped repository calls, and HTTP 200 { items } responses were confirmed. The server line count matches the manifest."
+  },
+  "limitations": [
+    "Route tests use in-memory callbacks and do not prove persisted notification behavior or database row-level security.",
+    "Role denial, persisted audit records, and full PROD-041 acceptance remain open.",
+    "The worktree remains dirty and no candidate SHA, CI, target, UAT, or release acceptance is asserted.",
+    "No database, listener, service, container, network, or port was started."
+  ]
+}

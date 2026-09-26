@@ -1,0 +1,103 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND34-20260923",
+  "recorded_at": "2026-09-23T10:26:20Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "docs/2026-09-21-backlog-remediacao-integral.md",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "bde12b58cac6a4260ca213ae53f27fcf7c5612f6593823d1f142c94d973ec16c",
+      "current_sha256": "bde12b58cac6a4260ca213ae53f27fcf7c5612f6593823d1f142c94d973ec16c",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Effective 21/09 backlog maps F-001..F-033 to REM-001..REM-055, defines initial statuses and completion/authority conditions, and explicitly leaves live status in .agent/backlog.json. Its initial TODO/BLOCKED labels are not a claim about current status."
+    },
+    {
+      "path": "docs/2026-09-21-plano-executivo-remediacao-integral.md",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "5d422634e19e805900f884be8fb198688442640ab9914701515edaa864ac77a3",
+      "current_sha256": "5d422634e19e805900f884be8fb198688442640ab9914701515edaa864ac77a3",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Effective 21/09 executive plan defines the program outcomes and milestones M0–M6; local candidate, CI/release, target, product/UAT, architecture/debt and final audit have separate evidence gates. Human release authority is retained."
+    },
+    {
+      "path": "docs/2026-09-21-prompt-codex-remediacao-integral.md",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "a1a70433b211ba65493b03af47770a7d9e405f0a1beddea0c3e7e7da1125fd2c",
+      "current_sha256": "a1a70433b211ba65493b03af47770a7d9e405f0a1beddea0c3e7e7da1125fd2c",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Dated session prompt restates the 21/09 audit baseline and asks a future session to recover control state before work. It includes a local absolute path token and a directive to inspect Gauntlet state; neither is treated as current authority for this bounded review."
+    }
+  ],
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+    "result": "PENDING_FINAL_RUN",
+    "exit_status": 0,
+    "summary": "Documentation links/governance and current Triple-A snapshot validators passed after recording round 34.",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-21SEP-PLAN-USES-AGENT-AS-LIVE-STATUS",
+      "classification": "DOCUMENTATION_GOVERNANCE",
+      "observation": "The backlog explicitly labels its task statuses as initial planning conditions and directs live status to .agent/backlog.json; the executive plan likewise says the documents define scope while the operational backlog is the sole mutable status source. This is consistent with REM-010 remaining IN_PROGRESS in the active control plane."
+    },
+    {
+      "id": "M02-21SEP-PLAN-RETAINS-LOCAL-VS-EXTERNAL-BOUNDARIES",
+      "classification": "DOCUMENTATION_GOVERNANCE",
+      "observation": "The backlog, plan and master prompt require evidence-backed completion, preserve thresholds, and place push/deploy/credentials/target/UAT/destructive actions behind specific authority boundaries. Their acceptance criteria preserve the distinction between local checks and external or human proof."
+    },
+    {
+      "id": "M02-21SEP-PROMPT-HISTORICAL-BOOTSTRAP",
+      "classification": "HOLD_SNAPSHOT_PROVENANCE",
+      "observation": "The prompt restates the 21/09 baseline identity, 79-commit divergence, 68/100 score and initial REM-001 sequence. Those statements are bootstrap context for that dated prompt and must not override current state or be represented as current progress."
+    },
+    {
+      "id": "M02-21SEP-PROMPT-LOCAL-PATH-AND-SCOPE",
+      "classification": "HOLD_REFRESH_BEFORE_REUSE_OR_PUBLICATION",
+      "observation": "The master prompt contains one local absolute path token and an instruction to inspect the Gauntlet state file. The path should be redacted before publication; the file inspection instruction was not executed in this review because that file is outside the current review boundary. No inference about its contents is made."
+    }
+  ],
+  "candidate_actions": [
+    "Preserve the dates and explicitly initial-status semantics of the REM backlog.",
+    "Use .agent/backlog.json and state for current operational status; do not treat the 21/09 prompt as a live action list.",
+    "Redact the local path token and reconcile the prompt with current access boundaries before reuse or external publication."
+  ],
+  "limitations": [
+    "Content and cross-document review only; no actions from the master prompt were executed.",
+    "No historical audit gates, remote CI, target, deployment, credentials, UAT or destructive action was rerun.",
+    "A scoped absolute-path scan found one path token in the prompt and none in the backlog or executive plan; this is not a full PII review.",
+    "Reviewer is not independent; remaining source paths and independent critique stay open."
+  ],
+  "checkpoint_validation": {
+    "json_and_jsonl_parse": "PASS (177 JSON and 8 JSONL files under .agent; document-governance JSON also parsed)",
+    "git_diff_check": "PASS",
+    "docs_validate": "PASS",
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 33; no new REM-010/M-02 finding and no gate-v2 finding. The global controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T10:26:20Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 297,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 423,
+    "status_sha256": "32e974be04736d2ec97eb4ae0954a4ff5aab25d5b5795f5bcb9b6d716b9ae83b",
+    "note": "Read-only porcelain status after M-02 round 34 and checkpoint validation; original 386-path denominator unchanged. Round-34 review artifact is the thirty-seventh post-inventory path. No candidate, overlay or frozen SHA exists."
+  }
+}

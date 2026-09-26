@@ -1,0 +1,174 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND21-20260923",
+  "recorded_at": "2026-09-23T09:16:33Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "scripts/check-complexity-hotspots.mjs",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "ce86f6fd709cabfc568c2476a10e1c11191204b040b27dfa486960022546d231",
+      "current_sha256": "ce86f6fd709cabfc568c2476a10e1c11191204b040b27dfa486960022546d231",
+      "sha_matches_inventory": true,
+      "scope_classification": "TOOLING_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true
+    },
+    {
+      "path": "tests/unit/infra/complexity-hotspots.test.ts",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "886b0c26163e330a29f4322cde5c9d0530608f44bddc3ce9038cd0dc7d00c488",
+      "current_sha256": "886b0c26163e330a29f4322cde5c9d0530608f44bddc3ce9038cd0dc7d00c488",
+      "sha_matches_inventory": true,
+      "scope_classification": "TEST_OR_QUALITY_CONTRACT",
+      "counted_as_new_original_path_this_round": true
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "0501885c7c5db0d50c8a1227c30ee820a58751f42062510fb253e31213c28583",
+      "current_sha256": "0501885c7c5db0d50c8a1227c30ee820a58751f42062510fb253e31213c28583",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true
+    },
+    {
+      "path": "docs/engineering/OWNERSHIP_AND_COMPLEXITY.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "95b66a6b8e0e437632de94aac2e1551a0731c5ef5cf6429ba404f759c5138879",
+      "current_sha256": "95b66a6b8e0e437632de94aac2e1551a0731c5ef5cf6429ba404f759c5138879",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true
+    },
+    {
+      "path": "scripts/generate-architecture-concentration-evidence.mjs",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "3c380b16e15710c0c5e6c5f028cf52aa101f01b556b0302a9a05b423614b2a8e",
+      "current_sha256": "3c380b16e15710c0c5e6c5f028cf52aa101f01b556b0302a9a05b423614b2a8e",
+      "sha_matches_inventory": true,
+      "scope_classification": "TOOLING_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true
+    },
+    {
+      "path": "scripts/generate-architecture-concentration-evidence.test.mjs",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "ce5d597a06b34d7151d5443f50f4a9891e259df3e6551cdc58df5216b0a39295",
+      "current_sha256": "ce5d597a06b34d7151d5443f50f4a9891e259df3e6551cdc58df5216b0a39295",
+      "sha_matches_inventory": true,
+      "scope_classification": "TOOLING_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true
+    }
+  ],
+  "verification": {
+    "inventory_hash_recheck": {
+      "result": "PASS",
+      "paths_checked": 6,
+      "all_match": true
+    },
+    "complexity_guard": {
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm complexity:check",
+      "result": "PASS",
+      "exit_status": 0,
+      "summary": "The current eight registered hotspots match physical-line measurements and remain within their registered budgets."
+    },
+    "architecture_generator_test": {
+      "command": "node --test scripts/generate-architecture-concentration-evidence.test.mjs",
+      "result": "PASS",
+      "exit_status": 0,
+      "tests": 1,
+      "passed": 1,
+      "failed": 0,
+      "environment": "Node 22.23.2 with a task-owned TMPDIR. The test created one nested cvg-architecture-* fixture but has no teardown; the wrapper removed the isolated parent, leaving no fixture."
+    },
+    "hotspot_vitest_test": {
+      "reference": ".agent/evidence/rem-027-hotspot-measurement-reconciliation-20260922.txt",
+      "recorded_result": "1 file / 4 tests PASS on 2026-09-22; not rerun in round 21. The current test source hash matches the 2026-09-23 inventory."
+    },
+    "generator_cli": {
+      "result": "NOT_RUN",
+      "reason": "The default architecture-concentration.json output already exists; invoking the generator would overwrite it."
+    },
+    "worktree_boundary": {
+      "result": "PASS",
+      "status_hash_unchanged_before_recording": true,
+      "no_generator_output_written": true,
+      "no_database_or_external_target_used": true
+    },
+    "checkpoint_validation": {
+      "recorded_at": "2026-09-23T09:17:18Z",
+      "docs_validate": {
+        "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+        "result": "PASS",
+        "exit_status": 0
+      },
+      "json_jsonl_parse": {
+        "result": "PASS",
+        "exit_status": 0,
+        "scope": "State, cumulative M-02 review, round-21 review, complexity manifest, execution log and inventory JSONL."
+      },
+      "git_diff_check": {
+        "command": "git diff --check",
+        "result": "PASS",
+        "exit_status": 0
+      },
+      "read_only_controller": {
+        "command": "python3 /home/ricardo/.agents/skills/engineering-framework/scripts/check_state.py --quiet .",
+        "result": "FAIL_PRESERVED_BASELINE",
+        "exit_status": 1,
+        "summary": "RESULT FAIL (pass=6 warn=0 fail=788); no active-plan, REM-010 or gate-v2 finding; the same four preserved REM-056 v1 findings remain. The global controller does not approve a candidate/release."
+      }
+    }
+  },
+  "candidate_relative_change": {
+    "check_script": "Moves the checker from schema v1 to v2: exact current physical-line measurement, non-growing max_lines, ordered/unique risk ranks, risk level/reason and owner/plan checks; paths still resolve without root-containment checks.",
+    "unit_test": "Adds v2 policy/current-line mismatch and rank/budget-growth known-bad cases; test fixtures use mkdtempSync without teardown, so normal Vitest runs leave temp directories.",
+    "manifest_and_docs": "Moves to eight ordered hotspots with rank, risk reason, current count and previous budget; all current budgets are <= previous budgets. The prose calls them the eight largest, but no discovery/completeness check exists in the executable gate.",
+    "evidence_generator": "Adds risk rank/level/reason, previous maximum and headroom to its report; its historical line baselines remain hardcoded in source."
+  },
+  "boundary_review": {
+    "guard_scope": "pnpm complexity:check verifies only paths listed in the eight-entry manifest; it does not discover the repository-wide top eight or detect a larger unlisted file. It measures line count, not behavioral or cognitive complexity, which the generator explicitly disclaims.",
+    "evidence_scope": "The report contains generatedAt and line metrics but no HEAD, source hash, manifest digest or provenance reference for the hardcoded 4,514/3,120 baselines. The generator CLI writes a fixed report and its ARCHITECTURE_EVIDENCE_DIR output is not contained/created exclusively.",
+    "lint_scope": "The line-budget check does not reduce the separate 164 no-explicit-any lint warnings previously reported for M-44.",
+    "read_only_cli_refs": "Path search shows CI and release-artifacts invoke pnpm complexity:check; those workflows were not re-reviewed in this round."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-COMPLEXITY-HOTSPOT-LIST-INCOMPLETENESS",
+      "classification": "HOLD_GUARD_COMPLETENESS",
+      "observation": "The policy claims to track the eight largest product files, but the checker validates only the eight paths already in the manifest. It neither discovers repository-wide largest files nor requires exactly eight records. A larger unlisted file could grow without this guard noticing."
+    },
+    {
+      "id": "M02-ARCHITECTURE-EVIDENCE-NOT-CANDIDATE-BOUND",
+      "classification": "HOLD_EVIDENCE_PROVENANCE",
+      "observation": "The report lacks HEAD/source/manifest digests and source references for its hardcoded historical baselines. The test proves arithmetic on a synthetic file; it does not authenticate those baseline measurements."
+    },
+    {
+      "id": "M02-ARCHITECTURE-EVIDENCE-OUTPUT-OVERWRITE",
+      "classification": "HOLD_MUTATING_OUTPUT",
+      "observation": "The generator creates the destination and writeFileSync replaces architecture-concentration.json; the configured ARCHITECTURE_EVIDENCE_DIR is not constrained to an approved root. The default output already exists, so the CLI was deliberately not run."
+    },
+    {
+      "id": "M02-COMPLEXITY-PATH-CONFINEMENT",
+      "classification": "HOLD_SCOPE_BOUNDARY",
+      "observation": "Both checker and generator resolve hotspot.path under rootDir without rejecting absolute/traversal paths or verifying realpath containment. The current manifest contains repository-relative paths, but malformed future entries could count files outside the checkout."
+    },
+    {
+      "id": "M02-COMPLEXITY-TEST-TEMP-CLEANUP",
+      "classification": "HOLD_TEST_HYGIENE",
+      "observation": "The Node generator test leaves its mkdtemp fixture behind. The Vitest test also creates two mkdtemp fixtures without cleanup. The current Node test was contained and cleaned by the wrapper; the Vitest test was not rerun in this round."
+    }
+  ],
+  "candidate_actions": [
+    "Keep this as a line-budget guardrail; do not claim it enumerates the top eight or proves maintainability.",
+    "Add safe path containment, fixed-size/discovery coverage for the top-eight policy, and candidate-bound hashes/baseline provenance to generated evidence before using it for release claims.",
+    "Make both test suites remove their temporary fixtures and make evidence output exclusive or explicitly scoped before rerunning the generator CLI."
+  ],
+  "limitations": [
+    "No generator CLI run because its default output file already exists and the command overwrites it.",
+    "The Vitest contract result is referenced from 2026-09-22 evidence, not freshly rerun; broad Vitest/DB setup remains outside this round.",
+    "No source implementation was changed, no candidate/overlay/frozen SHA was created, and no external authority or independent critic was applied."
+  ]
+}

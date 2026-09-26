@@ -1,0 +1,510 @@
+{
+  "schema_version": 1,
+  "evidence_id": "REM010-STATIC-PREPARATION-6FD1DD43",
+  "observed_at": "2026-09-26T04:04:50Z",
+  "status": "STATIC_PREPARATION_ONLY / P0_BINDING_STALE / FUNCTIONAL_NOT_ACCEPTED",
+  "candidate_sha": "6fd1dd43c7749f4491e85bddca57d47b55edf46b",
+  "candidate_tree_sha": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d",
+  "candidate_branch": "rem010-candidate-20260926-r21",
+  "candidate_base": {
+    "ref": "origin/main",
+    "sha": "570920de3d12d9a1043aa2c36102a89d39f04569"
+  },
+  "environment": {
+    "node": "v22.23.2",
+    "pnpm": "10.33.0",
+    "install": "pnpm install --frozen-lockfile --offline; exit 0"
+  },
+  "source_overlay": {
+    "path_count": 105,
+    "all_paths_hash_bound": true,
+    "addendum_path": "/tmp/cvg-his-v4-m02-lint-allowlist-r21-addendum.json",
+    "addendum_sha256": "247782262f9afbde8fb019cdbfaa999977da1c5e3241b9c41c6aff17ee0474e3",
+    "original_r21_inventory": ".agent/evidence/m02-current-worktree-inventory-20260926-r21.json",
+    "original_r21_status_sha256": "6fb3ca6f81f63c2c004b522ba5e677ae74c451cfdd62fee3860cfc296c01c5c5"
+  },
+  "independent_reviews": [
+    {
+      "decision": "APPROVE_STATIC_PREPARATION",
+      "scope": "candidate commit only; no functional correctness or release claim"
+    }
+  ],
+  "checks": [
+    {
+      "name": "build",
+      "command": "pnpm run build",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-build.log",
+      "log_bytes": 65707,
+      "log_sha256": "f8405fe17779c77b2a4f57cf4b2581d96379dfc5ff026572cf3862390222735e",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "typecheck",
+      "command": "pnpm run typecheck",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-typecheck.log",
+      "log_bytes": 23351,
+      "log_sha256": "1c0086ebd7ab003e120efb7bcd21a0e6478eefcdf6e0b8068115bc9080bd6915",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "lint",
+      "command": "pnpm run lint",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-lint-final.log",
+      "log_bytes": 24499,
+      "log_sha256": "bcd865a55f6e34846449908ffefda8190bc2b2d5f383785090ca9bd112e7f0e1",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-openapi",
+      "command": "pnpm run validate-openapi",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-openapi.log",
+      "log_bytes": 242,
+      "log_sha256": "e5a1fc5b91579e26008dcbcb8ee0d6afc2260bf5ebbbe193189e041b267d5c9e",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-namespaces",
+      "command": "pnpm run validate-namespaces",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-namespaces.log",
+      "log_bytes": 215,
+      "log_sha256": "08524b78edf6d8ad4e73e80c21b1993a0c5d4119a1dcb20eb552d55bcc6dec0e",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-migration-source",
+      "command": "pnpm run validate-migration-source",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-migration-source.log",
+      "log_bytes": 2096,
+      "log_sha256": "bca4d716027484cc56edb5dd2ffd4ba4b491b0ac05ba74361407449b3ffadec9",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-rls",
+      "command": "pnpm run validate-rls",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-rls.log",
+      "log_bytes": 201,
+      "log_sha256": "d8ba18e665dac319d325546091956d62af803e950ea7cd5ac32ab01ad8df3566",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-helm",
+      "command": "pnpm run validate-helm",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-helm.log",
+      "log_bytes": 207,
+      "log_sha256": "4bd64a18bbb2e632c35b67f396c49b2ef136484f92486da6faa55c7f0b3a9429",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-deploy-surface",
+      "command": "pnpm run validate-deploy-surface",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-deploy-surface.log",
+      "log_bytes": 206,
+      "log_sha256": "078d90bbe2bef74a478dfba48811308631cee225a73450d127cdaeb71dbbad69",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-environment-runtime",
+      "command": "pnpm run validate-environment-runtime",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-environment-runtime.log",
+      "log_bytes": 249,
+      "log_sha256": "4401b38dd1d0e5603f9517a3216b24028884ac8d131faf30cbdb0b40d0a0f200",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-production-runtime",
+      "command": "pnpm run validate-production-runtime",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-production-runtime.log",
+      "log_bytes": 267,
+      "log_sha256": "626fe05077a2433b99a5927fef6334500497df1411fbc33c099f63c79c2b7545",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-observability",
+      "command": "pnpm run validate-observability",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-observability.log",
+      "log_bytes": 250,
+      "log_sha256": "1f6810ac3285f4d62af33269766451abd50150590780013a88c11bddafb81a9f",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-identity-contract",
+      "command": "pnpm run validate-identity-contract",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-identity-contract.log",
+      "log_bytes": 244,
+      "log_sha256": "fe4b0a4b85dbf2b854db56fd3340543c5be7a5f765aaf29fdc88cfb05e362b34",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-p0-registry",
+      "command": "pnpm run validate-p0-registry",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-p0-registry.log",
+      "log_bytes": 182,
+      "log_sha256": "401f02ce216297bf0249a3451959ec7b639c557d4ebd3632d4dbea55dfb174f5",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-loyalty-expiration-contract",
+      "command": "pnpm run validate-loyalty-expiration-contract",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-loyalty-expiration-contract.log",
+      "log_bytes": 266,
+      "log_sha256": "42c77c3ab558328975b59700b5cb97d15b80379e333c384e571575698d7e7085",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-behavioral-parity-contract",
+      "command": "pnpm run validate-behavioral-parity-contract",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-behavioral-parity-contract.log",
+      "log_bytes": 273,
+      "log_sha256": "80b74ffc6b852ea13c20cb23133eb1157254ea97a0ae5f6c238f36db4a42b20b",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-registry-contract",
+      "command": "pnpm run validate-registry-contract",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-registry-contract.log",
+      "log_bytes": 250,
+      "log_sha256": "f796b8edfb43ef335e8ed94cf84073adc49baca51345e39c483c8359a109551e",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-supply-chain",
+      "command": "pnpm run validate-supply-chain",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-supply-chain.log",
+      "log_bytes": 450,
+      "log_sha256": "8ce99910ebb8f01409ce0ddf264babc49aed8023e4cdb7f7c60470e2b0e9effb",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-dependencies",
+      "command": "pnpm run validate-dependencies",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-dependencies.log",
+      "log_bytes": 221,
+      "log_sha256": "7d3615262f8eedb18c307c135d65e6efdd506d094c744c49078f616c56a34f75",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-clinical-workflow",
+      "command": "pnpm run validate-clinical-workflow",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-clinical-workflow.log",
+      "log_bytes": 240,
+      "log_sha256": "a6490915a4120e970544ce159120d90d5f6e1860a57ffd18f63e84fac0640c93",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    },
+    {
+      "name": "validate-prompt-traceability",
+      "command": "pnpm run validate-prompt-traceability",
+      "result": "PASS",
+      "exit_code": 0,
+      "log_path": "/tmp/cvg-his-v4-candidate-r21-validate-prompt-traceability.log",
+      "log_bytes": 228,
+      "log_sha256": "36bb1d42dee7104955466c5dafa777b5a2724a2a79feb9c13a3dde1ad2d37231",
+      "tree_sha256": "8e227f8c4b23c88a5e89afca6b4a1da27f31fe8d"
+    }
+  ],
+  "lint_summary": {
+    "exit_code": 0,
+    "errors": 0,
+    "warnings": 115,
+    "scope": "narrow semantic lint; no-explicit-any is warning-only"
+  },
+  "functional_acceptance": {
+    "result": "NOT_RUN",
+    "reason": "PROD-027 is PROPOSED_PENDING_AUTHORITY; fixtureExecutionAllowed=false and realDataAllowed=false"
+  },
+  "blocked_domains": [
+    "lab/diagnostics",
+    "fiscal",
+    "finance",
+    "marketing/communications",
+    "reports/scheduled delivery",
+    "access/security/audit/LGPD",
+    "integrations/migration"
+  ],
+  "p0_registry": {
+    "candidate_status": "NOT_EVALUATED for this candidate",
+    "existing_registry_candidate_sha": "74b8669f2c387ece87181e469a60566e7249fb7e",
+    "existing_registry_open_p0": 11,
+    "existing_registry_closed_p0": 3,
+    "transfer": "NONE",
+    "current_revalidation": "FAIL_STALE_BINDING: registry remains bound to 74b8669f while current candidate identity is 6fd1dd43"
+  },
+  "external_gates": {
+    "ci": "NOT_PROVEN",
+    "oci_attestation": "NOT_PROVEN",
+    "target": "NOT_PROVEN",
+    "recovery": "NOT_PROVEN",
+    "uat": "NOT_PROVEN",
+    "release": "BLOCKED / NOT PROVEN"
+  },
+  "not_run": [
+    "test:critical",
+    "test:coverage",
+    "functional/integration fixtures",
+    "E2E with canonical seeds",
+    "release-image build/validation",
+    "Vetus dataset execution"
+  ],
+  "limitations": [
+    "The static checks do not establish product behavior, domain acceptance, database fixture correctness, or Vetus equivalence.",
+    "The validate:p0-registry pass in the recorded 18-check run validates the preserved 74b-bound identity/registry and is not a candidate P0 evaluation for 6fd.",
+    "Historical scores and test counts remain attached to their original SHAs and are not transferred.",
+    "After identity/document snapshot rebind, 17/18 static validators pass; validate:p0-registry remains stale by design until the P0 evidence is re-established for this SHA. No P0 rows were rewritten."
+  ],
+  "post_identity_rebind": {
+    "documentation_validation": {
+      "command": "pnpm run docs:validate",
+      "result": "PASS",
+      "exit_code": 0,
+      "detail": "Structural metadata/links and current snapshot consistency passed with all six documents bound to candidate SHA.",
+      "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-docs-validate-precommit.log",
+      "log_bytes": 358,
+      "log_sha256": "5f303389eb530c7034d0fb3e0b6e86ea5a0511c68416f939f394e66c7678fe25",
+      "candidate_sha": "6fd1dd43c7749f4491e85bddca57d47b55edf46b"
+    },
+    "static_validators": {
+      "total": 18,
+      "passed": 17,
+      "failed": 1,
+      "results": [
+        {
+          "name": "validate-openapi",
+          "command": "pnpm run validate-openapi",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-openapi.log",
+          "log_bytes": 242,
+          "log_sha256": "e5a1fc5b91579e26008dcbcb8ee0d6afc2260bf5ebbbe193189e041b267d5c9e"
+        },
+        {
+          "name": "validate-namespaces",
+          "command": "pnpm run validate-namespaces",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-namespaces.log",
+          "log_bytes": 215,
+          "log_sha256": "08524b78edf6d8ad4e73e80c21b1993a0c5d4119a1dcb20eb552d55bcc6dec0e"
+        },
+        {
+          "name": "validate-migration-source",
+          "command": "pnpm run validate-migration-source",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-migration-source.log",
+          "log_bytes": 2096,
+          "log_sha256": "bca4d716027484cc56edb5dd2ffd4ba4b491b0ac05ba74361407449b3ffadec9"
+        },
+        {
+          "name": "validate-rls",
+          "command": "pnpm run validate-rls",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-rls.log",
+          "log_bytes": 201,
+          "log_sha256": "d8ba18e665dac319d325546091956d62af803e950ea7cd5ac32ab01ad8df3566"
+        },
+        {
+          "name": "validate-helm",
+          "command": "pnpm run validate-helm",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-helm.log",
+          "log_bytes": 207,
+          "log_sha256": "4bd64a18bbb2e632c35b67f396c49b2ef136484f92486da6faa55c7f0b3a9429"
+        },
+        {
+          "name": "validate-deploy-surface",
+          "command": "pnpm run validate-deploy-surface",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-deploy-surface.log",
+          "log_bytes": 206,
+          "log_sha256": "1252ad3950479e979a53085fc3bca1889e45994d874cfd3a98d50b52deacc384"
+        },
+        {
+          "name": "validate-environment-runtime",
+          "command": "pnpm run validate-environment-runtime",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-environment-runtime.log",
+          "log_bytes": 249,
+          "log_sha256": "4401b38dd1d0e5603f9517a3216b24028884ac8d131faf30cbdb0b40d0a0f200"
+        },
+        {
+          "name": "validate-production-runtime",
+          "command": "pnpm run validate-production-runtime",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-production-runtime.log",
+          "log_bytes": 267,
+          "log_sha256": "626fe05077a2433b99a5927fef6334500497df1411fbc33c099f63c79c2b7545"
+        },
+        {
+          "name": "validate-observability",
+          "command": "pnpm run validate-observability",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-observability.log",
+          "log_bytes": 250,
+          "log_sha256": "1f6810ac3285f4d62af33269766451abd50150590780013a88c11bddafb81a9f"
+        },
+        {
+          "name": "validate-identity-contract",
+          "command": "pnpm run validate-identity-contract",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-identity-contract.log",
+          "log_bytes": 244,
+          "log_sha256": "fe4b0a4b85dbf2b854db56fd3340543c5be7a5f765aaf29fdc88cfb05e362b34"
+        },
+        {
+          "name": "validate-p0-registry",
+          "command": "pnpm run validate-p0-registry",
+          "exit_code": 1,
+          "result": "FAIL_STALE_BINDING",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-p0-registry.log",
+          "log_bytes": 636,
+          "log_sha256": "7e8dd05b4cad625c83266558f11fd68c365cee3d720b11c543af0122da973cf5"
+        },
+        {
+          "name": "validate-loyalty-expiration-contract",
+          "command": "pnpm run validate-loyalty-expiration-contract",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-loyalty-expiration-contract.log",
+          "log_bytes": 266,
+          "log_sha256": "42c77c3ab558328975b59700b5cb97d15b80379e333c384e571575698d7e7085"
+        },
+        {
+          "name": "validate-behavioral-parity-contract",
+          "command": "pnpm run validate-behavioral-parity-contract",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-behavioral-parity-contract.log",
+          "log_bytes": 273,
+          "log_sha256": "80b74ffc6b852ea13c20cb23133eb1157254ea97a0ae5f6c238f36db4a42b20b"
+        },
+        {
+          "name": "validate-registry-contract",
+          "command": "pnpm run validate-registry-contract",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-registry-contract.log",
+          "log_bytes": 250,
+          "log_sha256": "f796b8edfb43ef335e8ed94cf84073adc49baca51345e39c483c8359a109551e"
+        },
+        {
+          "name": "validate-supply-chain",
+          "command": "pnpm run validate-supply-chain",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-supply-chain.log",
+          "log_bytes": 450,
+          "log_sha256": "8ce99910ebb8f01409ce0ddf264babc49aed8023e4cdb7f7c60470e2b0e9effb"
+        },
+        {
+          "name": "validate-dependencies",
+          "command": "pnpm run validate-dependencies",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-dependencies.log",
+          "log_bytes": 221,
+          "log_sha256": "7d3615262f8eedb18c307c135d65e6efdd506d094c744c49078f616c56a34f75"
+        },
+        {
+          "name": "validate-clinical-workflow",
+          "command": "pnpm run validate-clinical-workflow",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-clinical-workflow.log",
+          "log_bytes": 240,
+          "log_sha256": "a6490915a4120e970544ce159120d90d5f6e1860a57ffd18f63e84fac0640c93"
+        },
+        {
+          "name": "validate-prompt-traceability",
+          "command": "pnpm run validate-prompt-traceability",
+          "exit_code": 0,
+          "result": "PASS",
+          "log_path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-prompt-traceability.log",
+          "log_bytes": 228,
+          "log_sha256": "36bb1d42dee7104955466c5dafa777b5a2724a2a79feb9c13a3dde1ad2d37231"
+        }
+      ],
+      "failure_detail": "validate:p0-registry reports five candidate metadata fields still bound to the historical 74b8669f identity. P0 item states and hashes were deliberately not transferred.",
+      "failure_log": {
+        "path": "/tmp/cvg-his-v4-candidate-6fd1dd43-rebound-validate-p0-registry.log",
+        "bytes": 636,
+        "sha256": "7e8dd05b4cad625c83266558f11fd68c365cee3d720b11c543af0122da973cf5"
+      }
+    },
+    "candidate_identity": {
+      "status": "BLOCKED / NOT PROVEN",
+      "candidate_sha": "6fd1dd43c7749f4491e85bddca57d47b55edf46b",
+      "ci_sha": null,
+      "release_sha": null,
+      "identity_sha256": "b121725d297a57c6fe6cc82dd0f83e5d189ac6b5dd1cd5e56adc74c54c44c905"
+    },
+    "documentation_files": {
+      "docs/triple-a/00-baseline.md": "761f610da45ef6427a7ba41268dbaf3eb5090a916fb3bc4818635a769cc552da",
+      "docs/triple-a/13-final-scorecard.md": "02c1dca679e6e8945a3982e8a2d7be536da942a9e52f701cfe91fcae6ca4c01b",
+      "docs/triple-a/14-external-evidence-baseline.md": "ac00dea5585d632fc28dbdbf373695017b759511ee76e48b53301e688586ded4",
+      "docs/triple-a/15-current-baseline.md": "64d610a7a537462d3235d0f6e0f1af3b022dc85c17b7145d5d93826d27baad85",
+      "docs/triple-a/17-current-execution-evidence.md": "44406fa96a1101944cbdfb1a24f2b8aed43c838cbbd6a62657a782bff0d9469f",
+      "docs/triple-a/FINAL_REPORT.md": "b40f5cc868d0cc1956ba30b8891a256a09bcef3ec059aec0d358f62d633cefa5"
+    },
+    "evidence_result": "STATIC_PREPARATION_ONLY; P0 registry remains stale and no behavior acceptance is implied",
+    "pending_doc_changes": {
+      "status_path_count": 8,
+      "all_paths_documentation_only": true,
+      "paths": [
+        "docs/triple-a/00-baseline.md",
+        "docs/triple-a/13-final-scorecard.md",
+        "docs/triple-a/14-external-evidence-baseline.md",
+        "docs/triple-a/15-current-baseline.md",
+        "docs/triple-a/17-current-execution-evidence.md",
+        "docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json",
+        "docs/triple-a/FINAL_REPORT.md",
+        "docs/triple-a/evidence/local-candidate-6fd1dd43-static.json"
+      ]
+    }
+  }
+}

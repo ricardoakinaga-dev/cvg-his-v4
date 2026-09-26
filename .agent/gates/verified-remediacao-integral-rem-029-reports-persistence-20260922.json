@@ -1,0 +1,176 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-029-REPORTS-PERSISTENCE-20260922",
+  "timestamp": "2026-09-22T08:20:18.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "implementação candidate-bound do adapter SQL/mapeadores de persistência do module-reports",
+  "scope_ref": "REM-029",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-REM029-PERSIST-001",
+      "description": "DatabaseReportRepository, SQL, parâmetros e mapeadores foram extraídos para boundary dedicado; index.ts caiu para 1.750 linhas e mantém ReportsService como fachada/orquestrador.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/report-database-repository.ts",
+        "packages/modules/reports/src/report-schedule-time.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A extração é candidate-bound e local; revisão independente E7 não foi executada."
+    },
+    {
+      "id": "V-REM029-PERSIST-002",
+      "description": "ReportRepository, DatabaseReportRepository, bootstrap/worker callers e exports públicos permaneceram compatíveis; typecheck/build e teste focal da superfície fenced passaram.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+        "packages/modules/reports/src/report-database-repository.test.ts",
+        "apps/worker/src/bootstrap.ts",
+        "apps/worker/src/runner.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A compatibilidade externa foi provada no workspace local, não em CI remoto."
+    },
+    {
+      "id": "V-REM029-PERSIST-003",
+      "description": "Tenant scoping, withTenantQuery, claims, leases, SKIP LOCKED, fencing, conflicts, JSON/date mapping e limpeza de tokens foram preservados no adapter.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+        "packages/modules/reports/src/report-database-repository.ts",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A prova de concorrência/fencing é local e sintética em PostgreSQL descartável."
+    },
+    {
+      "id": "V-REM029-PERSIST-004",
+      "description": "Reports passou 5 arquivos/40 testes, incluindo o teste focal de cadence UTC e superfície fenced; typecheck, build, lint e diff check passaram.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+        "packages/modules/reports/src/report-database-repository.test.ts",
+        "packages/modules/reports/package.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Execução local; nenhum aceite de CI foi inferido."
+    },
+    {
+      "id": "V-REM029-PERSIST-005",
+      "description": "Worker completo, typecheck e lint passaram após a extração; runner, fontes agendadas e scheduled-report-job mantiveram as regressões declaradas.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/scheduled-report-sources.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A suíte é local e não substitui CI/OCI."
+    },
+    {
+      "id": "V-REM029-PERSIST-006",
+      "description": "O process test worker-run-once-reports passou 28/28 em PostgreSQL efêmero explícito, com migrations, seed, integridade e teardown do banco.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+        "tests/integration/process/worker-run-once-reports.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "O ambiente é local/descartável; não houve target ou provider real."
+    },
+    {
+      "id": "V-REM029-PERSIST-007",
+      "description": "A checagem global de complexidade foi reavaliada: reports foi reconciliado para 1.750 linhas e somente quatro medições SPA divergentes permanecem; diff e boundary audit passaram.",
+      "required": true,
+      "status": "PASS_WITH_CONDITIONS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+        "docs/engineering/complexity-hotspots.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "O checker global continua falhando pelas quatro medições SPA preexistentes/divergentes, fora desta fatia."
+    },
+    {
+      "id": "V-REM029-PERSIST-008",
+      "description": "Limites de autoridade, ausência de crítica independente e revisão futura de owners/E7 permanecem explícitos; nenhum aceite externo ou decisão de release foi inferido.",
+      "required": true,
+      "status": "PASS_WITH_CONDITIONS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+        ".agent/execution-log.jsonl#EVT-REM-029-CHECKPOINT-IMPLEMENT-REPORTS-PERSISTENCE-20260922"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Owners REPORTS/RUNTIME, E7, CI/OCI, target, UAT, visual/a11y, release e go/no-go continuam abertos."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+    "packages/modules/reports/src/index.ts",
+    "packages/modules/reports/src/report-database-repository.ts",
+    "packages/modules/reports/src/report-schedule-time.ts",
+    "packages/modules/reports/src/report-database-repository.test.ts",
+    "apps/worker/src/runner.ts",
+    "apps/worker/src/scheduled-report-sources.ts",
+    "tests/integration/process/worker-run-once-reports.test.ts",
+    "docs/engineering/complexity-hotspots.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "complexity:check global permanece condicionado pelas quatro medições SPA divergentes.",
+    "Crítica independente E7 e revisão formal dos owners REPORTS/RUNTIME não foram executadas.",
+    "CI/OCI, target, provider real, UAT, browser visual/a11y, release e go/no-go humano permanecem fora do claim.",
+    "O próximo VERIFY deve revalidar o import graph, a cadeia de gates e as condições sem promover PASS_WITH_CONDITIONS a DONE externo."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-029-PERSIST-COMPLEXITY",
+      "description": "Reconciliar as quatro medições SPA divergentes ou registrar sua exceção com owner antes do fechamento global.",
+      "non_blocking": false,
+      "impact": "Mantém o checker global fora de PASS integral.",
+      "owner": "lead",
+      "due_or_trigger": "Durante REM-029:VERIFY-REPORTS-PERSISTENCE e fechamento de complexidade.",
+      "verification_method": "Atualizar manifesto somente com medição/owner verificável e rerodar pnpm complexity:check.",
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-029-PERSIST-REVIEW",
+      "description": "Owners REPORTS/RUNTIME e crítica E7 devem revisar o boundary completo antes de fechar REM-029.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a implementação local; bloqueia aceite organizacional.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de fechar REM-029.",
+      "verification_method": "Revisão identificada em contexto fresco e gate superseding.",
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "implementação local reversível do adapter SQL/mapeadores de reports",
+    "decision": "A instrução autoriza mutação local; não autoriza target, provider real, UAT, aceite de owners, release ou go/no-go.",
+    "evidence_ref": ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+    "expires_or_revalidates": "Revalidar se claims/leases, delivery/provider, renderer, worker, contratos públicos ou superfície SPA forem alterados."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-029:VERIFY-REPORTS-PERSISTENCE",
+  "revalidation_triggers": [
+    "Alterar SQL, account scoping, claims, leases, fencing, mapeadores ou semântica UTC sem novos testes.",
+    "Alterar exports/callers públicos, reintroduzir ciclo runtime ou mover ownership do ReportsService.",
+    "Resolver ou modificar as quatro entradas SPA sem medição e gate próprio.",
+    "Executar target, provider real, UAT, release ou alteração visual sem os gates próprios."
+  ],
+  "supersedes": ".agent/gates/implementation-ready-remediacao-integral-rem-029-reports-persistence-20260922.json"
+}

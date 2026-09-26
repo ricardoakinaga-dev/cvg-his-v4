@@ -1,0 +1,31 @@
+REM-028 — implementação do controller candidate-bound de ações da agenda
+Data: 2026-09-22T05:31:00.000000Z
+Escopo: check-in, no-show, cancelamento, concorrência, refresh/stale e integração page-bound; `openEncounter` preservado como navegação da page
+Status: PASS_WITH_CONDITIONS
+
+## Implementação
+
+- `apps/spa/src/pages/appointments/appointmentActionController.ts` concentra o workflow de mutações em 165 linhas, com `actionLoadingId`, `actionKind` e `actionGeneration` locais ao controller candidate-bound.
+- As funções de serviço são dependências tipadas injetadas: `checkInQueue`, `noShowQueueEntry` e cancelamento de appointment. O controller não importa service, API, router ou store.
+- Guards falham fechado por permissão/status; uma única ação pode estar em voo; `invalidate()` invalida gerações tardias; sucesso chama o `loadOverview` da page; erros só atualizam a page se a geração continuar corrente.
+- O branch de no-show preserva o contrato da fila quando há `queueEntryId` e usa cancelamento de appointment somente no fallback sem vínculo.
+- `AppointmentsListPage.vue` reteve permission source, overview/server state, `overviewRequest`, stale-response, query/contexto, router, `openEncounter`, drawer/calendar composition e o ponto de invalidação; não foi criado store universal.
+- `AppointmentActionController.test.ts` cobre guards, payload de check-in, refresh, queue-aware no-show, fallback de cancelamento, razão de cancelamento, concorrência e erro tardio; a page focal continua cobrindo integração de drawer e calendário.
+
+## Verificação executada
+
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/appointments/__tests__/AppointmentActionController.test.ts src/pages/appointments/__tests__/AppointmentsListPage.test.ts --config vitest.config.ts --no-file-parallelism` — 2 arquivos, 44 testes, PASS.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit` — PASS.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa run lint` — 0 erros, 32 warnings `no-explicit-any` preexistentes.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa run build` — Vite/PWA PASS, 858 módulos transformados.
+- `git diff --check` — PASS.
+- Auditoria estática de `appointmentActionController.ts` para service/API/router/store — PASS.
+- Hashes observados: controller `4f61e1da3c7d23ba0e6869a6fb641e4be02a3208ee443c827967d9b5e23dee04`; teste `40a9b145aec878c34070bb1cdf75f63154b63fcf32b4a5c83caa633918c0651e`; page `0861af65c9dec7c6b199e32956417242099c426b1b9f89abc7e46a378faa3af4`.
+
+## Limitações e próximo seam
+
+`curl http://127.0.0.1:3111/health` não conectou (`health_http=000`); browser/visual/a11y, foco real,
+dark/mobile, reduced-motion e snapshots permanecem não executados. A suíte SPA integral pós-seam,
+crítica E7 e owners também permanecem abertos. Nenhum target, UAT, release, push ou deploy foi
+executado. O próximo seam local é preparar `overview/query` da agenda, mantendo URL, filtros,
+overview primário, enriquecimento opcional e stale-response na page boundary.

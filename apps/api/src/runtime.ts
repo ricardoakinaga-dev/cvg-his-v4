@@ -7,7 +7,7 @@ import {
 } from '@cvg-his-v2/module-attachments';
 import { AuditService } from '@cvg-his-v2/module-audit';
 import type { AuditRepository } from '@cvg-his-v2/module-audit';
-import { AuthService, BruteForceProtection } from '@cvg-his-v2/module-auth';
+import { AuthService } from '@cvg-his-v2/module-auth';
 import type { MfaLoginChallengeRepository, SessionRepository } from '@cvg-his-v2/module-auth';
 import { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import { BillingService } from '@cvg-his-v2/module-billing';

@@ -1,0 +1,140 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-029-AGGREGATE-20260922",
+  "timestamp": "2026-09-22T08:38:20.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "verificação agregada candidate-bound dos boundaries sources, rendering e persistence de REM-029",
+  "scope_ref": "REM-029",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-REM029-AGG-001",
+      "description": "Os gates verified de sources worker, rendering e persistence estão presentes, parseáveis, superseding em cadeia e com decisão PASS_WITH_CONDITIONS.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-aggregate-verify-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-029-worker-report-sources-verify-20260922.json",
+        ".agent/gates/verified-remediacao-integral-rem-029-reports-rendering-20260922.json",
+        ".agent/gates/verified-remediacao-integral-rem-029-reports-persistence-verify-20260922.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A cadeia local não substitui crítica independente ou autoridade organizacional."
+    },
+    {
+      "id": "V-REM029-AGG-002",
+      "description": "A composição pública foi preservada: runner mantém exports/factories/ticks, module-reports mantém ReportsService/catalog/DatabaseReportRepository e os três boundaries não introduzem dependências SPA/API indevidas.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-aggregate-verify-20260922.txt",
+        "apps/worker/src/runner.ts",
+        "apps/worker/src/scheduled-report-sources.ts",
+        "packages/modules/reports/src/index.ts",
+        "packages/modules/reports/src/report-renderers.ts",
+        "packages/modules/reports/src/report-database-repository.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A auditoria é local; não inclui CI remoto."
+    },
+    {
+      "id": "V-REM029-AGG-003",
+      "description": "As regressões reports/worker e a prova processual PostgreSQL 28/28 permanecem verdes e referenciadas na composição agregada.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-aggregate-verify-20260922.txt",
+        ".agent/evidence/rem-029-reports-persistence-implementation-20260922.txt",
+        ".agent/evidence/rem-029-reports-rendering-implementation-20260922.txt",
+        ".agent/evidence/rem-029-worker-report-sources-verify-20260922.txt"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A prova processual é local/descartável e não promove target/provider real."
+    },
+    {
+      "id": "V-REM029-AGG-004",
+      "description": "O hotspot reports foi reconciliado para 1.750 linhas; o checker global mantém exatamente quatro divergências SPA conhecidas, sem mascaramento.",
+      "required": true,
+      "status": "PASS_WITH_CONDITIONS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-aggregate-verify-20260922.txt",
+        "docs/engineering/complexity-hotspots.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Complexidade global não alcança PASS até as quatro entradas SPA serem remediadas ou excecionadas com owner/evidência."
+    },
+    {
+      "id": "V-REM029-AGG-005",
+      "description": "REM-029 está concluído apenas no escopo local candidate-bound; E7, owners, CI/OCI, target, UAT, visual/a11y, release e go/no-go permanecem explicitamente fora do claim.",
+      "required": true,
+      "status": "PASS_WITH_CONDITIONS",
+      "evidence_refs": [
+        ".agent/evidence/rem-029-reports-aggregate-verify-20260922.txt",
+        ".agent/execution-log.jsonl#EVT-REM-029-CHECKPOINT-AGGREGATE-VERIFY-20260922"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A transição para REM-030 exige autoridade; não foi executada ação externa."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-029-reports-aggregate-verify-20260922.txt",
+    ".agent/gates/verified-remediacao-integral-rem-029-aggregate-20260922.json",
+    ".agent/gates/verified-remediacao-integral-rem-029-worker-report-sources-verify-20260922.json",
+    ".agent/gates/verified-remediacao-integral-rem-029-reports-rendering-20260922.json",
+    ".agent/gates/verified-remediacao-integral-rem-029-reports-persistence-verify-20260922.json",
+    ".agent/backlog.json",
+    ".agent/state.json",
+    ".agent/plans/remediacao-integral-20260921.md",
+    "docs/engineering/complexity-hotspots.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "O escopo local não fecha as quatro medições SPA divergentes.",
+    "E7 e owners REPORTS/RUNTIME não fizeram revisão identificada.",
+    "REM-030–REM-032 e demais fronteiras externas/humanas permanecem bloqueadas ou não iniciadas.",
+    "CI/OCI, target, UAT, visual/a11y, release e go/no-go continuam não provados."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-029-AGG-EXTERNAL",
+      "description": "Revisão E7/owners, complexidade SPA e gates externos/humanos permanecem necessários antes de qualquer aceite global.",
+      "non_blocking": true,
+      "impact": "REM-029 pode ser marcado DONE somente localmente; release permanece bloqueado.",
+      "owner": "lead",
+      "due_or_trigger": "Antes do fechamento global ou release.",
+      "verification_method": "Gate identificado de revisão/complexidade/CI/target/UAT e autoridade humana correspondente.",
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-030-AUTHORITY",
+      "description": "REM-030 requer autoridade de target/migrations/rollback/owners; aguardar sem executar mutação externa.",
+      "non_blocking": false,
+      "impact": "Próxima ação do programa fica bloqueada por autoridade nova.",
+      "owner": "Platform/Release/DBA",
+      "due_or_trigger": "Quando a autoridade explícita e os limites de target forem fornecidos.",
+      "verification_method": "Registro de autorização e gate candidate-bound de migrations/rollback no target aprovado.",
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "reconciliação local agregada de REM-029",
+    "decision": "A instrução autoriza verificação local; não autoriza REM-030 target/migrations, release ou go/no-go.",
+    "evidence_ref": ".agent/evidence/rem-029-reports-aggregate-verify-20260922.txt",
+    "expires_or_revalidates": "Revalidar quando autoridade de REM-030 ou qualquer boundary mudar."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-030:WAIT-AUTHORITY",
+  "revalidation_triggers": [
+    "Alterar sources, rendering, persistence, runner, contracts, claims, leases ou public exports.",
+    "Receber autoridade de target/migrations/rollback/owners para REM-030.",
+    "Modificar complexidade SPA, E7/owners, CI/OCI, UAT ou release claims."
+  ],
+  "supersedes": ".agent/gates/verified-remediacao-integral-rem-029-reports-persistence-verify-20260922.json"
+}

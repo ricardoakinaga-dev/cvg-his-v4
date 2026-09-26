@@ -1,0 +1,121 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-028-COUNTER-SALES-WORKBENCH-20260922",
+  "timestamp": "2026-09-22T03:40:00.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "sexto seam presentation-bound do workbench de detalhes da comanda da CounterSalesPage, com catálogo, itens, contexto clínico e pagamentos; sem aceite visual",
+  "scope_ref": "REM-028",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-016",
+      "description": "CounterSalesWorkbench possui props readonly e emits tipados; não importa services, router ou stores; a CounterSalesPage mantém seleção, server state, catálogo, pagamentos e mutações.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-WORKBENCH-20260922",
+        ".agent/evidence/rem-028-counter-sales-workbench-implementation-20260922.txt",
+        "apps/spa/src/pages/sales/CounterSalesWorkbench.vue",
+        "apps/spa/src/pages/sales/CounterSalesPage.vue"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A preservação visual necessita execução E2E atual; fonte e component test não substituem observação renderizada."
+    },
+    {
+      "id": "V-017",
+      "description": "Workbench, cards/lista, KPI e CounterSalesPage passaram testes focais, vue-tsc, lint semântico, build Vite/PWA e diff check.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-WORKBENCH-20260922",
+        ".agent/evidence/rem-028-counter-sales-workbench-implementation-20260922.txt",
+        "apps/spa/src/pages/sales/__tests__/CounterSalesWorkbench.test.ts",
+        "apps/spa/src/pages/sales/__tests__/CounterSalesCardList.test.ts",
+        "apps/spa/src/pages/sales/__tests__/CounterSalesKpiSummary.test.ts",
+        "apps/spa/src/pages/sales/__tests__/CounterSalesPage.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A suíte SPA integral não foi repetida após este seam; a regressão proporcional passou e a prova visual continua separada."
+    },
+    {
+      "id": "V-018",
+      "description": "A fronteira visual do workbench foi co-localizada com os estilos e breakpoints existentes, sem atualização de snapshots.",
+      "required": true,
+      "status": "CONDITION",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-WORKBENCH-20260922",
+        ".agent/evidence/rem-028-counter-sales-workbench-implementation-20260922.txt",
+        "playwright-spa.config.ts",
+        "e2e/spa/visual/visual-regression.spec.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "O runtime visual local continua sem API saudável; pixel diff, foco real e dark/mobile não foram observados."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-028-counter-sales-workbench-implementation-20260922.txt",
+    ".agent/verification.jsonl#VER-REM-028-COUNTER-SALES-WORKBENCH-20260922",
+    "apps/spa/src/pages/sales/CounterSalesWorkbench.vue",
+    "apps/spa/src/pages/sales/CounterSalesPage.vue",
+    "apps/spa/src/pages/sales/__tests__/CounterSalesWorkbench.test.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Browser/visual atual não executado por API local unhealthy.",
+    "Suíte SPA integral pós-seam, catálogo/pagamentos end-to-end, reports, agenda, dashboard, layout e demais superfícies REM-028 ainda estão abertos.",
+    "Nenhuma crítica adversarial independente E7 ou aprovação de owner foi obtida."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-028-COUNTER-SALES-WORKBENCH-BROWSER",
+      "description": "Reexecutar a superfície de vendas em browser com workbench, seleção, links, loading/empty/error, mobile/dark e foco quando o runtime E2E estiver saudável, sem atualizar snapshots automaticamente.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a continuidade local de implementação; bloqueia claim visual/a11y e fechamento integral de REM-028.",
+      "owner": "frontend/design",
+      "due_or_trigger": "Antes do VERIFIED integral de REM-028 ou de atualizar baseline visual.",
+      "verification_method": "Executar Playwright focal, inspeção de foco/teclado e diff atual com artefatos vinculados.",
+      "due_at": "2026-09-23T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-counter-sales-workbench-implementation-20260922.txt",
+        "playwright-spa.config.ts"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-028-REMAINING-SURFACES-6",
+      "description": "Este é o sexto seam; reports, agenda, dashboard, layout e a validação integral das superfícies REM-028 permanecem pendentes.",
+      "non_blocking": true,
+      "impact": "Impede marcar REM-028 como DONE; não invalida o workbench localmente verificado.",
+      "owner": "lead",
+      "due_or_trigger": "Até concluir a matriz de superfícies e o gate integral.",
+      "verification_method": "Repetir evidence/gate por seam e consolidar regressão focal/full/browser antes do fechamento.",
+      "due_at": "2026-09-26T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-spa-decomposition-inventory-20260922.txt"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "sexto seam reversível de apresentação de REM-028",
+    "decision": "A instrução autoriza implementação e verificação local; não autoriza aprovação visual humana, UAT, target, release ou atualização de snapshots como baseline aceita.",
+    "evidence_ref": ".agent/evidence/rem-028-counter-sales-workbench-implementation-20260922.txt",
+    "expires_or_revalidates": "Revalidar quando o runtime E2E ficar saudável, o seam mudar ou a implementação cruzar workflow financeiro."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-028:VERIFY-SALES-WORKBENCH",
+  "revalidation_triggers": [
+    "Mover seleção, server state, URL, catálogo, pagamentos, links de domínio ou mutações para o workbench.",
+    "Alterar tokens, breakpoint, semântica de estados ou contratos emitidos sem teste focal e browser atual.",
+    "Tentar atualizar snapshots enquanto a API/health E2E estiver unhealthy.",
+    "Promover o seam a aceite integral de REM-028 sem concluir as demais superfícies."
+  ],
+  "supersedes": null
+}

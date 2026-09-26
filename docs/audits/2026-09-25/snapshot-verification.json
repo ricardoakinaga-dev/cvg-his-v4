@@ -1,0 +1,17 @@
+{
+  "collected_at": "2026-09-25T11:25:10.536308-03:00",
+  "head": "ad2f0373f68635f2579253b013a4382219906921",
+  "source_file_count": 2603,
+  "changed_source_paths": [],
+  "missing_source_paths": [],
+  "baseline_git_entries": 667,
+  "baseline_tracked_modified": 185,
+  "baseline_untracked": 482,
+  "current_git_entries_before_report": 667,
+  "git_entries_added_before_report": [
+    "M .agent/authority.jsonl"
+  ],
+  "git_entries_removed_before_report": [
+    " M .agent/authority.jsonl"
+  ]
+}

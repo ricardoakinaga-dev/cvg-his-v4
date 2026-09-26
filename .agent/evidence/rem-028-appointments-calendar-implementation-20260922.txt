@@ -1,0 +1,41 @@
+REM-028 — implementação do seam `AgendaCalendarOrList`
+Data: 2026-09-22T05:15:00.000000Z
+Escopo: extração local reversível da apresentação list/day/week/month da agenda
+Status: PASS_WITH_CONDITIONS
+
+## Resultado
+
+`AgendaCalendarOrList.vue` passou a renderizar a lista cronológica, calendários mensal,
+semanal e diário, legenda, estados vazios, dense-slot summaries e intents de abertura,
+criação, seleção de data, troca de modo, check-in, no-show e atendimento. O componente
+recebe dados já filtrados/enriquecidos, callbacks/predicados e flags de ação; não executa
+services, router, stores, query updates, permission fetches ou mutações.
+
+`AppointmentsListPage.vue` continua owner de `agendaContext`, query/deep-link,
+`overviewRequest`, `disposed`, `isCurrentOverview`, `loadOverview`, enriquecimento
+opcional, `canReadScheduling`, `canManageScheduling`, `actionGeneration`, services,
+criação, drawer e handlers de workflow. A grade apenas emite intents tipados.
+
+## Verificação executada
+
+- Focal: `pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/appointments/__tests__/AgendaCalendarOrList.test.ts src/pages/appointments/__tests__/AppointmentsListPage.test.ts --config vitest.config.ts --no-file-parallelism` — 2 arquivos/42 testes PASS.
+- O teste novo cobre renderização da lista, nomes enriquecidos, abertura de detalhe, criação por slot e overflow dense com troca para lista.
+- `vue-tsc --noEmit` — PASS.
+- lint semântico — 0 erros e 32 warnings `no-explicit-any` preexistentes — PASS_WITH_CONDITIONS.
+- build Vite/PWA — 857 módulos transformados; `dist`, service worker e precache gerados — PASS.
+- `git diff --check` — PASS.
+- auditoria estática — `AgendaCalendarOrList.vue` não importa services, router ou stores — PASS.
+- CSS do filho foi reduzido aos seletores da grade/lista/legenda; estilos de shell/filtros/resumo continuam na page.
+
+## Limitações
+
+Browser/visual/a11y real não foi promovido a PASS: o runtime/API local segue com `/health`
+unhealthy; não houve pixel diff, foco real, dark/mobile, reduced-motion ou atualização de
+snapshot. E7, owners e suíte SPA integral pós-seam permanecem abertos. Nenhuma decisão de
+release, push, deploy, target, UAT ou autoridade humana foi inferida.
+
+## Artefatos e hashes
+
+- `apps/spa/src/pages/appointments/AppointmentsListPage.vue`: 2.555 linhas, SHA256 `0de3472b2ad90cb3f8a33202754aa66f1a8ae63f8c5948d3d38ba111873de36c`.
+- `apps/spa/src/pages/appointments/AgendaCalendarOrList.vue`: 1.660 linhas, SHA256 `a99d8664c9cc8424d47d751ed66f8fda8fc1de8bd11fd666c19216fd2df94552`.
+- `apps/spa/src/pages/appointments/__tests__/AgendaCalendarOrList.test.ts`: 131 linhas, SHA256 `027b6e3743e02439af0a130abf1bee15293829b9e4b73687fbcfc4c447897425`.

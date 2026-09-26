@@ -11,10 +11,20 @@ import {
 
 function requestFromChunks(
   chunks: readonly (string | Buffer)[],
-  headers: Record<string, string> = {}
+  headers: Record<string, string | string[]> = {}
 ): IncomingMessage {
   const request = Readable.from(chunks) as IncomingMessage;
   Object.assign(request, { headers });
+  return request;
+}
+
+function requestWithStickyListeners(): IncomingMessage {
+  const request = new EventEmitter() as IncomingMessage;
+  Object.assign(request, {
+    headers: {},
+    once: request.on.bind(request),
+    removeListener: () => request
+  });
   return request;
 }
 
@@ -47,11 +57,49 @@ describe('raw request body reader', () => {
     await expect(readRawRequestBody(request, 65_536)).rejects.toBeInstanceOf(RawRequestBodyTooLargeError);
   });
 
+  it('ignores malformed, array and unsafe content-length declarations', async () => {
+    await expect(
+      readRawRequestBody(requestFromChunks(['{}'], { 'content-length': ['2'] }), 65_536)
+    ).resolves.toEqual(Buffer.from('{}'));
+    await expect(
+      readRawRequestBody(requestFromChunks(['{}'], { 'content-length': 'not-a-number' }), 65_536)
+    ).resolves.toEqual(Buffer.from('{}'));
+    await expect(
+      readRawRequestBody(
+        requestFromChunks(['{}'], { 'content-length': '999999999999999999999999' }),
+        65_536
+      )
+    ).resolves.toEqual(Buffer.from('{}'));
+  });
+
+  it('wraps a stream conversion failure without leaking the original error type', async () => {
+    const request = new EventEmitter() as IncomingMessage;
+    Object.assign(request, { headers: {} });
+    const pending = readRawRequestBody(request, 65_536);
+    request.emit('data', Symbol('invalid-body-chunk'));
+    await expect(pending).rejects.toMatchObject({
+      name: 'RawRequestBodyStreamError',
+      code: 'RAW_BODY_STREAM_ERROR'
+    });
+  });
+
   it('surfaces an aborted stream as a dedicated error', async () => {
     const request = new EventEmitter() as IncomingMessage;
     Object.assign(request, { headers: {} });
     const pending = readRawRequestBody(request, 65_536);
     request.emit('aborted');
     await expect(pending).rejects.toBeInstanceOf(RawRequestBodyAbortedError);
+  });
+
+  it('ignores late data, abort and end signals after the stream settles', async () => {
+    const request = requestWithStickyListeners();
+    const pending = readRawRequestBody(request, 65_536);
+
+    request.emit('end');
+    await expect(pending).resolves.toEqual(Buffer.alloc(0));
+
+    request.emit('data', 'late');
+    request.emit('aborted');
+    request.emit('end');
   });
 });

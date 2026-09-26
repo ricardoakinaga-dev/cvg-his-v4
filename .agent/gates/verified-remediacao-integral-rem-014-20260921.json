@@ -1,0 +1,99 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-014-20260921",
+  "timestamp": "2026-09-21T21:51:30.000000+00:00",
+  "gate_id": "VERIFIED",
+  "scope": "inventário de skips, política fail-closed e shards obrigatórios Redis/PostgreSQL/diagnósticos no Node oficial 22.23.2/pnpm 10.33.0 para REM-014",
+  "scope_ref": "REM-014",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-ACCEPTANCE-EVIDENCE",
+      "description": "As 36 ocorrências reais de skip/todo foram inventariadas em 23 entradas allowlisted e a política exige falha para ocorrência não autorizada, com sete shards obrigatórios declarados.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-014-SKIP-POLICY-20260921",
+        ".agent/evidence/rem-014-skip-policy-20260921.txt",
+        "docs/engineering/test-skip-policy.json",
+        "scripts/validate-test-skip-policy.mjs"
+      ],
+      "confidence": "HIGH",
+      "limitations": "O aceite é limitado ao inventário AST, allowlist e wiring declarados; não é evidência de execução do workflow remoto."
+    },
+    {
+      "id": "V-002-REGRESSION-RISK",
+      "description": "O known-bad de skip não listado falha, o shard Redis passa 26/26 com zero skip/todo, contratos focais passam 30/30, typecheck e a suíte canônica concluem sem falha observada.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-014-SKIP-POLICY-20260921",
+        ".agent/evidence/rem-014-skip-policy-20260921.txt",
+        "tests/unit/infra/test-skip-policy.test.ts",
+        "scripts/run-redis-rate-limiter-shard.mjs"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A regressão é local e usa Redis descartável; PostgreSQL/E2E remoto, target, providers, UAT, recovery e release não são substituídos por esta suíte."
+    },
+    {
+      "id": "V-003-LIMITATIONS-AUTHORITY",
+      "description": "A ausência de execução PostgreSQL/E2E contra target, de CI remoto e de autorização para fronteiras externas está explicitamente registrada como condição aberta.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-014-SKIP-POLICY-20260921",
+        ".agent/evidence/rem-014-skip-policy-20260921.txt",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Este gate não é aprovação humana, certificação Triple-A, autorização de target ou decisão de release."
+    }
+  ],
+  "evidence": [
+    ".agent/verification.jsonl#VER-REM-014-SKIP-POLICY-20260921",
+    ".agent/evidence/rem-014-skip-policy-20260921.txt",
+    "docs/engineering/test-skip-policy.json",
+    "scripts/validate-test-skip-policy.mjs",
+    "scripts/run-redis-rate-limiter-shard.mjs",
+    "tests/unit/infra/test-skip-policy.test.ts",
+    ".github/workflows/ci.yml"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-REM-014-INFRA-RUNTIME-BOUNDARY",
+      "description": "A execução local canônica não exercitou PostgreSQL/E2E com seus serviços; os jobs CI descartáveis e o shard auxiliar foram apenas wired e não foram executados contra target compartilhado.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a conclusão local de REM-014; bloqueia qualquer claim de execução remota/target, UAT ou release readiness.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de promover os shards a evidência de CI remoto, target, UAT ou release",
+      "due_at": "2026-09-22T12:00:00.000000+00:00",
+      "verification_method": "Executar os jobs descartáveis autorizados, anexar logs current e revisar a fronteira de target antes de superseder esta condição.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-014-SKIP-POLICY-20260921",
+        ".agent/evidence/rem-014-skip-policy-20260921.txt"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "inventário de skips, política fail-closed e shards obrigatórios Redis/PostgreSQL/diagnósticos no Node oficial 22.23.2/pnpm 10.33.0 para REM-014",
+    "decision": "A instrução do usuário autoriza validações locais reversíveis; nenhuma execução remota, target, credential, provider, UAT ou release está incluída.",
+    "evidence_ref": ".agent/plans/remediacao-integral-20260921.md",
+    "expires_or_revalidates": "Revalidar antes de cruzar CI remoto, target, credentials, deployment, UAT ou release."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "Preparar REM-016; reabrir REM-014 somente se a política, os shards ou a evidência current regressarem.",
+  "revalidation_triggers": [
+    "A política, allowlist, classifier, manifesto de shards, scripts ou wiring de CI mudar.",
+    "O validator aceitar skip/todo não listado, o shard Redis reportar skip/todo ou a suíte canônica regressar.",
+    "O escopo avançar para execução remota, target, providers, UAT, recovery ou release."
+  ],
+  "supersedes": null
+}

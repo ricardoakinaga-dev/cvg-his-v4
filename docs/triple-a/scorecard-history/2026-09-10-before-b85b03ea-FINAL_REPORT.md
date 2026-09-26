@@ -1,9 +1,14 @@
 # Triple-A — Final Report
 
+> **Nota de arquivo (2026-09-24):** os links abaixo apontam para os documentos
+> canônicos atuais em `docs/triple-a/`; eles não representam cópias congeladas
+> em 2026-09-10. Os scores, estados e veredictos deste registro permanecem
+> históricos.
+
 ## Resultado
 
 O prompt fonte foi preservado byte-a-byte em
-[`MASTER_PROMPT.md`](./MASTER_PROMPT.md). O candidato implementa o control
+[`MASTER_PROMPT.md`](../MASTER_PROMPT.md). O candidato implementa o control
 plane durável de workflows clínicos dentro do monólito modular: migrations com
 RLS/constraints, idempotência com fingerprint, API, fila SPA, worker com
 lease/fencing/heartbeat, retry/DLQ/replay, auditoria e sincronização com altas.
@@ -48,7 +53,7 @@ o SHA publicado e todos os envelopes externos independentes.
 
 - Candidato publicado: `b429e1bb410bb8d374f4b8a043308461497b7bca`.
 - O prompt externo permanece preservado em
-  [`MASTER_PROMPT_EXTERNAL_CLOSURE.md`](./MASTER_PROMPT_EXTERNAL_CLOSURE.md),
+  [`MASTER_PROMPT_EXTERNAL_CLOSURE.md`](../MASTER_PROMPT_EXTERNAL_CLOSURE.md),
   SHA-256 `d89a249f9b0b13e0da6fb9e4ee3c0e4728c11760fd435d325d48a9b8d1b5ed59`.
 - Foram adicionados contratos verificáveis para PostgreSQL/RLS/concurrency,
   crash recovery/fencing, roles de banco, UAT hospitalar, críticos finais e
@@ -74,7 +79,7 @@ o SHA publicado e todos os envelopes externos independentes.
   Typecheck estava em execução e os demais jobs aguardavam dependências. O
   resultado final ainda não foi inferido.
 - O baseline corrente em
-  [`14-external-evidence-baseline.md`](./14-external-evidence-baseline.md)
+  [`14-external-evidence-baseline.md`](../14-external-evidence-baseline.md)
   foi atualizado para esse SHA. PostgreSQL/RLS runtime, browser/E2E/UAT,
   recovery, performance/soak, deploy/rollback, attestations, governança de
   branch e autoridade humana continuam sem evidência externa suficiente.

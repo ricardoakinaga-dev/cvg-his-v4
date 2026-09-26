@@ -35,16 +35,31 @@ const files = {
   backlog: currentDocument('backlog')
 };
 
-const roadmapHasRecoveryExitCriterion =
-  /\| M4 — Operação no target[^\n]*restore\/RTO-RPO/.test(files.roadmap ?? '') ||
-  /\| R6 Operação e target[^\n]*restore\/corrupção/.test(files.roadmap ?? '');
-const backlogHasRecoveryContract =
-  /\| AAA-037 \|[^\n]*Aprovar RPO\/RTO antes do drill; restaurar globals, banco, storage e configuração representativos, verificar hashes\/contagens\/RLS e medir tempos reais\./.test(
-    files.backlog ?? ''
-  ) ||
-  /\| PROD-037 \|[^\n]*Backup, restore, corrupção e mismatch[^\n]*cumprir RPO\/RTO aprovados\./.test(
-    files.backlog ?? ''
+function markdownSection(content, heading) {
+  const lines = (content ?? '').split(/\r?\n/);
+  const start = lines.findIndex((line) => line === heading);
+  if (start < 0) return undefined;
+
+  const nextSection = lines.findIndex(
+    (line, index) => index > start && /^## [^#]/.test(line)
   );
+  return lines.slice(start + 1, nextSection < 0 ? lines.length : nextSection).join('\n');
+}
+
+const targetRoadmapSection = markdownSection(
+  files.roadmap,
+  '## W3 — certificar o ambiente-alvo'
+);
+const rem024BacklogRow = (files.backlog ?? '')
+  .split(/\r?\n/)
+  .find((line) => /^\| REM-024 \|/.test(line));
+const roadmapHasRecoveryExitCriterion =
+  targetRoadmapSection?.includes('5. Restaurar backup representativo e medir RPO/RTO.') &&
+  targetRoadmapSection.includes('provas target-bound assinadas pelos owners');
+const backlogHasRecoveryContract =
+  rem024BacklogRow?.includes('backup/restore/rollback representativo') &&
+  rem024BacklogRow.includes('hashes/contagens/RLS') &&
+  rem024BacklogRow.includes('medir RPO/RTO contra limites previamente aprovados');
 
 const checks = [
   {
@@ -146,7 +161,7 @@ const checks = [
       files.deploySurface?.includes('pnpm deploy:check')
   },
   {
-    label: 'roadmap e backlog vigentes mantem backup/restore como criterio de saida',
+    label: 'roadmap W3 e backlog REM-024 mantem o contrato de recovery',
     ok: roadmapHasRecoveryExitCriterion && backlogHasRecoveryContract
   }
 ];
@@ -191,5 +206,7 @@ if (failures > 0) {
 }
 
 if (!emitJsonOnly) {
-  console.log('[backup-restore-check] backup and restore drill surface is consistent');
+  console.log(
+    '[backup-restore-check] repository/documentation consistency passed; no real restore, rollback, target certification, or RPO/RTO measurement was executed; those operations remain M-14 work'
+  );
 }

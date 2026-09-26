@@ -113,6 +113,25 @@ function parsePatientMetadata(raw: unknown): StoredPatientMetadata {
   };
 }
 
+/**
+ * PostgreSQL rejects non-uuid identifiers against uuid columns with
+ * `invalid input syntax` (22P02), which would surface as a 500. Such
+ * identifiers can never match a row, so report them as unknown and keep
+ * lookups fail-closed 404s. Only this error code is absorbed, following the
+ * driver `cause` chain through query wrappers; every other failure still
+ * propagates.
+ */
+function isInvalidUuidInput(error: unknown): boolean {
+  let current: unknown = error;
+  for (let depth = 0; depth < 4 && typeof current === 'object' && current !== null; depth += 1) {
+    if ((current as { code?: unknown }).code === '22P02') {
+      return true;
+    }
+    current = (current as { cause?: unknown }).cause;
+  }
+  return false;
+}
+
 export class DatabasePatientRepository implements PatientRepository {
   readonly #db: DatabaseClient;
 
@@ -160,7 +179,15 @@ export class DatabasePatientRepository implements PatientRepository {
 
   public async findById(id: PatientId): Promise<PatientSummary | null> {
     requireAccountId(); // Enforce tenant context
-    const result = await this.#db.select().from(patients).where(eq(patients.id, id)).limit(1);
+    let result;
+    try {
+      result = await this.#db.select().from(patients).where(eq(patients.id, id)).limit(1);
+    } catch (error) {
+      if (isInvalidUuidInput(error)) {
+        return null;
+      }
+      throw error;
+    }
 
     if (result.length === 0) {
       return null;

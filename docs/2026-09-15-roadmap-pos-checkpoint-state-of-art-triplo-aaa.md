@@ -4,7 +4,7 @@ document_kind: roadmap
 effective_date: 2026-09-15
 owner: Liderança técnica, Produto e Operações CVG-HIS
 review_cycle: on-milestone-or-candidate-change
-superseded_by: docs/2026-09-20-roadmap-nova-rodada-melhorias.md
+superseded_by: docs/2026-09-26-roadmap-rodada-2.md
 ---
 
 # Roadmap pós-checkpoint — do FAIL21 ao Triplo AAA

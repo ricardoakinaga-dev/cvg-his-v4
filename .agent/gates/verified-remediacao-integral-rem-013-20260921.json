@@ -1,0 +1,94 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-013-20260921",
+  "timestamp": "2026-09-21T20:38:20.000000+00:00",
+  "gate_id": "VERIFIED",
+  "scope": "lint semântico uniforme e fronteira typecheck dos 68 workspaces no Node oficial 22.23.2/pnpm 10.33.0 para REM-013",
+  "scope_ref": "REM-013",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-ACCEPTANCE-EVIDENCE",
+      "description": "Os 68 workspaces possuem lint semântico mínimo explícito, typecheck separado e a verificação de contrato confirma a fronteira uniforme.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-013-LINT-TYPECHECK-20260921",
+        ".agent/evidence/rem-013-semantic-lint-20260921.txt"
+      ],
+      "confidence": "HIGH",
+      "limitations": "O aceite é limitado ao contrato mínimo configurado; não inclui as regras amplas históricas nem lint completo de Vue SFC."
+    },
+    {
+      "id": "V-002-REGRESSION-RISK",
+      "description": "Lint, typecheck, teste focal e o runner canônico root/workspaces passaram em Node 22.23.2/pnpm 10.33.0 sem reduzir threshold ou ocultar failure.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-013-LINT-TYPECHECK-20260921",
+        ".agent/evidence/rem-013-semantic-lint-20260921.txt"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A regressão é local; CI remoto, OCI, target, providers, UAT, recovery e release não são substituídos por esta suíte."
+    },
+    {
+      "id": "V-003-LIMITATIONS-AUTHORITY",
+      "description": "A dívida residual, o parsing não coberto de .vue e a ausência de autorização para cruzar fronteiras externas estão explicitamente registrados.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-013-LINT-TYPECHECK-20260921",
+        ".agent/evidence/rem-013-semantic-lint-20260921.txt",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Este gate não é aprovação humana, certificação Triple-A nem decisão de release."
+    }
+  ],
+  "evidence": [
+    ".agent/verification.jsonl#VER-REM-013-LINT-TYPECHECK-20260921",
+    ".agent/evidence/rem-013-semantic-lint-20260921.txt",
+    ".eslintrc.semantic.cjs",
+    "scripts/run-semantic-lint.mjs",
+    "tests/unit/infra/lint-contract.test.ts",
+    "package.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-REM-013-SEMANTIC-LINT-SCOPE",
+      "description": "O fechamento cobre o mínimo semântico uniforme e a separação lint/typecheck; 328 erros históricos das regras amplas, 174 avisos de any e arquivos .vue permanecem fora do claim.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a conclusão local de REM-013; bloqueia qualquer claim de lint amplo, lint Vue completo ou release readiness.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de ampliar a barra semântica ou promover o programa a release readiness",
+      "due_at": "2026-09-22T12:00:00.000000+00:00",
+      "verification_method": "Executar a expansão autorizada com parser/configuração correspondente e append de verificação current antes de superseder este gate.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-013-LINT-TYPECHECK-20260921",
+        ".agent/evidence/rem-013-semantic-lint-20260921.txt"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "lint semântico uniforme e fronteira typecheck dos 68 workspaces no Node oficial 22.23.2/pnpm 10.33.0 para REM-013",
+    "decision": "A instrução do usuário autoriza mudanças locais reversíveis e verificação sintética; nenhuma ação externa, destrutiva ou de release está incluída.",
+    "evidence_ref": ".agent/plans/remediacao-integral-20260921.md",
+    "expires_or_revalidates": "Revalidar antes de alterar a barra, adicionar parser/dependência, cruzar CI, target, UAT, credentials, deployment ou release."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "Preparar REM-015; reabrir REM-013 somente se o contrato mínimo ou sua evidência current regredir.",
+  "revalidation_triggers": [
+    "Algum workspace perder o script semântico, typecheck ou contrato focal.",
+    "Lint, typecheck, teste focal ou suíte canônica regressarem.",
+    "O escopo for ampliado para regras amplas, Vue SFC, CI, target, UAT, recovery ou release."
+  ],
+  "supersedes": null
+}

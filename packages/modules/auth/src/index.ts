@@ -192,10 +192,21 @@ export class AuthService {
       throw new ForbiddenError('Inactive users cannot sign in');
     }
 
-    if (this.#mfa && this.#mfa.isMfaRequired(user.roleCodes)) {
+    // MFA is mandatory for critical roles, and must also be honoured for any
+    // user who enrolled voluntarily — otherwise their second factor is ignored.
+    const mfaRequiredByRole = this.#mfa?.isMfaRequired(user.roleCodes) ?? false;
+    const mfaVoluntarilyActive =
+      this.#mfa && !mfaRequiredByRole
+        ? await this.#runAsUser(user, correlationId, () =>
+            this.#mfa!.isMfaActive(user.accountId, user.id)
+          )
+        : false;
+
+    if (this.#mfa && (mfaRequiredByRole || mfaVoluntarilyActive)) {
       const generation = randomUUID();
       const issued = await this.#runAsUser(user, correlationId, async () => {
-        const active = await this.#mfa!.isMfaActive(user.accountId, user.id);
+        const active =
+          mfaVoluntarilyActive || (await this.#mfa!.isMfaActive(user.accountId, user.id));
         const challenge = await this.#mfaChallengeRepository.issue({
           accountId: user.accountId,
           userId: user.id,

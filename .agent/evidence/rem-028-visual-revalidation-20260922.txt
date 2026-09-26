@@ -1,0 +1,45 @@
+REM-028 VISUAL REVALIDATION — 2026-09-22
+
+Reason for superseding gate:
+- The appointments presentation seam had a reproducible visual regression after extraction: the scoped child component had lost page-scoped layout selectors for the day-board header and time-matrix cells.
+- The fix was kept local to `AgendaCalendarOrList.vue`; snapshots were not updated.
+
+Environment:
+- repository: `/home/ricardo/cvg-his-v4`
+- runtime: Node v22.23.2; pnpm 10.33.0; Chromium via Playwright
+- worktree: shared and dirty by design; unrelated changes preserved
+- disposable infrastructure: Docker Compose project `cvg-his-v4-e2e-alt`, PostgreSQL host `127.0.0.1:55436`, Redis host `127.0.0.1:16381`
+- external `aud19-pg` on host port 5434 was not modified; the disposable project was removed after the run
+
+Implementation correction:
+- `apps/spa/src/pages/appointments/AgendaCalendarOrList.vue:1026-1082` now owns the extracted `.day-board__header` flex rule, the shared `.time-matrix` cell base rule, and truncation for both `.time-matrix__column-title strong` and `span`.
+- These rules restore the layout boundary that the parent page's scoped style could no longer reach after extraction.
+
+Database/browser preparation:
+- `prepare-test-db.mjs` applied migrations 0000–0177 to the disposable database.
+- The repository seed completed successfully.
+- The canonical database runtime test passed 1/1 with real PostgreSQL repositories and re-hydration.
+- The E2E API started in database mode with `databaseHealthy=true` and `productionReady=true`.
+
+Verification:
+- `pnpm --filter @cvg-his-v2/spa build`: PASS; `vue-tsc --noEmit` and Vite/PWA build passed, 861 modules.
+- Focused appointments visual run: PASS, 4/4 (list/day desktop light and dark; mobile light and dark).
+- Full visual command, without `--update-snapshots`:
+  `E2E_DATABASE_MODE=1 E2E_DATABASE_URL=postgres://postgres:postgres@127.0.0.1:55436/cvg_his_e2e E2E_REDIS_URL=redis://127.0.0.1:16381 API_URL=http://127.0.0.1:3111 SPA_URL=http://127.0.0.1:3112 npx playwright test --config playwright-spa.config.ts -g "Visual"`
+- Full visual result: PASS, 34/34 in 1.8 minutes, including all four appointments cases and the surrounding P0 visual cases.
+- `git diff --check`: PASS.
+- Docker teardown: `docker compose ... -p cvg-his-v4-e2e-alt down -v --remove-orphans`: PASS; only the temporary project's containers/network were removed.
+
+Snapshot integrity:
+- No snapshot update flag was used.
+- The four appointments baselines remained unchanged and were inspected alongside the actual/diff artifacts during diagnosis.
+- Baseline SHA256: `appointments-kanban-page.png` `020dac30d43f766104db2c921a42586daab95ecdf1ad54c5fc1c88ec5e3342c0`; `appointments-kanban-page-dark.png` `c93b3f31dd4d1b4da67761e5eb6ed17488a8bc921b299d029c940ffef3d7592d`; `appointments-kanban-page-mobile.png` `9f5bc7dde3d9eb13f69af236b4d362e6052f9ec0571b64ac4dec4c18431ee300`; `appointments-kanban-page-mobile-dark.png` `bc61b94f4003bce32110fd422d47ef8942cf87a3d2521ea62475694351112a1b`.
+- Corrected component SHA256: `317316931b9707125bb1535bdf68d42e440bce584282ef32e35674bef395ad0c`.
+
+Residual conditions:
+- This closes the local browser/visual condition for the appointments seam only; it does not claim a separate appointments Axe/a11y audit, owner acceptance, independent E7 critique, CI/OCI, target, UAT, release or go/no-go.
+- REM-028 remains `DONE` only in local scope and must be reopened if the seam, ownership, runtime contract or snapshots drift.
+
+Independent critique attempt:
+- A fresh non-inherited read-only critic was started for V-001/V-002/V-003, remained `running` through bounded observation and was shut down without a verdict; it must be treated as `NOT_RUN`, not approval.
+- No parent-workspace mutation was observed after shutdown; the current source/snapshot hashes remain bound in the gate.

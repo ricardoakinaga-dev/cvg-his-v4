@@ -1,9 +1,10 @@
 ---
-document_status: current
+document_status: historical
 document_kind: backlog
 effective_date: 2026-09-21
 owner: Liderança técnica, Plataforma, Segurança, QA e Operações CVG-HIS
 review_cycle: on-task-completion-or-blocker-change
+superseded_by: docs/2026-09-26-backlog-rodada-2.md
 ---
 
 # Backlog executável — nova rodada de melhorias

@@ -1,0 +1,113 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND37-20260923",
+  "recorded_at": "2026-09-23T10:37:28Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "b4d546f0eba8b46a67cafe2b78eef21c4a8c992f9f497d37a09e2b1bbdc51bee",
+      "current_sha256": "b4d546f0eba8b46a67cafe2b78eef21c4a8c992f9f497d37a09e2b1bbdc51bee",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical 14/09 backlog defines 65 PROD acceptance contracts and delegates operational state to .agent; it is superseded by the 21/09 REM backlog. It contains local absolute paths in its PROD-001 procedure."
+    },
+    {
+      "path": "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "c0a1ed4e577755e0ac7c9e84f0c5e6331a1119909b0cbb37ef8b1787b05fae2c",
+      "current_sha256": "c0a1ed4e577755e0ac7c9e84f0c5e6331a1119909b0cbb37ef8b1787b05fae2c",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical 14/09 executive plan records candidate/worktree context, 73/100 reference score and proposed gates, and prohibits auto-approval. Its 10-BLOCKED/54-TODO snapshot differs from the 15/09 audit count; do not treat either as current."
+    },
+    {
+      "path": "docs/2026-09-14-relatorio-completo-estado-construcao.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "c7c2c3d026a463182a47760fe509164cb680b9131dc0d4f3c0383fb6215858a0",
+      "current_sha256": "c7c2c3d026a463182a47760fe509164cb680b9131dc0d4f3c0383fb6215858a0",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical report binds 73/100, NOT_PROVEN and 21 coverage deficits to candidate 324099e5. It scopes extensive corpus review honestly, names unresolved PII/target/UAT/recovery risks and is explicitly superseded by 21/09. One local absolute path token occurs in the scope description."
+    },
+    {
+      "path": "docs/2026-09-14-roadmap-state-of-art-triplo-aaa.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "8ff82deadf24094ce04fd06fcdee593938a6b4c0243919e79c11df5050481a30",
+      "current_sha256": "8ff82deadf24094ce04fd06fcdee593938a6b4c0243919e79c11df5050481a30",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical R0–R7 roadmap sequences the legacy PROD contracts behind gates, with parallel preparation separated from acceptance. The 21/09 roadmap supersedes it."
+    }
+  ],
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "Documentation links/governance and current Triple-A snapshot validators passed after recording round 37.",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-14SEP-BASELINE-IS-SUPERSEDED",
+      "classification": "HOLD_SNAPSHOT_PROVENANCE",
+      "observation": "The 14/09 report records candidate 324099e5, editorial score 73/100 and coverage FAIL21, and is explicitly superseded by the 21/09 deep audit. These findings and the cited source-set digest belong to the older worktree snapshot; no score or claim is transferred to the current candidate."
+    },
+    {
+      "id": "M02-14SEP-STATUS-AND-MODULE-COUNTS-ARE-TIME-BOUND",
+      "classification": "HOLD_HISTORICAL_RECONCILIATION",
+      "observation": "The 14/09 executive plan says the checkpoint audited on 15/09 had 1 DONE, 10 BLOCKED and 54 TODO, while the 15/09 checkpoint audit reports 1 DONE, 16 BLOCKED and 48 TODO. The report/plan also narrate 45 modules, while the later checkpoint records 46 observed and keeps the delta pending authority. Intermediate timestamps are insufficient to infer one reconciled sequence; retain the dated figures and use the later, superseding records for historical status."
+    },
+    {
+      "id": "M02-14SEP-SCOPE-STATUS-SEPARATION",
+      "classification": "DOCUMENTATION_GOVERNANCE",
+      "observation": "The 14/09 plan/backlog distinguish normative scope/acceptance from mutable .agent operational status, require candidate-bound evidence and preserve local versus target/human boundaries. This is consistent with later dated packages; it does not make the 14/09 document live."
+    },
+    {
+      "id": "M02-14SEP-LOCAL-PATH-REDACTION",
+      "classification": "HOLD_PUBLICATION_REDACTION",
+      "observation": "A scoped scan found three local absolute path tokens across the 14/09 backlog and report. Redact those locations before external publication. The report discusses apparent personal data in referenced documentation but does not reproduce values; this review does not independently verify the underlying source content."
+    }
+  ],
+  "candidate_actions": [
+    "Keep the 14/09 score, candidate SHA and status figures explicitly historical.",
+    "Preserve and explain dated status/module-count changes rather than rewriting the older baseline to match a later snapshot.",
+    "Redact local paths before external publication; do not infer PII review or gate execution from this content read."
+  ],
+  "limitations": [
+    "Content/cross-reference review only; build, tests, coverage, browser, PostgreSQL, release, visual, privacy and independent-review evidence cited by these documents was not rerun.",
+    "No local source-set inventory, historical artifacts, target, credentials, UAT or destructive operation was recreated.",
+    "Path scan was limited to /home and /tmp patterns; no full PII/security clearance is claimed.",
+    "Reviewer is not independent; remaining paths/provenance and independent critique stay open."
+  ],
+  "checkpoint_validation": {
+    "json_and_jsonl_parse": "PASS (177 JSON and 8 JSONL files under .agent; document-governance JSON also parsed)",
+    "git_diff_check": "PASS",
+    "docs_validate": "PASS",
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 36; no new REM-010/M-02 finding and no gate-v2 finding. The global controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T10:37:28Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 300,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 426,
+    "status_sha256": "381b5b30fa86846e4e31f13b1a32cf512df0b2a029e04d43f05d290345c87c9c",
+    "note": "Read-only porcelain status after M-02 round 37 and checkpoint validation; original 386-path denominator unchanged. Round-37 review artifact is the fortieth post-inventory path. No candidate, overlay or frozen SHA exists."
+  }
+}

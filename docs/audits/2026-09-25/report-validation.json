@@ -1,0 +1,120 @@
+{
+  "status": "PASS",
+  "checked_at": "2026-09-25T11:32:21.343500-03:00",
+  "backlog_count": 50,
+  "detailed_markdown_actions": 50,
+  "priority_distribution": {
+    "Alta": 20,
+    "Média": 25,
+    "Baixa": 5
+  },
+  "scored_areas": 26,
+  "area_weight_sum": 100,
+  "overall_weighted_score": 68.86,
+  "overall_rounded_score": 69,
+  "verified_local_links": 304,
+  "source_files_compared": 2603,
+  "changed_source_paths": [],
+  "baseline_git_entries_preserved": 667,
+  "new_git_entries": [
+    "?? docs/2026-09-25-auditoria-completa-repositorio.md",
+    "?? docs/2026-09-25-backlog-50-acoes-auditoria.md",
+    "?? docs/audits/2026-09-25/README.md",
+    "?? docs/audits/2026-09-25/backlog-validation.json",
+    "?? docs/audits/2026-09-25/backlog.json",
+    "?? docs/audits/2026-09-25/cleanup.json",
+    "?? docs/audits/2026-09-25/database-inspection.json",
+    "?? docs/audits/2026-09-25/documentation-recheck.json",
+    "?? docs/audits/2026-09-25/execution-summary.json",
+    "?? docs/audits/2026-09-25/failure-evidence.json",
+    "?? docs/audits/2026-09-25/inventory.json",
+    "?? docs/audits/2026-09-25/report-validation.json",
+    "?? docs/audits/2026-09-25/scorecard.json",
+    "?? docs/audits/2026-09-25/snapshot-verification.json",
+    "?? docs/audits/2026-09-25/source-manifest-before.json",
+    "?? docs/audits/2026-09-25/validator-summary.json"
+  ],
+  "removed_baseline_git_entries": [],
+  "unexpected_git_entries": [],
+  "documentation_recheck_exit_code": 0,
+  "published_artifact_secretlint_exit_code": 0,
+  "audit_containers_removed": 3,
+  "errors": [],
+  "artifact_hashes": [
+    {
+      "path": "docs/2026-09-25-auditoria-completa-repositorio.md",
+      "bytes": 44235,
+      "sha256": "7fb4306c985b7a6ab6a5a311315ce9112599d15b178901953a243b60ce5062a6"
+    },
+    {
+      "path": "docs/2026-09-25-backlog-50-acoes-auditoria.md",
+      "bytes": 52546,
+      "sha256": "46c3b89a478721a0ddba03f2243a44aca5ad5fb915a86b3969b32199e714cb26"
+    },
+    {
+      "path": "docs/audits/2026-09-25/README.md",
+      "bytes": 3632,
+      "sha256": "f1cacc48ef495535b0cbe5f3ad559b942e7523c5a3dc67d33d1030b5bbd937f7"
+    },
+    {
+      "path": "docs/audits/2026-09-25/backlog-validation.json",
+      "bytes": 116,
+      "sha256": "b348cb7b6b3c7dc0ea44d95c5e1f8735b5e9f7fef08c6702e4f6388624ab5bdf"
+    },
+    {
+      "path": "docs/audits/2026-09-25/backlog.json",
+      "bytes": 34351,
+      "sha256": "3973b118a236bbbf66ef917cdec267266cbad773ad16b5bdeaefaed9d7755a38"
+    },
+    {
+      "path": "docs/audits/2026-09-25/cleanup.json",
+      "bytes": 648,
+      "sha256": "7abc61b9a1761fbde84e593b7b7ec17b7ed95203d114be9784883bddda886091"
+    },
+    {
+      "path": "docs/audits/2026-09-25/database-inspection.json",
+      "bytes": 1137,
+      "sha256": "041ae7a2a9f6bafce36d2111a9b2e13a47ee4bb9f3b4c782909167bff152edc9"
+    },
+    {
+      "path": "docs/audits/2026-09-25/documentation-recheck.json",
+      "bytes": 276,
+      "sha256": "e18b4f6557b1712764c91e483d3de3d4abaa2b02dbe648bc0e24df07abc67631"
+    },
+    {
+      "path": "docs/audits/2026-09-25/execution-summary.json",
+      "bytes": 437913,
+      "sha256": "a7d9a7e54d285872e4815bcfb81b5fd51aefedaac49eff3669eb13ee0404b504"
+    },
+    {
+      "path": "docs/audits/2026-09-25/failure-evidence.json",
+      "bytes": 1700,
+      "sha256": "e675bdea927ce374e86ef0caf4155599370a3d3058a8844333a7057b6393b2d9"
+    },
+    {
+      "path": "docs/audits/2026-09-25/inventory.json",
+      "bytes": 3301,
+      "sha256": "fe7bea6bc5184752b8349adf988f77e0db2f8272c17b3106eb1137befdc9fd6c"
+    },
+    {
+      "path": "docs/audits/2026-09-25/scorecard.json",
+      "bytes": 11222,
+      "sha256": "4bfb30501b7820c71f9342dee6607a767586239362055627aaffe79bcd8a9e46"
+    },
+    {
+      "path": "docs/audits/2026-09-25/snapshot-verification.json",
+      "bytes": 493,
+      "sha256": "98b1e2930a0127b92ab34993fb38aca4e8127e886d008d1682afbb5ef77650e7"
+    },
+    {
+      "path": "docs/audits/2026-09-25/source-manifest-before.json",
+      "bytes": 451454,
+      "sha256": "ef43d296bc3ad92f881f2678c0b9dff188b01df37ca48e9ed1c6ad935a7381ec"
+    },
+    {
+      "path": "docs/audits/2026-09-25/validator-summary.json",
+      "bytes": 6365,
+      "sha256": "7a7fe44cde9889e71f2e0667bae2126665a21f168fe840bbca660a4491f94872"
+    }
+  ]
+}

@@ -1,9 +1,10 @@
 ---
-document_status: current
+document_status: historical
 document_kind: roadmap
 effective_date: 2026-09-21
 owner: Liderança técnica, Plataforma, Segurança, QA e Operações CVG-HIS
 review_cycle: on-milestone-or-candidate-change
+superseded_by: docs/2026-09-26-roadmap-rodada-2.md
 ---
 
 # Roadmap — nova rodada de melhorias

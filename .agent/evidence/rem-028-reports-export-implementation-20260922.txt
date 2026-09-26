@@ -1,0 +1,31 @@
+REM-028 — extração presentation-bound do workflow de exportação de relatórios
+Data: 2026-09-22
+Runtime: Node v22.23.2; pnpm 10.33.0; Linux local; worktree dirty compartilhado preservado.
+
+Escopo executado:
+- Extraído `ReportExportAction.vue` para a ação primária do cabeçalho, com props tipadas e emissão de `export`.
+- Extraído `ReportExportRecovery.vue` para a reconciliação de artefato pendente, com props tipadas e emissões `reconcile-export`/`retry-export`.
+- `ReportQueryStatus.vue` ficou restrito a feedback de query e aviso de filtros server-side stale.
+- A `ReportWorkbenchPage.vue` mantém estado, serviços, URL, execução server-side, idempotência, `pendingExport`, timeout, download, handlers e todas as mutações do workflow.
+- Mantido o layout existente com stack de status no corpo e ação de exportação no cabeçalho.
+- Adicionados testes focais para ação, recuperação e regressão do status de query.
+
+Verificações executadas:
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vitest run src/pages/reports/__tests__/ReportExportAction.test.ts src/pages/reports/__tests__/ReportExportRecovery.test.ts src/pages/reports/__tests__/ReportQueryStatus.test.ts src/pages/reports/__tests__/ReportResultTable.test.ts src/pages/reports/__tests__/ReportWorkbenchPage.test.ts` — PASS, 5 arquivos / 86 testes.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa exec vue-tsc --noEmit` — PASS.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa lint` — PASS, 0 erros e 32 warnings preexistentes de `no-explicit-any`.
+- `PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/spa build` — PASS, Vite/PWA com 846 módulos transformados.
+- `git diff --check` — PASS.
+- Auditoria estática do boundary — PASS: `ReportExportAction.vue`, `ReportExportRecovery.vue` e `ReportQueryStatus.vue` não contêm referências runtime a services, router ou stores.
+
+Artefatos e fingerprints:
+- `apps/spa/src/pages/reports/ReportWorkbenchPage.vue` — sha256 `03cf95e297089fe70be831fc2378ccc36ebc3ea230f095649b1ca4ec9caa0884`; 2924 linhas.
+- `apps/spa/src/pages/reports/ReportQueryStatus.vue` — sha256 `66f04e82827feaea1bd98539694d2e1e61533df1c7bcea25610aa834c55b00de`; 48 linhas.
+- `apps/spa/src/pages/reports/ReportExportAction.vue` — sha256 `515b497c1eb661ffd0907ab81b5c49453beaac712cf68bd85038d19f0769efa6`; 24 linhas.
+- `apps/spa/src/pages/reports/ReportExportRecovery.vue` — sha256 `94f41c7d43f1b9ef235bba73543565d0b521dca2dc50fa3861b26350d0f8fdf3`; 70 linhas.
+- `apps/spa/src/pages/reports/__tests__/ReportExportAction.test.ts` — sha256 `9d1d4f177a4bf3b8b39d594f65c36b0e8c0a6bb3efb716de7901a0ea9cf1015c`; 26 linhas.
+- `apps/spa/src/pages/reports/__tests__/ReportExportRecovery.test.ts` — sha256 `48afebf4fe82a31c53bc997be1b58b2f9992273226c1b953a23381745b171fe6`; 35 linhas.
+- `apps/spa/src/pages/reports/__tests__/ReportQueryStatus.test.ts` — sha256 `8fa356b3a26b2e8d96aad76160461718383a2459943eab5cfc5cd6ae1d7dc216`; 22 linhas.
+
+Resultado: `PASS_WITH_CONDITIONS` para esta fatia local. A prova browser/visual não foi executada porque o runtime/API local permanece unhealthy; não houve pixel diff, inspeção real de foco/teclado, dark/mobile ou atualização de snapshots. A suíte SPA integral pós-seam, a crítica adversarial E7 e a aprovação de owners continuam abertas. Nenhuma decisão de release foi inferida.
+Próxima ação: selecionar a próxima superfície restante de REM-028 após este gate.

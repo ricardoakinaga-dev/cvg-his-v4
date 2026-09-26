@@ -1,0 +1,53 @@
+REM-046 — redução de duplicação e ruído no feedback de testes
+observed_at: 2026-09-22T10:09:06.000000Z
+task: REM-046
+agent_mode: Direct; agente primário único; sem crítica independente disponível
+
+Known-bad reproduzido
+- O CI executava `pnpm build` e depois `pnpm test`; o script do API ainda
+  reconstruía uma lista de dependências e o TypeScript do próprio API, e o
+  script do worker recompilava TypeScript antes dos testes nativos.
+- Uma execução da suíte SPA no Node 22 reproduziu mensagens repetidas de
+  `Vue Router`/`Vue` e o aviso JSDOM `Not implemented: navigation to another
+  Document`; o ruído aparecia mesmo com os testes avançando.
+- O runner já tinha a ordem root → workspaces e fail-fast; o contrato sintético
+  continua provando que um exit 73 no root não inicia workspaces.
+
+Implementação
+- `scripts/run-root-test-suite.mjs` passou a encaminhar stdout/stderr por
+  filtros de linha, suprimir somente a mensagem JSDOM exata conhecida e
+  preservar qualquer warning/erro diferente. Em exit não-zero, registra o
+  estágio que parou no primeiro erro.
+- API e worker reconhecem `CVG_WORKSPACE_BUILD_PREPARED=1`: no CI reutilizam o
+  build feito pelo estágio explícito `pnpm build`; sem a variável, preservam o
+  fallback de build para execução isolada do pacote.
+- Os testes nativos de API/worker usam `--test-reporter=dot`, reduzindo TAP
+  repetitivo sem remover detalhes de falha do reporter.
+- O job de testes unitários do CI declara a variável depois do build; nenhum
+  código de produto, schema, migration ou contrato HTTP foi alterado.
+
+Verificação candidate-bound
+- Node 22.23.2/pnpm 10.33.0: contrato do runner passou 5/5, incluindo filtro
+  que remove a linha JSDOM exata e preserva `Unexpected warning`, além do
+  known-bad fail-fast.
+- `CVG_WORKSPACE_BUILD_PREPARED=1 pnpm --filter @cvg-his-v2/worker test` passou
+  com saída dot; a execução anterior do mesmo conjunto reportou runner 65/65,
+  sources 2/2 e demais suítes nativas verdes.
+- `CVG_WORKSPACE_BUILD_PREPARED=1 NODE_ENV=test pnpm --filter @cvg-his-v2/api test`
+  terminou exit 0 com saída dot; a execução imediatamente anterior do mesmo
+  conjunto reportou 639/639, e a rerun posterior mudou somente o reporter.
+- `scripts/report-coverage-scope.test.mjs` passou 1/1, confirmando que os
+  padrões `dist/*.test.js` continuam inventariados apesar do shell guard.
+- `pnpm validate:test-skips` passou com 36 ocorrências allowlisted.
+- JSON dos manifests, `git diff --check` e os artefatos de controle passaram.
+
+Resultado
+`PASS_WITH_CONDITIONS`: a correção local reduz recompilações no caminho CI,
+compacta feedback e mantém fail-fast/diagnóstico inesperado; o aceite não
+declara a suíte integral, CI remoto ou release.
+
+Limitações
+O filtro cobre apenas `Not implemented: navigation to another Document`; avisos
+Vue Router continuam visíveis até terem causa/contrato próprios. Não prova CI
+remoto, branch protection, crítica independente E7, browser/a11y, target, UAT,
+owners, release ou go/no-go.

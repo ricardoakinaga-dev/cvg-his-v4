@@ -1,0 +1,119 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-REM-028-APPOINTMENTS-ACTION-20260922",
+  "timestamp": "2026-09-22T05:22:00.000000Z",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "preparação candidate-bound do controller de ações da agenda, preservando page ownership de permissão, overview, stale-response e navegação",
+  "scope_ref": "REM-028",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-APPT-ACTION-001",
+      "description": "Check-in, no-show, cancelamento, concorrência, geração, refresh e mensagens de erro foram mapeados contra os services e testes focais existentes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-action-preparation-20260922.txt",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+        "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts",
+        "apps/spa/src/services/scheduling.ts",
+        "apps/spa/src/services/appointment.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A inspeção não substitui a regressão após a implementação."
+    },
+    {
+      "id": "IR-APPT-ACTION-002",
+      "description": "Foi selecionado controller candidate-bound com dependências de mutação injetadas; não há store universal nem transferência de query, permission fetch, overview ou router.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-action-preparation-20260922.txt",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+        "apps/spa/src/pages/appointments/agendaPresentation.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A auditoria estática do novo boundary será executada após a implementação."
+    },
+    {
+      "id": "IR-APPT-ACTION-003",
+      "description": "Known-bads e verificação proporcional estão explícitos: fail-closed por status/permissão, uma ação por vez, no-show queue-aware, refresh após sucesso e descarte de erro tardio.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-action-preparation-20260922.txt",
+        "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Browser/visual, E7, owners e suíte SPA integral continuam fora desta preparação."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-028-appointments-action-preparation-20260922.txt",
+    "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+    "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts",
+    "apps/spa/src/services/scheduling.ts",
+    "apps/spa/src/services/appointment.ts"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "O controller e seu teste focal ainda não foram implementados.",
+    "Browser/visual/a11y real continua condicionado pelo /health da API local unhealthy.",
+    "Crítica adversarial E7, revisão de owners e suíte SPA integral pós-seam permanecem abertas."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-028-APPOINTMENTS-ACTION-BROWSER",
+      "description": "Executar browser/visual com API saudável após os seams da agenda, incluindo estados de ação, foco, erro e recuperação.",
+      "non_blocking": true,
+      "impact": "Bloqueia claim visual/a11y e fechamento integral de REM-028, mas não a implementação local reversível.",
+      "owner": "frontend/design",
+      "due_or_trigger": "Antes do VERIFIED integral de REM-028 ou atualização de baseline visual.",
+      "verification_method": "Playwright focal/interação e inspeção de artefatos atuais.",
+      "due_at": "2026-09-23T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-action-preparation-20260922.txt",
+        "playwright-spa.config.ts"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-028-APPOINTMENTS-ACTION-OWNER",
+      "description": "A decisão de workflow e o contrato do controller aguardam revisão identificada dos owners de scheduling/frontend/design.",
+      "non_blocking": true,
+      "impact": "Não bloqueia implementação local reversível; bloqueia aceite organizacional do contrato.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de promover o controller a compromisso de roadmap ou aceitar mudança de workflow.",
+      "verification_method": "Registrar revisão/decisão do owner e superseder a condição.",
+      "due_at": "2026-09-24T12:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-action-preparation-20260922.txt",
+        "docs/engineering/OWNERSHIP_AND_COMPLEXITY.md"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "inspeção e implementação local reversível do controller candidate-bound de ações da agenda",
+    "decision": "A instrução autoriza inspeção e implementação local; não autoriza aceite visual humano, target, UAT, release ou autoridade externa.",
+    "evidence_ref": ".agent/evidence/rem-028-appointments-action-preparation-20260922.txt",
+    "expires_or_revalidates": "Revalidar se o controller tocar query, server contract, auth/permission source, router ou outro workflow de domínio."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-028:IMPLEMENT-APPOINTMENTS-ACTION-SEAM",
+  "revalidation_triggers": [
+    "Importar services, API, router ou store no controller em vez de receber dependências tipadas.",
+    "Mover permission fetch, overview/server state, query, openEncounter ou modal ownership para o controller.",
+    "Remover bloqueio de concorrência, generation invalidation, refresh/stale ou branch queue-aware do contrato.",
+    "Atualizar snapshots ou declarar aceite visual sem runtime E2E saudável.",
+    "Avançar para owner acceptance, CI remoto, target, UAT ou release."
+  ],
+  "supersedes": ".agent/gates/verified-remediacao-integral-rem-028-appointments-calendar-20260922.json"
+}

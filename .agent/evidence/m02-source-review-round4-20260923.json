@@ -1,0 +1,197 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND4-20260923",
+  "recorded_at": "2026-09-23T07:02:27.671Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PARTIAL; extracted report workbench components/tests reviewed; parent-page browser, accessibility, and visual revalidation remain pending",
+  "paths_reviewed": [
+    {
+      "path": "apps/spa/src/pages/reports/ReportExportAction.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "515b497c1eb661ffd0907ab81b5c49453beaac712cf68bd85038d19f0769efa6",
+      "current_sha256": "515b497c1eb661ffd0907ab81b5c49453beaac712cf68bd85038d19f0769efa6",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed the component contract and corresponding test. The component receives page-owned state as props and emits user intents; tests mount isolated components and assert the relevant render/event behavior. Browser layout, screen-reader behavior, and full parent-page state flow still require separate review.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportExportRecovery.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "94f41c7d43f1b9ef235bba73543565d0b521dca2dc50fa3861b26350d0f8fdf3",
+      "current_sha256": "94f41c7d43f1b9ef235bba73543565d0b521dca2dc50fa3861b26350d0f8fdf3",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed the component contract and corresponding test. The component receives page-owned state as props and emits user intents; tests mount isolated components and assert the relevant render/event behavior. Browser layout, screen-reader behavior, and full parent-page state flow still require separate review.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportFilterPanel.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "b4a023ea5ceb703e8a7dd0459129e8adac50e7dbd88f9020de983de42ea83479",
+      "current_sha256": "b4a023ea5ceb703e8a7dd0459129e8adac50e7dbd88f9020de983de42ea83479",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed the component contract and corresponding test. The component receives page-owned state as props and emits user intents; tests mount isolated components and assert the relevant render/event behavior. Browser layout, screen-reader behavior, and full parent-page state flow still require separate review.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportQueryStatus.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "66f04e82827feaea1bd98539694d2e1e61533df1c7bcea25610aa834c55b00de",
+      "current_sha256": "66f04e82827feaea1bd98539694d2e1e61533df1c7bcea25610aa834c55b00de",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed the component contract and corresponding test. The component receives page-owned state as props and emits user intents; tests mount isolated components and assert the relevant render/event behavior. Browser layout, screen-reader behavior, and full parent-page state flow still require separate review.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportResultTable.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "3107ac2b57b8e9db576e3111a165cd39832cc0931097a43d3b332ed43e58c501",
+      "current_sha256": "3107ac2b57b8e9db576e3111a165cd39832cc0931097a43d3b332ed43e58c501",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed the component contract and corresponding test. The component receives page-owned state as props and emits user intents; tests mount isolated components and assert the relevant render/event behavior. Browser layout, screen-reader behavior, and full parent-page state flow still require separate review.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportSummaryDetails.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "897affd9154b4a2ddc9c5457d194ac44b545ea0fb9a744aa52e492bb46192312",
+      "current_sha256": "897affd9154b4a2ddc9c5457d194ac44b545ea0fb9a744aa52e492bb46192312",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed the component contract and corresponding test. The component receives page-owned state as props and emits user intents; tests mount isolated components and assert the relevant render/event behavior. Browser layout, screen-reader behavior, and full parent-page state flow still require separate review.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportWorkbenchToolbar.vue",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "1ff7d422c00d09b27b56d60efeacd8c0e67fb7470823f408b67c255ee2b5524c",
+      "current_sha256": "1ff7d422c00d09b27b56d60efeacd8c0e67fb7470823f408b67c255ee2b5524c",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed the component contract and corresponding test. The component receives page-owned state as props and emits user intents; tests mount isolated components and assert the relevant render/event behavior. Browser layout, screen-reader behavior, and full parent-page state flow still require separate review.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportExportAction.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "9d1d4f177a4bf3b8b39d594f65c36b0e8c0a6bb3efb716de7901a0ea9cf1015c",
+      "current_sha256": "9d1d4f177a4bf3b8b39d594f65c36b0e8c0a6bb3efb716de7901a0ea9cf1015c",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed the component contract and corresponding test. The component receives page-owned state as props and emits user intents; tests mount isolated components and assert the relevant render/event behavior. Browser layout, screen-reader behavior, and full parent-page state flow still require separate review.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportExportRecovery.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "48afebf4fe82a31c53bc997be1b58b2f9992273226c1b953a23381745b171fe6",
+      "current_sha256": "48afebf4fe82a31c53bc997be1b58b2f9992273226c1b953a23381745b171fe6",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed the component contract and corresponding test. The component receives page-owned state as props and emits user intents; tests mount isolated components and assert the relevant render/event behavior. Browser layout, screen-reader behavior, and full parent-page state flow still require separate review.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportFilterPanel.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "8c6b1492d8416c2508379cdfe4fdefce4fe3c432a53c655fb3e21b71836f2db7",
+      "current_sha256": "8c6b1492d8416c2508379cdfe4fdefce4fe3c432a53c655fb3e21b71836f2db7",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed the component contract and corresponding test. The component receives page-owned state as props and emits user intents; tests mount isolated components and assert the relevant render/event behavior. Browser layout, screen-reader behavior, and full parent-page state flow still require separate review.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportQueryStatus.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "8fa356b3a26b2e8d96aad76160461718383a2459943eab5cfc5cd6ae1d7dc216",
+      "current_sha256": "8fa356b3a26b2e8d96aad76160461718383a2459943eab5cfc5cd6ae1d7dc216",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed the component contract and corresponding test. The component receives page-owned state as props and emits user intents; tests mount isolated components and assert the relevant render/event behavior. Browser layout, screen-reader behavior, and full parent-page state flow still require separate review.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportResultTable.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "a55e25abd987e4a7768224373d2f7d89094e790b4058451423d7b958b0b35269",
+      "current_sha256": "a55e25abd987e4a7768224373d2f7d89094e790b4058451423d7b958b0b35269",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed the component contract and corresponding test. The component receives page-owned state as props and emits user intents; tests mount isolated components and assert the relevant render/event behavior. Browser layout, screen-reader behavior, and full parent-page state flow still require separate review.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportSummaryDetails.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "7cde1b439d547209928cc06fb8e08b71da6b79ec7bfc17e8c6cd01fb0199dcaa",
+      "current_sha256": "7cde1b439d547209928cc06fb8e08b71da6b79ec7bfc17e8c6cd01fb0199dcaa",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed the component contract and corresponding test. The component receives page-owned state as props and emits user intents; tests mount isolated components and assert the relevant render/event behavior. Browser layout, screen-reader behavior, and full parent-page state flow still require separate review.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportWorkbenchToolbar.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "7a29be33f7b6280d69b31e62512b0971e0b352310156161957229beb8ed84b44",
+      "current_sha256": "7a29be33f7b6280d69b31e62512b0971e0b352310156161957229beb8ed84b44",
+      "sha_matches_inventory": true,
+      "scope_classification": "SPA_SOURCE_OR_TEST",
+      "content_review": "REVIEWED_WITH_BROWSER_QA_HOLD",
+      "review_notes": "Reviewed the component contract and corresponding test. The component receives page-owned state as props and emits user intents; tests mount isolated components and assert the relevant render/event behavior. Browser layout, screen-reader behavior, and full parent-page state flow still require separate review.",
+      "candidate_overlay_decision": "HOLD_PENDING_PARENT_PAGE_REVIEW_AND_BROWSER_ACCESSIBILITY_VISUAL_REVALIDATION"
+    }
+  ],
+  "test_execution": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config vitest.config.ts src/pages/reports/__tests__/ReportWorkbenchPage.test.ts src/pages/reports/__tests__/ReportExportAction.test.ts src/pages/reports/__tests__/ReportExportRecovery.test.ts src/pages/reports/__tests__/ReportFilterPanel.test.ts src/pages/reports/__tests__/ReportQueryStatus.test.ts src/pages/reports/__tests__/ReportResultTable.test.ts src/pages/reports/__tests__/ReportSummaryDetails.test.ts src/pages/reports/__tests__/ReportWorkbenchToolbar.test.ts",
+    "working_directory": "apps/spa",
+    "started_at_utc": "2026-09-23T06:58:30.033Z",
+    "finished_at_utc": "2026-09-23T06:58:34.613Z",
+    "test_files_passed": 8,
+    "tests_passed": 92,
+    "tests_failed": 0,
+    "environment": "apps/spa/vitest.config.ts; JSDOM; no globalSetup; setup file only registers Vue Test Utils stubs. Parent-page service imports are mocked; no database or provider access observed.",
+    "observed_output": "Vitest printed repeated JSDOM “Not implemented: navigation to another Document” notices while page tests exercised the production anchor-click download path. This is a browser-download limitation of JSDOM; tests passed, but actual download/navigation behavior was not verified in a browser."
+  },
+  "architecture_observations": [
+    "ReportWorkbenchPage remains the state owner: URL-backed filters, server-owned report data/execution state, and local loading/error/export state are passed to extracted children as props; children emit intent events.",
+    "The page assigns request sequence numbers and ignores stale responses, but does not abort superseded requests; a stale server-side execution may still complete even when its response is not rendered.",
+    "Pending export recovery and its stable execution-scoped idempotency key live in page memory; the path does not demonstrate restoration after a full reload.",
+    "ReportFilterPanel accepts independent is-report booleans and one broad filter object, so invalid combinations remain representable at the component boundary; current page wiring supplies the flags.",
+    "Native details/summary disclosures are used. The recovery panel has role=status/aria-live with interactive actions; automated component tests do not establish assistive-technology behavior or focus handling.",
+    "Responsive grid/flex rules are present in extracted components, but no browser screenshot, viewport matrix, keyboard, or screen-reader test was run."
+  ],
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "hold_reason": "The seven small child components and tests are reviewed and hash-stable. The parent page and its 3,044-line test were exercised but not fully reviewed for candidate inclusion; browser download, responsive, accessibility, and visual behavior remain unverified, and no independent critique has approved this group."
+  },
+  "limitations": [
+    "The seven extracted source paths and seven corresponding tests are the only paths added to the original content-review denominator in this round; ReportWorkbenchPage.vue and ReportWorkbenchPage.test.ts remain pending content review.",
+    "Component tests establish only the exercised JSDOM props/render/events and mocked page-service flows; they do not establish browser, visual, responsive, keyboard, screen-reader, or production network behavior.",
+    "JSDOM navigation notices arise from anchor.click in the browser download helper. The tests passed but the actual file download behavior was not exercised.",
+    "All source paths remain excluded from a candidate overlay pending the parent-page review, browser revalidation, complete provenance/sensitivity review, and independent critique."
+  ]
+}

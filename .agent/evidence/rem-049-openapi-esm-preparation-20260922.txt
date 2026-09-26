@@ -1,0 +1,58 @@
+REM-049 — preparação candidate-bound do validador OpenAPI
+observed_at: 2026-09-22T08:55:12.000000Z
+recorded_during: 2026-09-22 continuation after REM-030 entered WAIT_AUTHORITY
+agent_mode: Direct; agente primário único; sem subagentes ou crítica independente disponível
+
+Objetivo
+Corrigir o warning de módulo ESM do validador OpenAPI sem alterar a semântica de
+validação, o contrato OpenAPI, rotas, autenticação, thresholds ou gates externos.
+
+Baseline conhecido
+- `package.json` não declara `type: module`.
+- `scripts/validate-openapi.js` usa imports ESM estáticos.
+- Em Node 24.20.0, `pnpm validate:openapi` passou funcionalmente (431 paths,
+  41 tags, 525 schemas), mas emitiu `[MODULE_TYPELESS_PACKAGE_JSON]` para o
+  arquivo `.js`.
+- Em Node 22.23.2/pnpm 10.33.0, o mesmo comando passou sem o warning; isso
+  confirma que a falha de higiene é dependente do runtime e deve ser removida
+  no caminho canônico, não mascarada por um downgrade de engine.
+- As referências ativas estavam em `package.json`,
+  `tests/integration/openapi-runtime.test.ts` e na entrada correspondente de
+  `docs/engineering/critical-coverage-scope.json`.
+
+Known-bad / known-good
+- Known-bad: `node scripts/validate-openapi.js` sob Node 24.20.0 produz
+  `MODULE_TYPELESS_PACKAGE_JSON`.
+- Known-good esperado: `node scripts/validate-openapi.mjs` termina exit 0,
+  preserva o resumo estrutural e não escreve `MODULE_TYPELESS_PACKAGE_JSON` em
+  stderr; o shim legado também deve permanecer sem warning.
+
+Decisão de boundary
+- Tornar `scripts/validate-openapi.mjs` o entrypoint ESM canônico.
+- Manter `scripts/validate-openapi.js` como shim CommonJS de compatibilidade para
+  comandos e links históricos, sem duplicar a implementação.
+- Atualizar o script `validate:openapi`, os testes focais e a entrada de execução
+  crítica para o `.mjs`.
+- A tentativa inicial de refresh do inventário encontrou drift pré-existente de
+  testes nativos/Vitest; o refresh foi repetido pelo mecanismo oficial com
+  `--reconcile-vitest`, `native-api` e `native-worker`, preservando o manifesto
+  anterior e registrando os sucessores.
+
+Autoridade e limites
+Mutação local, reversível e sem dados reais autorizada. Não há autorização para
+target, migrations, provider, credenciais, push, deploy, UAT, release ou go/no-go.
+O worktree compartilhado permanece dirty por desenho e nenhuma alteração alheia
+foi limpa, resetada ou revertida.
+
+Verificação prevista
+- `node scripts/validate-openapi.mjs` e o shim `.js` sob o runtime disponível;
+- `pnpm validate:openapi` sob Node 22.23.2/pnpm 10.33.0;
+- `tests/integration/openapi-runtime.test.ts`, incluindo regressão explícita do
+  warning;
+- refresh/check do manifesto de cobertura crítica, `docs:validate` e
+  `git diff --check`.
+
+Limitações
+Esta preparação não prova CI remoto, coverage autenticada, target, provider,
+UAT, browser/a11y, revisão E7, owners ou release. O resultado máximo permanece
+local/condicional por ausência de crítica independente fresca.

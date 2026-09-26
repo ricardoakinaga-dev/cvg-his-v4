@@ -1,0 +1,48 @@
+REM-027 — PREPARAÇÃO DO INVENTÁRIO DE HOTSPOTS
+Observado em: 2026-09-22T01:30:26.000000Z
+Escopo: inventário candidate-bound de hotspots, owners, limites não crescentes e ordem por risco para REM-027.
+
+AUTORIDADE E BOUNDARY
+- A instrução vigente autoriza inspeção e mudanças locais reversíveis no repositório.
+- Esta preparação não publica, não faz push/deploy, não usa credenciais reais, não acessa target compartilhado e não infere aprovação dos owners de domínio.
+- O worktree compartilhado permanece dirty por mudanças preexistentes e da remediação; nenhuma limpeza, stash, reset ou commit foi executado.
+
+SUPERFÍCIE INSPECIONADA
+- docs/engineering/complexity-hotspots.json
+- scripts/check-complexity-hotspots.mjs
+- tests/unit/infra/complexity-hotspots.test.ts
+- scripts/generate-architecture-concentration-evidence.mjs
+- scripts/generate-architecture-concentration-evidence.test.mjs
+- docs/engineering/OWNERSHIP_AND_COMPLEXITY.md
+- package.json e .github/workflows/ci.yml
+- backlog/roadmap/plano ativos de REM-027
+
+BASELINE EXECUTADO
+- Node v22.23.2; pnpm 10.33.0.
+- `pnpm complexity:check`: PASS.
+- `CI=1 pnpm exec vitest run tests/unit/infra/complexity-hotspots.test.ts --config vitest.config.ts --no-file-parallelism`: 1 arquivo, 3 testes PASS.
+- A suíte focal mantém um known-bad sintético que reprova crescimento acima de max_lines e owner ausente; a execução confirmou a regressão fail-closed.
+- Medição: `physical_lines_including_blanks`; 8 hotspots, todos dentro do limite atual.
+
+MEDIÇÃO CURRENT
+1. apps/api/src/server.ts — owner PLAT — 8318/8335 — margem 17 — composição cross-system, prioridade de extração já registrada.
+2. apps/spa/src/pages/patients/PatientDetailPage.vue — owner WEB-CLIN — 4075/4124 — margem 49 — tabs/comandos/carregamento clínico.
+3. apps/spa/src/pages/sales/CounterSalesPage.vue — owner WEB-FIN — 3468/3468 — margem 0 — catálogo/carrinho/pagamento/finalização.
+4. apps/spa/src/pages/reports/ReportWorkbenchPage.vue — owner WEB-REPORTS — 3142/3186 — margem 44 — filtros/execução/visualização/exportação.
+5. apps/spa/src/pages/appointments/AppointmentsListPage.vue — owner WEB-SCHED — 3082/3110 — margem 28 — agenda/filtros/edição/sincronização.
+6. apps/spa/src/router/routes.ts — owner WEB — 2920/2931 — margem 11 — agregador de rotas SPA.
+7. packages/modules/reports/src/index.ts — owner REPORTS — 2631/2631 — margem 0 — contratos/consultas/renderização/agendamento.
+8. apps/worker/src/runner.ts — owner RUNTIME — 2139/2147 — margem 8 — bootstrap/leases/consumidores/shutdown.
+
+ACHADO E PLANO DA PRÓXIMA IMPLEMENTAÇÃO
+- O manifesto atual registra owner, max_lines e decomposition_plan, mas ainda não torna a medição current, a não elevação do limite e a ordem por risco invariantes de máquina.
+- A próxima ação de implementação deve adicionar metadados explícitos de medição/risco, registrar o limite anterior e reduzir os limites sem absorver crescimento; o validator deve rejeitar medição stale, max_lines maior que o limite anterior, rank duplicado/fora de ordem e orçamento excedido.
+- A ordem inicial de risco deve considerar margem zero, blast radius e concorrência/estado: vendas e reports sem margem, composição API, roteamento SPA, runner, depois páginas com margem observada. A decisão é uma classificação operacional local, não aprovação dos owners.
+- O known-bad deve permanecer reproduzível e ser ampliado para os novos invariantes sem remover assertions ou alterar thresholds de cobertura.
+
+LIMITAÇÕES
+- A inspeção não prova decomposição comportamental, UX/a11y, CI remoto, target, UAT, release ou aceite humano dos owners.
+- A contagem de linhas é guardrail de concentração, não prova de baixo acoplamento ou qualidade arquitetural.
+
+PRÓXIMA AÇÃO CANÔNICA
+- REM-027:IMPLEMENT — atualizar o manifesto/validator/testes/documentação de hotspots conforme o plano acima, depois executar a verificação focal e o comando público.

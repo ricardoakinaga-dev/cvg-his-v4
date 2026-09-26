@@ -53,6 +53,7 @@ describe('pixService', () => {
     await expect(pixService.createIntent(payload)).resolves.toEqual(validResponse);
     expect(mockApiRequest).toHaveBeenCalledWith('/payments/pix/intents', {
       method: 'POST',
+      headers: { 'Idempotency-Key': expect.stringMatching(/^[0-9a-f-]{36}$/) },
       body: JSON.stringify(payload)
     });
   });

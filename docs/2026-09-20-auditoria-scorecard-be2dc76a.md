@@ -7,7 +7,7 @@ review_cycle: on-candidate-change-or-material-evidence
 candidate_sha: be2dc76a765438aedbc3aa31138905b8f3e78e46
 overall_score: 53
 verdict: FAIL_BLOCKED
-superseded_by: docs/2026-09-20-auditoria-scorecard-db07cd02.md
+superseded_by: docs/2026-09-21-auditoria-profunda-repositorio.md
 ---
 
 # Auditoria e scorecard do sistema — `be2dc76a`

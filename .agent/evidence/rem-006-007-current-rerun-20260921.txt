@@ -1,0 +1,13 @@
+REM-006/REM-007 current local rerun after REM-026 helper coverage representation
+Observed: 2026-09-21T19:45:24Z
+Environment: Linux; Node v22.23.2; pnpm 10.33.0; local worktree; no real secrets, provider, target or external action.
+
+Command:
+  source /home/ricardo/.nvm/nvm.sh && nvm use 22.23.2 && CI=1 pnpm test:coverage
+
+Result: exit 0.
+Coverage summary: Statements 10519/12058 = 87.23%; Branches 8238/10038 = 82.06%; Functions 2346/2638 = 88.93%; Lines 9925/11191 = 88.68%.
+Test summary: 282 files (281 passed, 1 skipped); 3022 tests (3019 passed, 3 skipped).
+The Vitest representation tests/unit/infra/api-server-boundaries.test.ts exercised the extracted helper, so the new source remains inside the frozen coverage surface without changing thresholds or excludes.
+
+Limitations: This is a local coverage rerun only. It does not prove CI, target behavior, UAT, recovery, release authority or human go/no-go. The exact public runner stream for REM-007 is rerun separately after this test-only coverage addition.

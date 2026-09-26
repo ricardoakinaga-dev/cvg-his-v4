@@ -1,0 +1,80 @@
+{
+  "record_id": "GATE-REM-002-AUDIT-RESOLVED-PUSHED-20260923",
+  "timestamp": "2026-09-23T00:35:13.000000Z",
+  "gate_id": "AUDIT_RESOLVED",
+  "scope": "REM-002 history rewrite/removal of the prohibited blob from the publishable interval; local preparation is preserved and external/destructive authority is unresolved.",
+  "scope_ref": "REM-002",
+  "version": 3,
+  "criteria": [
+    {
+      "id": "AR-001-BASELINE-GAPS",
+      "description": "REM-001 preservation evidence and the explicit rollback bundle remain available after the rewrite and push.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/SHA256SUMS",
+        "/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/bundle-verify.txt",
+        "/home/ricardo/cvg-his-v4-backups/20260923-remediacao-integral-rem002/rem-002-rewritten.bundle"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Rollback is preserved externally; restoring the remote branch is a separate authorized operation and was not needed."
+    },
+    {
+      "id": "AR-002-RESOLUTION-EVIDENCE",
+      "description": "The exact candidate pushed to origin/main removes the prohibited path from the rewritten interval, keeps all 79 interval commits, and has no reachable blob >=100 MiB.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-002-history-rewrite-20260923.txt",
+        ".agent/verification.jsonl#VER-REM-002-REWRITE-20260923",
+        ".agent/verification.jsonl#VER-REM-002-PUSH-20260923"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This proves the candidate-bound Git history and remote ref only; it does not prove CI, deployment, target, UAT or release readiness."
+    },
+    {
+      "id": "AR-003-ACCEPTANCE-OR-ROUTING",
+      "description": "The human authority remains explicit and exact, and the one authorized force-with-lease push was limited to refs/heads/main.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/authority.jsonl#AUTH-REM-002-HISTORY-REWRITE-FINAL-20260923",
+        ".agent/evidence/rem-002-history-rewrite-20260923.txt"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The authorization excludes deployment, target operations, CI/release governance, unrelated refs and unrelated destructive actions."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-002-history-rewrite-20260923.txt",
+    ".agent/verification.jsonl#VER-REM-002-REWRITE-20260923",
+    ".agent/verification.jsonl#VER-REM-002-PUSH-20260923",
+    "/home/ricardo/cvg-his-v4-backups/20260923-remediacao-integral-rem002/rem-002-rewritten.bundle",
+    ".agent/authority.jsonl#AUTH-REM-002-HISTORY-REWRITE-FINAL-20260923"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "CI/release, OCI/attestation, target, UAT, independent critique and go/no-go remain unproven.",
+    "The shared worktree branch remains on its pre-rewrite local tip with dirty changes; the remote publishable main ref is the verified candidate.",
+    "The pre-existing diff-check finding at packages/shared/contracts/src/upload-limits.ts:31 remains outside this history-removal scope."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "CONFIRMED",
+    "actor": "human user",
+    "scope": "REM-002 history rewrite/removal of the prohibited blob from the publishable interval; local preparation is preserved and external/destructive authority is unresolved.",
+    "decision": "The previously confirmed REM-002 authority remains bound to the exact scope after successful candidate verification and the single lease-protected push; no additional scope is granted.",
+    "evidence_ref": ".agent/authority.jsonl#AUTH-REM-002-HISTORY-REWRITE-FINAL-20260923",
+    "expires_or_revalidates": "Revalidate immediately after any source/control mutation or remote ref change."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS",
+  "next_action": "REM-044:PREPARE",
+  "revalidation_triggers": [
+    "The remote main ref changes from 570920de3d12d9a1043aa2c36102a89d39f04569.",
+    "The external rollback bundle or its integrity evidence changes.",
+    "A future candidate changes the publishable interval or reintroduces generated state."
+  ],
+  "supersedes": "GATE-REM-002-AUDIT-RESOLVED-CONFIRMED-20260923"
+}

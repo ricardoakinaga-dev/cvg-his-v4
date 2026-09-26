@@ -4,6 +4,8 @@ import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
+import { validateCurrentCandidateIdentity } from './generate-current-candidate-identity.mjs';
+
 export const P0_REGISTRY_PATH = 'docs/triple-a/P0_REGISTRY.json';
 export const CANDIDATE_IDENTITY_PATH = 'docs/triple-a/CURRENT_CANDIDATE_IDENTITY.json';
 
@@ -248,8 +250,25 @@ export function validateP0Registry({
   return [...new Set(errors)].sort();
 }
 
+export function validateP0RegistryForCurrentCandidate({
+  rootDir = process.cwd(),
+  registry,
+  identity,
+  now = new Date(),
+  candidateIdentityErrors,
+} = {}) {
+  const registryErrors = validateP0Registry({ rootDir, registry, identity, now });
+  const identityErrors = candidateIdentityErrors ??
+    validateCurrentCandidateIdentity({ rootDir });
+
+  return [...new Set([
+    ...registryErrors,
+    ...identityErrors.map((error) => 'current candidate identity: ' + error),
+  ])].sort();
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const errors = validateP0Registry();
+  const errors = validateP0RegistryForCurrentCandidate();
   if (errors.length > 0) {
     console.error('P0 registry invalid (' + errors.length + ' problem(s)):');
     for (const error of errors) console.error('- ' + error);

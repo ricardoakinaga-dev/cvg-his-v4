@@ -1,0 +1,88 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-027-HOTSPOT-RECONCILIATION-20260922",
+  "timestamp": "2026-09-22T09:09:58.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "reconciliação candidate-bound das medições e limites do manifesto de hotspots após decomposições SPA",
+  "scope_ref": "REM-027",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-REM027-HOTSPOT-001",
+      "description": "As quatro divergências conhecidas foram medidas pelo checker e reconciliadas aos valores reais: sales 2779, patients 4051, appointments 2379 e reports 2750 linhas.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-027-hotspot-measurement-reconciliation-20260922.txt", "docs/engineering/complexity-hotspots.json"],
+      "confidence": "HIGH",
+      "limitations": "Medição física local; não é revisão visual ou de owner."
+    },
+    {
+      "id": "V-REM027-HOTSPOT-002",
+      "description": "Nenhum max_lines foi aumentado; previous_max_lines foi preservado e a política current_lines_must_match_measurement permaneceu ativa.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-027-hotspot-measurement-reconciliation-20260922.txt", "docs/engineering/complexity-hotspots.json", "scripts/check-complexity-hotspots.mjs"],
+      "confidence": "HIGH",
+      "limitations": "A redução de limites é local e deve ser revalidada após qualquer nova alteração."
+    },
+    {
+      "id": "V-REM027-HOTSPOT-003",
+      "description": "O checker global e o teste focal do manifesto passaram: complexity:check e 4/4 testes.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-027-hotspot-measurement-reconciliation-20260922.txt", "tests/unit/infra/complexity-hotspots.test.ts"],
+      "confidence": "HIGH",
+      "limitations": "CI remoto e crítica independente não foram executados."
+    },
+    {
+      "id": "V-REM027-HOTSPOT-004",
+      "description": "A reconciliação não alterou owners, risco, planos de decomposição ou código de produção nesta fatia.",
+      "required": true,
+      "status": "PASS_WITH_CONDITIONS",
+      "evidence_refs": [".agent/evidence/rem-027-hotspot-measurement-reconciliation-20260922.txt", "docs/engineering/complexity-hotspots.json"],
+      "confidence": "MEDIUM",
+      "limitations": "A validação de intenção visual e ownership exige revisão específica."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-027-hotspot-measurement-reconciliation-20260922.txt",
+    "docs/engineering/complexity-hotspots.json",
+    "scripts/check-complexity-hotspots.mjs",
+    "tests/unit/infra/complexity-hotspots.test.ts"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "E7, owners, browser/visual/a11y, CI/OCI, target, UAT, release e go/no-go permanecem fora do escopo.",
+    "A reconciliação não fecha a implementação das páginas; somente elimina drift do inventário."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM027-HOTSPOT-DRIFT",
+      "description": "Reabrir a medição se qualquer hotspot, limite, owner ou plano mudar.",
+      "non_blocking": true,
+      "impact": "Mantém o guard local atual; não promove aceite visual ou release.",
+      "owner": "lead",
+      "due_or_trigger": "Qualquer mudança posterior nos hotspots ou no checker.",
+      "verification_method": "Executar pnpm complexity:check e teste focal, gerando gate superseding.",
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "reconciliação local do manifesto de complexidade",
+    "decision": "A instrução autoriza inspeção e atualização local do inventário; não autoriza aceite visual, target, release ou go/no-go.",
+    "evidence_ref": ".agent/evidence/rem-027-hotspot-measurement-reconciliation-20260922.txt",
+    "expires_or_revalidates": "Revalidar em qualquer drift de source, checker, owner ou limite."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-027:VERIFY-INVENTORY",
+  "revalidation_triggers": [
+    "Alterar qualquer página hotspot, checker, owner, risk rank ou max_lines.",
+    "Executar visual/a11y, target, UAT, release ou decisão humana sem gate próprio."
+  ],
+  "supersedes": ".agent/gates/verified-remediacao-integral-rem-027-20260922.json"
+}

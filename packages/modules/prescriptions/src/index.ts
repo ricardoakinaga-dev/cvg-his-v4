@@ -127,6 +127,8 @@ export interface CreatePrescriptionRequest {
   readonly frequency?: string;
   readonly duration?: string;
   readonly notes?: string;
+  /** Prescriber's justification when the medication matches a recorded allergy. */
+  readonly allergyAcknowledgement?: string;
 }
 
 export interface UpdatePrescriptionRequest {
@@ -200,6 +202,9 @@ function formatPrescriptionContent(payload: CreatePrescriptionRequest): string {
   if (payload.frequency) lines.push(`Frequência: ${payload.frequency}`);
   if (payload.duration) lines.push(`Duração: ${payload.duration}`);
   if (payload.notes) lines.push(`Observações: ${payload.notes}`);
+  if (payload.allergyAcknowledgement?.trim()) {
+    lines.push(`Alerta de alergia confirmado: ${payload.allergyAcknowledgement.trim()}`);
+  }
   return lines.join('\n');
 }
 
@@ -485,6 +490,11 @@ export class PrescriptionsService {
     });
     this.#lastPersist = pending;
     this.#pendingPersist = pending;
+  }
+
+  /** Structural validation, callable before side reads such as allergy screening. */
+  public assertValidCreateRequest(payload: CreatePrescriptionRequest): void {
+    this.#validateCreate(payload);
   }
 
   #validateCreate(payload: CreatePrescriptionRequest): void {

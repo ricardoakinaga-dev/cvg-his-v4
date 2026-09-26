@@ -197,6 +197,51 @@ describe('PatientsService', () => {
       expect(authoritative.getOrThrow(cached.id).status).toBe('inactive');
     });
 
+    it('denies authoritative reads for a foreign account without leaking existence', async () => {
+      const owner = createOwner(owners);
+      const cached = service.create(ACCOUNT_ID, {
+        name: 'Tenant patient',
+        species: 'canine',
+        sex: 'female',
+        primaryOwnerId: owner.id
+      });
+      const authoritative = new PatientsService({
+        owners,
+        seedPatients: [],
+        seedLinks: [],
+        patientRepository: {
+          create: async () => undefined,
+          update: async () => undefined,
+          findById: async () => cached,
+          findByAccountId: async () => [cached],
+          delete: async () => undefined
+        }
+      });
+
+      await expect(
+        authoritative.getAuthoritativeOrThrow('other-account' as AccountId, cached.id)
+      ).rejects.toThrow(NotFoundError);
+    });
+
+    it('denies authoritative reads for unknown identifiers', async () => {
+      const authoritative = new PatientsService({
+        owners,
+        seedPatients: [],
+        seedLinks: [],
+        patientRepository: {
+          create: async () => undefined,
+          update: async () => undefined,
+          findById: async () => null,
+          findByAccountId: async () => [],
+          delete: async () => undefined
+        }
+      });
+
+      await expect(
+        authoritative.getAuthoritativeOrThrow(ACCOUNT_ID, 'missing-patient' as PatientId)
+      ).rejects.toThrow(NotFoundError);
+    });
+
     it('refreshes the account cache and removes stale patients and links', async () => {
       const persisted = createPatient(service, owners, { name: 'Persisted patient' });
       const stale = createPatient(service, owners, { name: 'Stale patient' });

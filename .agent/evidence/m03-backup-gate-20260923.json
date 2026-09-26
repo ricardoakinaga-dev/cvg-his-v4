@@ -1,0 +1,628 @@
+{
+  "evidence_id": "M03-BACKUP-GATE-20260923",
+  "improvement_id": "M-03",
+  "observed_at": "2026-09-23T04:34:37Z",
+  "source_identity": {
+    "head_commit": "ad2f0373f68635f2579253b013a4382219906921",
+    "working_tree_state": "dirty; implementation is represented by the listed file hashes and is not claimed to be part of HEAD",
+    "files": [
+      {
+        "path": "infra/scripts/validate-backup-restore.mjs",
+        "sha256": "b7efe46f7e5d22f36f2fc8cbc71ebc3ce1dcd4a0367e2d54a7557221205d98f2"
+      },
+      {
+        "path": "infra/scripts/validate-backup-restore.test.mjs",
+        "sha256": "277af2e73154864443a582f054c7be9d51c8018183d923d63c7249d750da6a23"
+      }
+    ]
+  },
+  "environment": {
+    "runtime": "Node.js v22.23.2",
+    "package_manager": "pnpm 10.33.0",
+    "platform": "Linux local workspace",
+    "shared_database_touched": false,
+    "external_target_touched": false
+  },
+  "procedure": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm ops:backup:check",
+  "result": "PASS",
+  "exit_status": 0,
+  "observations": {
+    "tests": "6/6 passed total: one positive current-document test and five negative mutation cases covering missing W3 recovery step, each REM-024 recovery clause, and missing documentation manifest",
+    "static_consistency_checks": "15/15 passed",
+    "scope": "Checker now follows the governance-selected roadmap W3 restore/RPO/RTO step and the operational REM-024 acceptance clauses."
+  },
+  "independent_review": {
+    "critic_id": "M03-FC-2026-09-23-01",
+    "result": "APPROVED",
+    "scope": "four local checker boundary criteria",
+    "limitations_recorded": "Literal phrase checks can reject equivalent wording changes; critic verified the local checker contract only."
+  },
+  "failure_and_repair_history": [
+    "Initial Node 22 baseline failed because the checker still matched stale M4/R6/AAA-037/PROD-037 phrases.",
+    "An intermediate mutation case did not remove the matched phrase; the fixture was corrected, and separate REM-024 clause mutations were added.",
+    "The first independent critique found missing per-clause mutation coverage and an incomplete boundary statement; both findings were corrected before final approval."
+  ],
+  "limitations": [
+    "No real backup restore, rollback, target certification, or RPO/RTO measurement was executed.",
+    "Those operational checks remain M-14 / REM-024 work and are not marked complete by this evidence.",
+    "The test ran against the shared local working tree; no clean candidate SHA has been frozen yet."
+  ],
+  "revalidation": {
+    "observed_at": "2026-09-23T05:12:17.801449Z",
+    "verification_id": "VER-REM-056-LOCAL-20260923",
+    "verification_ref": ".agent/verification.jsonl#VER-REM-056-LOCAL-20260923",
+    "evidence_artifact": ".agent/evidence/rem-056-local-verification-20260923.txt",
+    "procedure": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm ops:backup:check; git diff --check; sha256sum infra/scripts/validate-backup-restore.mjs infra/scripts/validate-backup-restore.test.mjs",
+    "result": "PASS",
+    "exit_status": 0,
+    "tests": "6/6 passed total: one positive and five negative mutation cases",
+    "static_consistency_checks": "15/15 passed",
+    "diff_check": "PASS",
+    "limitations": "No real backup restore, rollback, target certification, tenant/RLS recovery observation, or RPO/RTO measurement was executed. Those remain REM-024 / M-14 work. This command ran in the shared local working tree, not a frozen candidate SHA."
+  },
+  "recovery_revalidation": {
+    "observed_at": "2026-09-23T05:19:18.692343Z",
+    "verification_id": "VER-REM-056-LOCAL-RECOVERY-20260923",
+    "verification_ref": ".agent/verification.jsonl#VER-REM-056-LOCAL-RECOVERY-20260923",
+    "evidence_artifact": ".agent/evidence/rem-056-local-verification-recovery-20260923.txt",
+    "scope": "Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.",
+    "result": "PASS",
+    "exit_status": 0,
+    "tests": "6/6 passed total: one positive and five negative mutation cases",
+    "static_consistency_checks": "15/15 passed",
+    "diff_check": "PASS",
+    "purpose": "Fresh revalidation after the v1 VERIFIED gate was reopened for exact-scope mismatch."
+  },
+  "gate_recovery_ref": ".agent/evidence/rem-056-gate-recovery-20260923.md",
+  "verified_gate_v2": {
+    "gate_ref": ".agent/gates/verified-melhorias-rem-056-v2-20260923.json",
+    "record_id": "GATE-VERIFIED-MELHORIAS-REM-056-LOCAL-V2-20260923",
+    "decision": "PASS",
+    "supersedes": "GATE-VERIFIED-MELHORIAS-REM-056-LOCAL-20260923",
+    "verification_ref": ".agent/verification.jsonl#VER-REM-056-LOCAL-RECOVERY-20260923",
+    "execution_event": ".agent/execution-log.jsonl#EVT-REM-056-GATE-PASSED-V2-20260923",
+    "scope": "Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.",
+    "limitations": "A decisão v2 fecha apenas o checker local. O gate v1 permanece preservado/reaberto e seu erro histórico de scope contribui quatro achados no checker global."
+  },
+  "controller_validation": {
+    "state_revision": 321,
+    "observed_start": "2026-09-23T08:46:37.952284Z",
+    "observed_end": "2026-09-23T08:46:39.612846Z",
+    "result": "FAIL",
+    "exit_status": 1,
+    "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+    "relevant_new_findings": [
+      "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+      "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+      "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+      "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+    ],
+    "active_execplan_findings": [],
+    "rem010_findings": [],
+    "gate_v2_findings": [],
+    "interpretation": "After REM-010 state revision 321 and the Redis shard runner review round 18, no active ExecPlan/action, REM-010, or gate-v2 finding appeared. The same four REM-056 v1-specific findings remain; the repository-wide controller remains FAIL and does not constitute candidate or release acceptance.",
+    "git_diff_check": {
+      "observed_start": "2026-09-23T08:47:18.729971Z",
+      "observed_end": "2026-09-23T08:47:18.764149Z",
+      "observed_after_controller_run": true,
+      "result": "PASS",
+      "exit_status": 0
+    }
+  },
+  "controller_validation_history": [
+    {
+      "observed_start": "2026-09-23T05:35:35.261031Z",
+      "observed_end": "2026-09-23T05:35:36.968694Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=792)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "interpretation": "After the REM-010 review checkpoint, the read-only controller reported no REM-010 or gate-v2-specific findings. Its four REM-056-specific findings remain confined to the preserved/reopened v1 gate. The control plane remains historically failing; the local checker verification and v2 acceptance retain their narrow scope.",
+      "git_diff_check": {
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T06:08:25.945607Z",
+      "observed_end": "2026-09-23T06:08:27.712578Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "This run no longer reports the four active-ExecPlan structure/action findings seen before the plan repair. The four REM-056-specific findings remain on preserved/reopened gate v1. The full controller still fails with 788 findings across the repository, including unrelated historical gates/transitions/conditions; no global pass or release readiness is claimed.",
+      "git_diff_check": {
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T06:11:17.295473Z",
+      "observed_end": "2026-09-23T06:11:19.078579Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "The post-checkpoint controller confirms the active ExecPlan structure and action marker remain valid and reports no REM-010 or gate-v2-specific finding. The preserved/reopened M-03 gate v1 still has four task-specific findings. The repository-wide control plane remains FAIL with 788 findings across other historical gate, transition, condition, and evidence issues; this is not a green control plane or release-ready result.",
+      "git_diff_check": {
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T06:26:52.420810Z",
+      "observed_end": "2026-09-23T06:26:54.272407Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "This controller run was performed after the REM-010 revision 303 checkpoint. The active ExecPlan structure/action marker remains valid, with no REM-010 or gate-v2-specific finding. Four REM-056-specific findings remain in the preserved/reopened v1 gate. The repository-wide controller remains FAIL with 788 findings; this is not global acceptance or release readiness.",
+      "git_diff_check": {
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T06:40:00.512421Z",
+      "observed_end": "2026-09-23T06:40:02.374014Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 304 and the round-2 source-review checkpoint, the controller reports no active ExecPlan, active action, REM-010, or v2-specific finding. Four REM-056-specific findings remain in the preserved/reopened v1 gate. The global controller remains FAIL with 788 findings and is not release acceptance.",
+      "git_diff_check": {
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T06:50:54.777290Z",
+      "observed_end": "2026-09-23T06:50:56.430849Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 305 and the report-persistence review checkpoint, the active ExecPlan/action remains valid; no REM-010 or gate-v2-specific finding appeared. Four REM-056-specific findings remain in preserved/reopened v1. The repository-wide controller remains FAIL with 788 findings and is not release acceptance.",
+      "git_diff_check": {
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T07:05:20.742450Z",
+      "observed_end": "2026-09-23T07:05:22.432845Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 306 and the report-workbench child review checkpoint, the active ExecPlan/action remains valid; no REM-010 or gate-v2-specific finding appeared. Four REM-056-specific findings remain in preserved/reopened v1. The repository-wide controller remains FAIL with 788 findings and is not release acceptance.",
+      "git_diff_check": {
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T07:11:33.221516Z",
+      "observed_end": "2026-09-23T07:11:34.952892Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 307 and the counter-sales component review checkpoint, the active ExecPlan/action remains valid; no REM-010 or gate-v2-specific finding appeared. Four REM-056-specific findings remain in preserved/reopened v1. The repository-wide controller remains FAIL with 788 findings and is not release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T07:12:54.797570Z",
+        "observed_end": "2026-09-23T07:12:54.834960Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T07:20:22.531256Z",
+      "observed_end": "2026-09-23T07:20:24.372157Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 308 and the counter-sales parent-source review checkpoint, the active ExecPlan/action remains valid; no REM-010 or gate-v2-specific finding appeared. Four REM-056-specific findings remain in preserved/reopened v1. The repository-wide controller remains FAIL with 788 findings and is not release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T07:21:02.885634Z",
+        "observed_end": "2026-09-23T07:21:02.923483Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T07:25:13.524177Z",
+      "observed_end": "2026-09-23T07:25:15.450445Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 309 and the report-workbench parent review checkpoint, the active ExecPlan/action remains valid; no REM-010 or gate-v2-specific finding appeared. Four REM-056-specific findings remain in preserved/reopened v1. The repository-wide controller remains FAIL with 788 findings and is not release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T07:25:53.296714Z",
+        "observed_end": "2026-09-23T07:25:53.332588Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T07:29:03.641349Z",
+      "observed_end": "2026-09-23T07:29:05.357179Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 310 and the clinical context/navigation review checkpoint, the active ExecPlan/action remains valid; no REM-010 or gate-v2-specific finding appeared. Four REM-056-specific findings remain in preserved/reopened v1. The repository-wide controller remains FAIL with 788 findings and is not release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T07:29:43.550598Z",
+        "observed_end": "2026-09-23T07:29:43.588910Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T07:39:39.374439Z",
+      "observed_end": "2026-09-23T07:39:41.014868Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 311 and the clinical parent review checkpoint, the active ExecPlan/action remains valid; no active-plan, REM-010, or gate-v2 finding appeared. The same four REM-056 v1-specific findings remain within the repository-wide FAIL of 788; this is not release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T07:40:49.247417Z",
+        "observed_end": "2026-09-23T07:40:49.283216Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "state_revision": 312,
+      "observed_start": "2026-09-23T07:46:50.732899Z",
+      "observed_end": "2026-09-23T07:46:52.602806Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 312 and the appointments parent/overview review checkpoint, the active ExecPlan/action remains valid; no active-plan, REM-010, or gate-v2 finding appeared. The same four REM-056 v1-specific findings remain within the repository-wide FAIL of 788; this is not release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T07:47:37.312108Z",
+        "observed_end": "2026-09-23T07:47:37.352783Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "state_revision": 313,
+      "observed_start": "2026-09-23T07:52:33.695012Z",
+      "observed_end": "2026-09-23T07:52:35.558263Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 313 and the appointment calendar/create/action review checkpoint, the active ExecPlan/action remains valid; no active-plan, REM-010, or gate-v2 finding appeared. The same four REM-056 v1-specific findings remain within the repository-wide FAIL of 788; this is not release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T07:53:35.235025Z",
+        "observed_end": "2026-09-23T07:53:35.279989Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "state_revision": 314,
+      "observed_start": "2026-09-23T07:59:15.743277Z",
+      "observed_end": "2026-09-23T07:59:17.547449Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 314 and the patient detail/timeline review checkpoint, the active ExecPlan/action remains valid; no active-plan, REM-010, or gate-v2 finding appeared. The same four REM-056 v1-specific findings remain within the repository-wide FAIL of 788; this is not release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T07:59:53.340189Z",
+        "observed_end": "2026-09-23T07:59:53.377595Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T08:07:52.748187Z",
+      "observed_end": "2026-09-23T08:07:54.564968Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 315 and the SPA semantic-lint boundary review round 13, no active ExecPlan/action, REM-010, or gate-v2 finding appeared. The same four REM-056 v1-specific findings remain; the repository-wide controller remains FAIL and does not constitute candidate or release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T08:09:55.820728Z",
+        "observed_end": "2026-09-23T08:09:55.855613Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T08:16:13.768867Z",
+      "observed_end": "2026-09-23T08:16:15.522157Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 316 and the path-count reconciliation, no active ExecPlan/action, REM-010, or gate-v2 finding appeared. The same four REM-056 v1-specific findings remain; the repository-wide controller remains FAIL and does not constitute candidate or release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T08:17:21.527852Z",
+        "observed_end": "2026-09-23T08:17:21.565976Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T08:23:18.885506Z",
+      "observed_end": "2026-09-23T08:23:20.686265Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 317 and the root test-runner/CI boundary review round 14, no active ExecPlan/action, REM-010, or gate-v2 finding appeared. The same four REM-056 v1-specific findings remain; the repository-wide controller remains FAIL and does not constitute candidate or release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T08:24:20.710841Z",
+        "observed_end": "2026-09-23T08:24:20.747600Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T08:28:56.370079Z",
+      "observed_end": "2026-09-23T08:28:58.521975Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 318 and the REM-016 harness static review round 15, no active ExecPlan/action, REM-010, or gate-v2 finding appeared. The same four REM-056 v1-specific findings remain; the repository-wide controller remains FAIL and does not constitute candidate or release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T08:30:06.345238Z",
+        "observed_end": "2026-09-23T08:30:06.400084Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T08:35:14.586516Z",
+      "observed_end": "2026-09-23T08:35:16.475098Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 319 and the test-skip policy validator review round 16, no active ExecPlan/action, REM-010, or gate-v2 finding appeared. The same four REM-056 v1-specific findings remain; the repository-wide controller remains FAIL and does not constitute candidate or release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T08:35:55.472868Z",
+        "observed_end": "2026-09-23T08:35:55.509158Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T08:40:43.638538Z",
+      "observed_end": "2026-09-23T08:40:45.305772Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 320 and the test-skip policy configuration review, no active ExecPlan/action, REM-010, or gate-v2 finding appeared. The same four REM-056 v1-specific findings remain; the repository-wide controller remains FAIL and does not constitute candidate or release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T08:41:34.310849Z",
+        "observed_end": "2026-09-23T08:41:34.345751Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    },
+    {
+      "observed_start": "2026-09-23T08:46:37.952284Z",
+      "observed_end": "2026-09-23T08:46:39.612846Z",
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788)",
+      "relevant_new_findings": [
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[0]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[1]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_CRITERION_TYPED_EVIDENCE: .agent/gates/verified-melhorias-rem-056-20260923.json.criteria[2]: PASS requires an exact CURRENT PASS/EXECUTED .agent/verification.jsonl#VER-ID with matching scope, valid timestamps, and no later invalidating event",
+        "[FAIL] GATE_AUTHORITY_SCOPE: .agent/gates/verified-melhorias-rem-056-20260923.json.authority.scope must exactly match the governed scope 'Aceite local do checker de consistência para recuperação W3/REM-024; não certifica restore operacional.'"
+      ],
+      "active_execplan_findings": [],
+      "rem010_findings": [],
+      "gate_v2_findings": [],
+      "interpretation": "After REM-010 state revision 321 and the Redis shard runner review round 18, no active ExecPlan/action, REM-010, or gate-v2 finding appeared. The same four REM-056 v1-specific findings remain; the repository-wide controller remains FAIL and does not constitute candidate or release acceptance.",
+      "git_diff_check": {
+        "observed_start": "2026-09-23T08:47:18.729971Z",
+        "observed_end": "2026-09-23T08:47:18.764149Z",
+        "observed_after_controller_run": true,
+        "result": "PASS",
+        "exit_status": 0
+      }
+    }
+  ]
+}

@@ -1,0 +1,44 @@
+{
+  "evidence_id": "M31-OPERATIONAL-RECONCILIATION-20260924",
+  "created_at": "2026-09-24T02:14:55Z",
+  "improvement": "M-31",
+  "requirement": "Create local DB preflight, checking credentials, version, migrations, and schema before persistent API/tests.",
+  "source_refs": [
+    "docs/2026-09-23-lista-50-melhorias.md#M-31",
+    "docs/2026-09-23-backlog-melhorias.md",
+    ".agent/evidence/m50-rem-crosswalk-20260923.md#M-31"
+  ],
+  "source_hashes_sha256": {
+    "docs/2026-09-23-lista-50-melhorias.md": "1048dfc6b4b7e695405ac07d016bb73c7c8960ccffe0ea394f6278d3f5e1ed90",
+    ".agent/evidence/m50-rem-crosswalk-20260923.md": "2017aeaea2d149dbaf51fea2b43773f9e36ed9e02e62f380dac920f9514419e4"
+  },
+  "existing_rem_match": null,
+  "adjacent_items": [
+    { "id": "REM-016", "status_at_reconciliation": "DONE", "relationship": "migration harness; no local preflight command" },
+    { "id": "PROD-003", "status_at_reconciliation": "BLOCKED", "relationship": "verification harness availability" },
+    { "id": "PROD-049", "status_at_reconciliation": "BLOCKED", "relationship": "runtime and environment contract" },
+    { "id": "PROD-061", "status_at_reconciliation": "BLOCKED", "relationship": "PostgreSQL suite and dependencies" }
+  ],
+  "new_operational_item": "PROD-066",
+  "new_item_status": "TODO",
+  "justification": "The M50 crosswalk identifies no dedicated REM for credential, PostgreSQL version, migration checksum/pending, and Drizzle schema preflight. The adjacent REM/PROD items do not specify this local read-only command or explicit persistent-mode guard. A separate item prevents changing an adjacent item's status with a different acceptance scope.",
+  "scope_boundary": {
+    "allowed": [
+      "local code and documentation changes",
+      "no-credential and non-loopback rejection checks",
+      "pure migration and schema comparison tests",
+      "typechecking and static verification without database access"
+    ],
+    "not_authorized_in_this_round": [
+      "connecting to any PostgreSQL instance",
+      "creating, migrating, resetting, or deleting a database",
+      "starting services, containers, or listeners",
+      "changing existing REM/PROD status or making an M-31 completion claim"
+    ]
+  },
+  "status_claim": "M-31 remains open pending positive, stale, and drifted checks against an authorized disposable PostgreSQL 16 instance.",
+  "frozen_acceptance_bar": {
+    "path": "/tmp/m31-database-preflight-bar-v1.json",
+    "sha256": "a3030b5912dd581a4b3ffa0abed516249b390b326555cb408bfd22a428384e5e"
+  }
+}

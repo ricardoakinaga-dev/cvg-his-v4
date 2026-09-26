@@ -3,6 +3,7 @@
  * Extracted from server.ts as part of the controlled refactoring initiative (GAP-02).
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import type { URL as NodeURL } from 'node:url';
 
 import type { AuditService } from '@cvg-his-v2/module-audit';
 import type { BillingService } from '@cvg-his-v2/module-billing';
@@ -121,6 +122,59 @@ export interface InpatientRoutesHandlers {
     previousStatus: InpatientStaySummary['status'];
     principal: AuthenticatedPrincipal;
   }) => void | Promise<void>;
+}
+
+export type InpatientListRouteHandlers = Pick<
+  InpatientRoutesHandlers,
+  'audit' | 'requirePrincipal'
+> & {
+  inpatient: Pick<InpatientService, 'refreshAccount' | 'list'>;
+};
+
+export async function handleInpatientListRoute(
+  pathname: string,
+  url: NodeURL,
+  request: IncomingMessage,
+  response: ServerResponse,
+  correlationId: string,
+  handlers: InpatientListRouteHandlers
+): Promise<boolean> {
+  if (pathname !== '/inpatient' || request.method !== 'GET') {
+    return false;
+  }
+
+  const { inpatient, audit, requirePrincipal: rp } = handlers;
+  const principal = await rp(request, 'inpatient.read');
+  const encounterId = url.searchParams.get('encounterId') ?? undefined;
+  const patientId = url.searchParams.get('patientId') ?? undefined;
+  const includeDischarged = url.searchParams.get('includeDischarged') === 'true';
+  // A read boundary can be served by a different API instance than the
+  // command that changed the stay. Refresh the tenant slice from committed
+  // PostgreSQL rows before rendering the operational board so a warm process
+  // cannot return an empty or stale cache.
+  await inpatient.refreshAccount(principal.user.accountId);
+  appendAudit(audit, {
+    actorId: principal.user.id,
+    accountId: principal.user.accountId as never,
+    module: 'inpatient',
+    action: 'list',
+    entityType: 'inpatient-stay',
+    entityId: encounterId ?? patientId ?? 'all',
+    payloadSummary: 'Inpatient stays listed',
+    riskLevel: 'medium',
+    correlationId
+  });
+  response.statusCode = 200;
+  response.end(
+    JSON.stringify({
+      items: inpatient.list(principal.user.accountId, {
+        encounterId,
+        patientId,
+        includeDischarged
+      })
+    })
+  );
+  return true;
 }
 
 export async function handleInpatientRoutes(

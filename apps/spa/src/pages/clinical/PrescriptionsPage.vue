@@ -52,15 +52,47 @@
 
     <template v-if="contextReady">
       <DsCard title="Nova prescrição">
+        <p v-if="patientAllergy" class="allergy-strip" role="note">
+          <span class="allergy-strip__label"><span aria-hidden="true">⚠</span> Alergia</span>
+          <span
+            ref="allergyTextEl"
+            class="allergy-strip__text"
+            :class="{ 'allergy-strip__text--expanded': allergyExpanded }"
+            :title="patientAllergy"
+          >{{ patientAllergy }}</span>
+          <button
+            v-if="allergyOverflows || allergyExpanded"
+            type="button"
+            class="allergy-strip__toggle"
+            :aria-expanded="allergyExpanded"
+            @click="allergyExpanded = !allergyExpanded"
+          >{{ allergyExpanded ? 'recolher' : 'ver tudo' }}</button>
+        </p>
         <form @submit.prevent="submitPrescription">
           <fieldset class="form-grid" :disabled="submitting">
             <DsInput v-model="form.medicationName" label="Medicamento" required />
+            <div v-if="allergyMatches.length" class="allergy-match" role="alert">
+              <p class="allergy-match__title">
+                Coincide com a alergia registrada: <strong>{{ allergyMatches.join(', ') }}</strong>
+              </p>
+              <DsInput
+                v-model="allergyJustification"
+                type="textarea"
+                label="Justificativa clínica (obrigatória)"
+                :rows="2"
+                :maxlength="500"
+                :error="justificationError"
+                hint="Obrigatória para prosseguir. Fica registrada na prescrição e na auditoria."
+              />
+            </div>
             <DsInput v-model="form.dosage" label="Posologia" required />
             <DsInput v-model="form.route" label="Via" placeholder="Oral, IV, IM..." />
             <DsInput v-model="form.frequency" label="Frequência" placeholder="Ex: 12/12h" />
             <DsInput v-model="form.notes" type="textarea" label="Observações" :rows="3" />
             <div class="form-actions">
-              <DsButton type="submit" variant="primary" :loading="submitting">Salvar prescrição</DsButton>
+              <DsButton type="submit" variant="primary" :loading="submitting">
+                {{ allergyMatches.length ? 'Confirmar e salvar' : 'Salvar prescrição' }}
+              </DsButton>
               <DsButton variant="secondary" type="button" @click="resetForm">Limpar</DsButton>
             </div>
           </fieldset>
@@ -135,7 +167,15 @@ import DsAlert from '@cvg-his-v2/design-system/vue/DsAlert.vue';
 import DsButton from '@cvg-his-v2/design-system/vue/DsButton.vue';
 import DsCard from '@cvg-his-v2/design-system/vue/DsCard.vue';
 import DsInput from '@cvg-his-v2/design-system/vue/DsInput.vue';
+import {
+  ALLERGY_ACKNOWLEDGEMENT_MIN_LENGTH,
+  ALLERGY_ACKNOWLEDGEMENT_REQUIRED_CODE,
+  findAllergyConflicts,
+  hasRecordedAllergy
+} from '@cvg-his-v2/shared-contracts';
+import { ApiError } from '@/services/api';
 import { encounterService } from '@/services/encounter';
+import { patientService } from '@/services/patient';
 import { prescriptionsService } from '@/services/prescriptions';
 import { prescriptionExecutionsService } from '@/services/prescription-executions';
 import type { EncounterSummary } from '@/types/encounter';
@@ -158,6 +198,33 @@ const error = ref('');
 const successMessage = ref('');
 const workflowContext = readWorkflowContext();
 
+const patientAllergy = ref('');
+const allergyExpanded = ref(false);
+// The reminder is clamped to two lines; the toggle appears only when the text is
+// actually cut, since hover titles do not exist on touch devices.
+const allergyTextEl = ref<HTMLElement | null>(null);
+const allergyOverflows = ref(false);
+let allergyResizeObserver: ResizeObserver | undefined;
+
+function measureAllergyOverflow() {
+  const element = allergyTextEl.value;
+  allergyOverflows.value = Boolean(element && element.scrollHeight > element.clientHeight + 1);
+}
+
+watch(allergyTextEl, (element) => {
+  allergyResizeObserver?.disconnect();
+  allergyOverflows.value = false;
+  if (!element) return;
+  measureAllergyOverflow();
+  if (typeof ResizeObserver !== 'undefined') {
+    allergyResizeObserver = new ResizeObserver(measureAllergyOverflow);
+    allergyResizeObserver.observe(element);
+  }
+});
+const serverAllergyTerms = ref<string[]>([]);
+const allergyJustification = ref('');
+const justificationError = ref('');
+
 const form = ref({
   medicationName: '',
   dosage: '',
@@ -179,6 +246,23 @@ const executionColumns: DataTableColumn[] = [
   { key: 'status', label: 'Status' },
   { key: 'scheduledAt', label: 'Agendada' }
 ];
+
+// The server re-checks authoritatively; the client mirrors the same rule so the
+// prescriber sees the conflict while typing instead of after a rejected save.
+const allergyMatches = computed(() => [
+  ...new Set([
+    ...findAllergyConflicts(form.value.medicationName, patientAllergy.value),
+    ...serverAllergyTerms.value
+  ])
+]);
+
+watch(
+  () => form.value.medicationName,
+  () => {
+    serverAllergyTerms.value = [];
+    justificationError.value = '';
+  }
+);
 
 const selectedEncounter = computed(() =>
   encounters.value.find((encounter) => encounter.id === selectedEncounterId.value)
@@ -258,6 +342,9 @@ const headerPrimaryAction = computed<PageAction | null>(() =>
 );
 
 function resetForm() {
+  allergyJustification.value = '';
+  justificationError.value = '';
+  serverAllergyTerms.value = [];
   form.value = {
     medicationName: '',
     dosage: '',
@@ -279,6 +366,8 @@ function clearContext() {
   contextState.value = 'idle';
   prescriptions.value = [];
   executions.value = [];
+  patientAllergy.value = '';
+  allergyExpanded.value = false;
   resetForm();
 }
 
@@ -331,13 +420,19 @@ async function refreshEncounterData() {
   }
   contextState.value = 'loading';
   try {
-    const [loadedPrescriptions, loadedExecutions] = await Promise.all([
+    const patientId = selectedEncounter.value?.patientId;
+    const [loadedPrescriptions, loadedExecutions, allergy] = await Promise.all([
       prescriptionsService.listByEncounter(encounterId),
-      prescriptionExecutionsService.list({ encounterId })
+      prescriptionExecutionsService.list({ encounterId }),
+      // Advisory only: the API enforces the allergy check even if this read fails.
+      patientId
+        ? patientService.getById(patientId).then((patient) => patient.allergy, () => undefined)
+        : Promise.resolve(undefined)
     ]);
     if (requestVersion !== contextRequestVersion || selectedEncounterId.value !== encounterId) return;
     prescriptions.value = loadedPrescriptions;
     executions.value = loadedExecutions;
+    patientAllergy.value = hasRecordedAllergy(allergy) ? allergy.trim() : '';
     contextState.value = 'ready';
   } catch (err: unknown) {
     if (requestVersion !== contextRequestVersion || selectedEncounterId.value !== encounterId) return;
@@ -352,6 +447,15 @@ async function submitPrescription() {
     return;
   }
 
+  if (
+    allergyMatches.value.length &&
+    allergyJustification.value.trim().length < ALLERGY_ACKNOWLEDGEMENT_MIN_LENGTH
+  ) {
+    justificationError.value = `Descreva a justificativa (mínimo de ${ALLERGY_ACKNOWLEDGEMENT_MIN_LENGTH} caracteres).`;
+    return;
+  }
+  justificationError.value = '';
+
   const encounterId = selectedEncounter.value.id;
   const patientId = selectedEncounter.value.patientId;
   const requestVersion = contextRequestVersion;
@@ -359,7 +463,7 @@ async function submitPrescription() {
   error.value = '';
   successMessage.value = '';
   try {
-    await prescriptionsService.create({
+    const payload = {
       encounterId,
       patientId,
       title: form.value.medicationName.trim(),
@@ -371,22 +475,38 @@ async function submitPrescription() {
       ]
         .filter(Boolean)
         .join('\n')
-    });
+    };
+    await (allergyMatches.value.length
+      ? prescriptionsService.create(payload, { allergyAcknowledgement: allergyJustification.value })
+      : prescriptionsService.create(payload));
     if (requestVersion !== contextRequestVersion || selectedEncounterId.value !== encounterId) return;
     successMessage.value = 'Prescrição registrada com sucesso.';
     resetForm();
     await refreshEncounterData();
   } catch (err: unknown) {
-    if (requestVersion === contextRequestVersion && selectedEncounterId.value === encounterId) {
-      error.value = err instanceof Error ? err.message : 'Erro ao registrar prescrição';
+    if (requestVersion !== contextRequestVersion || selectedEncounterId.value !== encounterId) return;
+    const conflict = readAllergyConflict(err);
+    if (conflict) {
+      // Surface the conflict inline, next to the medication, instead of a page error.
+      serverAllergyTerms.value = conflict.matchedTerms;
+      if (!patientAllergy.value && conflict.allergy) patientAllergy.value = conflict.allergy;
+      justificationError.value = allergyJustification.value.trim()
+        ? ''
+        : 'Informe a justificativa clínica para prosseguir.';
+      return;
     }
+    error.value = err instanceof Error ? err.message : 'Erro ao registrar prescrição';
   } finally {
     submitting.value = false;
   }
 }
 
 onMounted(loadData);
-onBeforeUnmount(() => { listRequestVersion += 1; contextRequestVersion += 1; });
+onBeforeUnmount(() => {
+  listRequestVersion += 1;
+  contextRequestVersion += 1;
+  allergyResizeObserver?.disconnect();
+});
 
 function readWorkflowContext() {
   if (typeof window === 'undefined') {
@@ -398,6 +518,21 @@ function readWorkflowContext() {
     encounterId: params.get('encounterId')?.trim() || '',
     patientId: params.get('patientId')?.trim() || '',
     ownerId: params.get('ownerId')?.trim() || ''
+  };
+}
+
+function readAllergyConflict(err: unknown): { matchedTerms: string[]; allergy?: string } | null {
+  if (!(err instanceof ApiError) || err.status !== 409) return null;
+  const body = err.body as
+    | { code?: unknown; details?: { matchedTerms?: unknown; allergy?: unknown } }
+    | undefined;
+  if (body?.code !== ALLERGY_ACKNOWLEDGEMENT_REQUIRED_CODE) return null;
+  const terms = Array.isArray(body.details?.matchedTerms)
+    ? body.details.matchedTerms.filter((term): term is string => typeof term === 'string')
+    : [];
+  return {
+    matchedTerms: terms.length ? terms : ['alergia registrada'],
+    allergy: typeof body.details?.allergy === 'string' ? body.details.allergy : undefined
   };
 }
 
@@ -461,6 +596,72 @@ function shortId(value?: string): string {
 
 .muted {
   color: var(--color-text-muted, #64748b);
+}
+
+/* Compact, always-visible allergy reminder: one line, truncated, full text on hover. */
+.allergy-strip {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  margin: 0 0 12px;
+  padding: 6px 10px;
+  border-left: 3px solid var(--color-danger-600, #dc2626);
+  border-radius: 6px;
+  background: var(--color-danger-bg, #fef2f2);
+  color: var(--color-danger-text, #991b1b);
+  font-size: 14px;
+}
+
+.allergy-strip__label {
+  flex: none;
+  font-weight: 700;
+}
+
+.allergy-strip__text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow-wrap: anywhere;
+}
+
+.allergy-strip__text--expanded {
+  display: block;
+  -webkit-line-clamp: unset;
+  line-clamp: unset;
+}
+
+.allergy-strip__toggle {
+  flex: none;
+  min-height: 24px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Appears only when the typed medication matches the recorded allergy. */
+.allergy-match {
+  display: grid;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--color-danger-border, #fecaca);
+  border-radius: 8px;
+  background: var(--color-danger-bg, #fef2f2);
+}
+
+.allergy-match__title {
+  margin: 0;
+  color: var(--color-danger-text, #991b1b);
 }
 
 </style>

@@ -1,0 +1,103 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-049-20260922",
+  "timestamp": "2026-09-22T09:11:08.000000Z",
+  "gate_id": "VERIFIED",
+  "scope": "verificação candidate-bound da correção de extensão ESM do validador OpenAPI",
+  "scope_ref": "REM-049",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-REM049-001",
+      "description": "O entrypoint `.mjs` canônico e o shim `.js` terminam exit 0 sob Node 24.20.0, sem MODULE_TYPELESS_PACKAGE_JSON em stderr.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-049-openapi-esm-implementation-20260922.txt", "scripts/validate-openapi.mjs", "scripts/validate-openapi.js"],
+      "confidence": "HIGH",
+      "limitations": "A execução foi local; não representa o runner remoto de CI."
+    },
+    {
+      "id": "V-REM049-002",
+      "description": "O comando canônico sob Node 22.23.2/pnpm 10.33.0 preserva 431 paths, 41 tags, 525 schemas e todas as checagens estruturais.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-049-openapi-esm-implementation-20260922.txt", "package.json", "apps/api/src/openapi.yaml"],
+      "confidence": "HIGH",
+      "limitations": "O teste é estrutural/local e não constitui homologação de target."
+    },
+    {
+      "id": "V-REM049-003",
+      "description": "A regressão de contrato OpenAPI passou 36/36, incluindo a rejeição de known-bads e a ausência explícita do warning ESM.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-049-openapi-esm-implementation-20260922.txt", "tests/integration/openapi-runtime.test.ts"],
+      "confidence": "HIGH",
+      "limitations": "A suíte focal não substitui o gate integral de testes/coverage."
+    },
+    {
+      "id": "V-REM049-004",
+      "description": "Manifesto de cobertura crítica, documentação, complexidade e diff foram reconciliados: refresh/check passou, critical-source-manifest passou 16/16, complexity passou e docs passaram.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [".agent/evidence/rem-049-openapi-esm-implementation-20260922.txt", "docs/engineering/critical-coverage-scope.json", "docs/engineering/complexity-hotspots.json"],
+      "confidence": "HIGH",
+      "limitations": "O refresh registrou também sucessores de drift pré-existente do inventário; nenhum coverage novo foi declarado."
+    },
+    {
+      "id": "V-REM049-005",
+      "description": "A solução mantém uma implementação única, compatibilidade histórica e nenhuma alteração de semântica do validador; o resultado permanece limitado ao escopo local.",
+      "required": true,
+      "status": "PASS_WITH_CONDITIONS",
+      "evidence_refs": [".agent/evidence/rem-049-openapi-esm-implementation-20260922.txt", "scripts/validate-openapi.mjs", "scripts/validate-openapi.js"],
+      "confidence": "HIGH",
+      "limitations": "Crítica independente fresca, CI/OCI, owners, target, UAT, release e go/no-go não foram executados."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-049-openapi-esm-implementation-20260922.txt",
+    ".agent/evidence/rem-049-openapi-esm-preparation-20260922.txt",
+    ".agent/gates/implementation-ready-remediacao-integral-rem-049-20260922.json",
+    "package.json",
+    "scripts/validate-openapi.mjs",
+    "scripts/validate-openapi.js",
+    "tests/integration/openapi-runtime.test.ts",
+    "docs/engineering/critical-coverage-scope.json",
+    "docs/engineering/complexity-hotspots.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "A crítica independente E7 continua ausente por restrição de agente único.",
+    "CI/OCI, target, provider, UAT, browser/a11y, owners, release e go/no-go permanecem fora do claim."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM049-EXTERNAL",
+      "description": "Manter o resultado como DONE local/condicional e reabrir se o caminho canônico, regras de validação ou inventário crítico sofrerem drift.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a correção local; impede promoção para release ou aceite externo.",
+      "owner": "lead",
+      "due_or_trigger": "Qualquer drift de script, package script, contrato OpenAPI ou manifesto.",
+      "verification_method": "Reexecutar o teste focal e gerar gate superseding.",
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "verificação local do validador OpenAPI",
+    "decision": "A instrução autoriza correção e regressão local; não autoriza fronteiras externas, release ou go/no-go.",
+    "evidence_ref": ".agent/evidence/rem-049-openapi-esm-implementation-20260922.txt",
+    "expires_or_revalidates": "Revalidar se o entrypoint, contrato OpenAPI ou execution input mudar."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-049:REOPEN-IF-DRIFT",
+  "revalidation_triggers": [
+    "Alterar regras do validador, auth runtime, schemas ou operaçãoIds.",
+    "Remover ou alterar o shim histórico sem revisar consumidores e documentação.",
+    "Executar target, provider real, push, deploy, UAT, release ou decisão humana sem gate específico."
+  ],
+  "supersedes": ".agent/gates/implementation-ready-remediacao-integral-rem-049-20260922.json"
+}

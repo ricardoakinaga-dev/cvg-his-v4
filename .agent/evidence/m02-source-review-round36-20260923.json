@@ -1,0 +1,98 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND36-20260923",
+  "recorded_at": "2026-09-23T10:33:41Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "19fcb609e2310d5a5f07b396af6ab2c4cd4c349d75074630208c8c96418220df",
+      "current_sha256": "19fcb609e2310d5a5f07b396af6ab2c4cd4c349d75074630208c8c96418220df",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical 15/09 checkpoint audit bound to candidate 324099e5, verdict NOT_PROVEN, and explicitly superseded by 21/09. It corrects the DONE-card narrative and distinguishes ten packages from complete cards; historical checkers were not rerun."
+    },
+    {
+      "path": "docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "25e21b5b5bd999a3b4b4e6bebd21ef7850bf3001ad8196eac475fd59ec037930",
+      "current_sha256": "25e21b5b5bd999a3b4b4e6bebd21ef7850bf3001ad8196eac475fd59ec037930",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical post-checkpoint backlog preserves 65 PROD contracts, says current live status is .agent/backlog.json, and records gated subtask progress while cards remain BLOCKED. It is superseded by the 21/09 REM backlog."
+    },
+    {
+      "path": "docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "c874e76ebdbf2a11957b715efccfc1c46e66388bc1cf035a93065e5606824aee",
+      "current_sha256": "c874e76ebdbf2a11957b715efccfc1c46e66388bc1cf035a93065e5606824aee",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Historical R0–R8 roadmap sequences recovery, coverage, candidate, CI, target, acceptance, operations, recertification and entry behind gates; no dates or authority are inferred."
+    }
+  ],
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "Documentation links/governance and current Triple-A snapshot validators passed after recording round 36.",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-15SEP-CHECKPOINT-IS-SUPERSEDED",
+      "classification": "HOLD_SNAPSHOT_PROVENANCE",
+      "observation": "The checkpoint audit is explicitly effective 15/09 for candidate 324099e5 and verdict NOT_PROVEN, and says it is superseded by the 21/09 deep audit. Its reported controller 11/11 and coverage FAIL21 results belong to that snapshot; no current status is inferred from them."
+    },
+    {
+      "id": "M02-15SEP-PROD-STATES-ARE-HISTORICAL",
+      "classification": "DOCUMENTATION_GOVERNANCE",
+      "observation": "The paired backlog and audit agree on 1 control-only DONE, 16 BLOCKED and 48 TODO for PROD-001–065, with subaccepts not automatically completing parent cards. The backlog says .agent governs live operational status. The 21/09 program now supersedes this 65-card legacy queue for current progress."
+    },
+    {
+      "id": "M02-15SEP-ROADMAP-IS-GATE-BASED",
+      "classification": "DOCUMENTATION_GOVERNANCE",
+      "observation": "R0–R8 defines result gates for integrity, coverage, candidate, CI, target, journeys/UX, operation, recertification and controlled entry without schedule promises. It keeps authority/target decisions explicit and does not authorize current external actions."
+    }
+  ],
+  "candidate_actions": [
+    "Retain these 15/09 documents as a historical checkpoint and preserve the 21/09 supersession links.",
+    "Do not transfer legacy PROD card counts, candidate hashes or local verification counts into the active REM control plane.",
+    "Continue to distinguish local subaccepts from candidate, target and authority proof."
+  ],
+  "limitations": [
+    "Content and cross-reference review only; historical controller, critical-coverage, package checksum, tests, DB, browser, Helm, OIDC, release or target claims were not rerun.",
+    "No referenced Gauntlet state file, private incident record, target, credentials, UAT, destructive action or external handoff was accessed/performed.",
+    "Scoped path scan found no /home or /tmp absolute path patterns in these three documents; this is not a full PII review.",
+    "Reviewer is not independent; remaining path review and independent critique stay open."
+  ],
+  "checkpoint_validation": {
+    "json_and_jsonl_parse": "PASS (177 JSON and 8 JSONL files under .agent; document-governance JSON also parsed)",
+    "git_diff_check": "PASS",
+    "docs_validate": "PASS",
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 35; no new REM-010/M-02 finding and no gate-v2 finding. The global controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T10:33:41Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 299,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 425,
+    "status_sha256": "942e48bcc55a9e01d4f0d4ea3107c7922347518ab862d568938c653784ea8aee",
+    "note": "Read-only porcelain status after M-02 round 36 and checkpoint validation; original 386-path denominator unchanged. Round-36 review artifact is the thirty-ninth post-inventory path. No candidate, overlay or frozen SHA exists."
+  }
+}

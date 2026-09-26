@@ -1,0 +1,80 @@
+{
+  "evidence_id": "M02-README-STATUS-CORRECTION-ROUND30-20260923",
+  "recorded_at": "2026-09-23T10:03:06Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "source_finding_ref": ".agent/evidence/m02-source-review-round28-20260923.json#M02-README-AGENT-STRUCTURAL-STATUS-STALE",
+  "path_update": {
+    "path": "docs/README.md",
+    "git_status_at_inventory": " M",
+    "original_inventory_sha256": "9b6aa85e9a7c09074e895815a682eee3ba78ef670615e1853348100cc68ca3c6",
+    "hash_when_reviewed_round28": "9b6aa85e9a7c09074e895815a682eee3ba78ef670615e1853348100cc68ca3c6",
+    "post_correction_sha256": "998c7b92f2b8361d543716c7b59b02efd841233e0997938a4f7926ad27056410",
+    "sha_matches_original_inventory": false,
+    "counted_as_new_original_path_this_round": false,
+    "change": "The README now says controller FAIL and M-02 path classification is still in progress, then points to candidate-bound review only after path review/independent critique. The formal baseline and supplemental 23/09 report pointers were left unchanged."
+  },
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "Documentation links/governance and Triple-A current snapshot checks passed with the corrected README."
+  },
+  "controller_revalidation": {
+    "command": "python3 /home/ricardo/.agents/skills/engineering-framework/scripts/check_state.py --quiet .",
+    "result": "FAIL",
+    "exit_status": 1,
+    "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged; no new REM-010/M-02 finding and no gate-v2 finding. The global controller remains non-approving."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-README-AGENT-STRUCTURAL-STATUS-STALE",
+      "status": "RESOLVED_LOCAL",
+      "observation": "The README no longer states that .agent currently passes structurally or that independent review is the immediate next action while M-02 remains active."
+    },
+    {
+      "id": "M02-GBRAIN-UPDATE-REMAINS-EXTERNAL",
+      "status": "OPEN",
+      "observation": "docs/430 requires a GBrain project-page update before task closure. This local correction does not perform or claim that external handoff."
+    }
+  ],
+  "candidate_actions": [
+    "Keep the 21/09 baseline as the formal executive source and the 23/09 scorecard supplemental.",
+    "Include the corrected README hash in any refreshed candidate-bound inventory; the original 386-path inventory remains the historical starting snapshot.",
+    "Complete the remaining M-02 path review and independent critique before candidate-bound CI/release steps."
+  ],
+  "limitations": [
+    "The README is intentionally post-review modified, so its present hash differs from the original inventory; the before/after identity is explicit here.",
+    "No external GBrain write, candidate checkout, overlay, frozen SHA, CI/release or target action occurred."
+  ],
+  "checkpoint_validation": {
+    "json_and_jsonl_parse": "PASS",
+    "git_diff_check": "PASS",
+    "workspace_snapshot": {
+      "captured_at_utc": "2026-09-23T10:04:15Z",
+      "head": "ad2f0373f68635f2579253b013a4382219906921",
+      "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+      "modified_tracked_paths": 126,
+      "untracked_paths": 293,
+      "deleted_paths": 0,
+      "staged_paths": 0,
+      "total_dirty_paths": 419,
+      "status_sha256": "75bf4e554d3cf46b656090aff6de1948a5b9678b5aa68cfd1e2c624410ebe2f9",
+      "note": "Read-only porcelain status after M-02 round 30 local README correction and controller validation; original 386-path denominator unchanged. Round-30 evidence is the thirty-third post-inventory artifact."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T10:04:15Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 293,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 419,
+    "status_sha256": "75bf4e554d3cf46b656090aff6de1948a5b9678b5aa68cfd1e2c624410ebe2f9",
+    "note": "Read-only porcelain status after M-02 round 30 local README correction and controller validation; original 386-path denominator unchanged. Round-30 evidence is the thirty-third post-inventory artifact."
+  }
+}

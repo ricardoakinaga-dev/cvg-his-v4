@@ -1,0 +1,131 @@
+{
+  "evidence_id": "M21-CLINICAL-HANDOFF-READ-ROUTES-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T09:57:32Z",
+  "scope": "M-21/M-23 extraction of clinical-handoff collection and detail GET routes from the API dispatcher.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to this dirty worktree at the recorded HEAD; it is not candidate or release evidence."
+  },
+  "extractions": [
+    {
+      "route": "GET /clinical-handoffs",
+      "server_lines_before": 3953,
+      "server_lines_after": 3917,
+      "server_line_delta": -36,
+      "behavior_preserved": [
+        "Exact collection path and GET method match",
+        "encounters.read permission, status alias/empty-primary precedence, filter validation order and messages",
+        "Account-scoped filters, audit fields/order, and 200 { items } response"
+      ],
+      "reviewed_hashes": {
+        "route_sha256": "21071c86cccbb8407600c5d9aca0beac4e16f36211c1424d03e7e57beef41b09",
+        "test_sha256": "db91a830bedb62f4bc22f1f0a9b8b1c87af361e5636dcf74aacfeca3acdee67b",
+        "server_sha256": "b21b09cc807f06cc51ec2ddf33d478a2584fe510a10c76ecf677665bd6824509",
+        "manifest_sha256": "43bc0cd54cab4267262974eb8d34590672a2656097524ccbdcbeb50906ac449c"
+      }
+    },
+    {
+      "route": "GET /clinical-handoffs/:handoffId (legacy broad prefix matcher)",
+      "server_lines_before": 3902,
+      "server_lines_after": 3897,
+      "server_line_delta": -5,
+      "behavior_preserved": [
+        "pathname.startsWith('/clinical-handoffs/') and GET matching, including nested suffix paths",
+        "Authentication before non-empty handoff ID validation",
+        "handoff ID from pathname.split('/')[2] and lookup under authenticated account",
+        "Audit after lookup using returned handoff ID, then 200 handoff JSON"
+      ],
+      "reviewed_hashes": {
+        "route_sha256": "613595e2cdccc789b5e2830ea2e6b8fd3ecee320d3ee8b38ade269e4ff49b384",
+        "test_sha256": "2a2ad7ca866867eaafbb77d6cb5c437acec7cb01a4318af46e719631761dec1c",
+        "server_sha256": "11e67b8d85633d122d19647c88cc147fbaa61710a14ea25353995548912b3e7c",
+        "manifest_sha256": "2d810fc14ba0e2fcc1f6684d37359c75704c3d5643a289cb965b8cd2a9ac6d5e"
+      }
+    }
+  ],
+  "current_changed_paths": [
+    {
+      "path": "apps/api/src/routes/clinical-handoffs-read-routes.ts",
+      "sha256": "613595e2cdccc789b5e2830ea2e6b8fd3ecee320d3ee8b38ade269e4ff49b384",
+      "physical_lines": 126
+    },
+    {
+      "path": "apps/api/src/routes/clinical-handoffs-read-routes.test.ts",
+      "sha256": "2a2ad7ca866867eaafbb77d6cb5c437acec7cb01a4318af46e719631761dec1c",
+      "physical_lines": 372
+    },
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "11e67b8d85633d122d19647c88cc147fbaa61710a14ea25353995548912b3e7c",
+      "physical_lines": 3897
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "2d810fc14ba0e2fcc1f6684d37359c75704c3d5643a289cb965b8cd2a9ac6d5e",
+      "server_budget": {
+        "current_lines": 3897,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH node --import tsx --test apps/api/src/routes/clinical-handoffs-read-routes.test.ts",
+      "result": "PASS, 8 focused tests covering collection filters/aliases/validation and detail nested matching, lookup scoping, audit order, response, empty ID, and fallthrough.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/api typecheck",
+      "result": "PASS",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; server.ts=3,897, cap=8,323, previous maximum=8,335.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/routes/clinical-handoffs-read-routes.ts apps/api/src/routes/clinical-handoffs-read-routes.test.ts apps/api/src/server.ts docs/engineering/complexity-hotspots.json && git diff --check -- apps/api/src/server.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    }
+  ],
+  "independent_reviews": [
+    {
+      "result": "PASS",
+      "critic_id": "critic_m21_clinical_handoffs_list_i2",
+      "reviewed_route_snapshot": "GET /clinical-handoffs collection branch, prior to adding the detail handler",
+      "reviewed_sha256": [
+        "21071c86cccbb8407600c5d9aca0beac4e16f36211c1424d03e7e57beef41b09",
+        "db91a830bedb62f4bc22f1f0a9b8b1c87af361e5636dcf74aacfeca3acdee67b",
+        "b21b09cc807f06cc51ec2ddf33d478a2584fe510a10c76ecf677665bd6824509",
+        "43bc0cd54cab4267262974eb8d34590672a2656097524ccbdcbeb50906ac449c"
+      ],
+      "findings": "No behavior delta; exact collection dispatch, auth, status precedence/validation, filters, audit and response order confirmed; 5/5 tests passed under Node 22.23.2."
+    },
+    {
+      "result": "PASS",
+      "critic_id": "critic_m21_clinical_handoff_detail_i1",
+      "reviewed_sha256": [
+        "613595e2cdccc789b5e2830ea2e6b8fd3ecee320d3ee8b38ade269e4ff49b384",
+        "2a2ad7ca866867eaafbb77d6cb5c437acec7cb01a4318af46e719631761dec1c",
+        "11e67b8d85633d122d19647c88cc147fbaa61710a14ea25353995548912b3e7c",
+        "2d810fc14ba0e2fcc1f6684d37359c75704c3d5643a289cb965b8cd2a9ac6d5e"
+      ],
+      "findings": "No behavior delta; the legacy broad nested matcher, auth-before-ID-validation, account lookup, returned-ID audit and response order confirmed; 8/8 combined route tests passed under Node 22.23.2."
+    }
+  ],
+  "limitations": [
+    "Focused route tests use callback and in-memory service doubles; they do not prove database-backed persistence or PostgreSQL RLS.",
+    "This slice does not add server-level HTTP denial tests, persisted audit assertions, or a read-only-only principal integration case.",
+    "The worktree remains dirty and no candidate SHA, CI, target, UAT, or release acceptance is asserted.",
+    "No database, service, listener, container, network probe, or port was used."
+  ]
+}

@@ -1,0 +1,27 @@
+# REM-003 — runtime oficial e instalação congelada
+
+timestamp_utc=2026-09-21T16:48:09+00:00
+repository=/home/ricardo/cvg-his-v4
+head=ad2f0373f68635f2579253b013a4382219906921
+
+## Observação
+
+- O contrato existente fixa `.node-version=22.23.2`, `package.json.engines.node=22.23.2` e `packageManager=pnpm@10.33.0`.
+- Node `v22.23.2` já estava instalado no NVM local em `/home/ricardo/.nvm/versions/node/v22.23.2/bin/node`; a shell foi ativada com `nvm use 22.23.2`.
+- A shell anterior estava em Node `v24.20.0`; nenhum arquivo de produto foi alterado para mascarar essa divergência.
+
+## Comandos e resultados
+
+1. `source /home/ricardo/.nvm/nvm.sh && nvm install 22.23.2`: `exit 0`; versão já instalada e selecionada.
+2. `node --version`: `v22.23.2`.
+3. `npm --version`: `10.9.8`.
+4. `pnpm --version`: `10.33.0`.
+5. `CI=1 pnpm install --frozen-lockfile`: `exit 0`; 69 projetos, lockfile atualizado, resolução pulada, árvore já atualizada.
+6. `sha256sum pnpm-lock.yaml node_modules/.pnpm/lock.yaml`: ambos `cdcd681d6af3d68acb7a0c1632dee9935ff8077460db1423748830d1fb5d7e9e`.
+7. `git diff --exit-code -- package.json pnpm-lock.yaml .node-version .npmrc`: `exit 0`.
+
+## Limites
+
+Esta evidência fecha somente o contrato de runtime/instalação de REM-003. Coverage, complexidade, testes comportamentais e demais gates ainda precisam de execução no Node 22. Nenhuma publicação, deploy, alteração de refs ou uso de credenciais reais ocorreu.
+
+result=PASS

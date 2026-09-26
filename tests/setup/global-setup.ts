@@ -1,6 +1,10 @@
+import { createHash } from 'node:crypto';
+import { mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs';
+import { rm } from 'node:fs/promises';
+import { dirname, join, resolve } from 'node:path';
+
 import {
   ensureTestDatabase,
-  resetTestDatabase,
   closePools,
   dropTestDatabase,
   withTestDatabaseLock,
@@ -10,9 +14,94 @@ import {
 } from '../db/db-admin.js';
 import { applyDrizzleMigration, applySeed } from '../db/db-schema.js';
 import { verifyIntegrity } from '../db/db-integrity.js';
-import { TEST_DB_IS_EPHEMERAL, TEST_DB_NAME, TEST_DB_URL } from './env.js';
+import {
+  assertDisposableTestDatabaseTarget,
+  DEFAULT_TEST_DB_OWNERSHIP_DIRECTORY,
+  TEST_DB_IS_EPHEMERAL,
+  TEST_DB_NAME,
+  TEST_DB_OWNER_COMMENT,
+  TEST_DB_OWNER_ROLE,
+  TEST_DB_RUN_ID,
+  TEST_DB_URL
+} from './env.js';
 import { RLS_TEST_ROLE } from '../helpers/rls-helpers.js';
 import { Pool } from 'pg';
+
+function getOwnershipMarker(): { readonly runId: string; readonly path: string } | null {
+  const configuredDirectory = process.env.TEST_DB_OWNERSHIP_DIRECTORY;
+  const configuredRunId = process.env.TEST_DB_RUN_ID;
+  if (configuredDirectory === undefined && configuredRunId === undefined) {
+    if (!TEST_DB_IS_EPHEMERAL) return null;
+    const markerName = `${createHash('sha256').update(TEST_DB_NAME).digest('hex')}.json`;
+    return {
+      runId: TEST_DB_RUN_ID,
+      path: join(DEFAULT_TEST_DB_OWNERSHIP_DIRECTORY, markerName)
+    };
+  }
+
+  const directory = configuredDirectory;
+  const runId = configuredRunId;
+  if (!directory || !runId || !/^[a-f0-9]{32}$/i.test(runId)) {
+    throw new Error('[test-setup] Incomplete or invalid ephemeral database ownership context');
+  }
+
+  const markerName = `${createHash('sha256').update(TEST_DB_NAME).digest('hex')}.json`;
+  return { runId, path: join(resolve(directory), markerName) };
+}
+
+function registerOwnedTestDatabase(ownerRoleName: string, ownerComment: string): void {
+  const marker = getOwnershipMarker();
+  if (!marker) return;
+  if (ownerRoleName !== TEST_DB_OWNER_ROLE || ownerComment !== TEST_DB_OWNER_COMMENT) {
+    throw new Error('[test-setup] Refusing to record unexpected ephemeral database ownership');
+  }
+  const directory = dirname(marker.path);
+  const temporaryPath = `${marker.path}.${process.pid}.tmp`;
+  mkdirSync(directory, { recursive: true, mode: 0o700 });
+  try {
+    writeFileSync(
+      temporaryPath,
+      `${JSON.stringify({
+        runId: marker.runId,
+        databaseName: TEST_DB_NAME,
+        ownerRoleName,
+        ownerComment
+      })}\n`,
+      { flag: 'wx', mode: 0o600 }
+    );
+    renameSync(temporaryPath, marker.path);
+  } catch (error) {
+    rmSync(temporaryPath, { force: true });
+    throw error;
+  }
+}
+
+async function removeOwnershipMarker(): Promise<void> {
+  const marker = getOwnershipMarker();
+  if (!marker) return;
+  try {
+    const record = JSON.parse(readFileSync(marker.path, 'utf8')) as {
+      readonly runId?: unknown;
+      readonly databaseName?: unknown;
+      readonly ownerRoleName?: unknown;
+      readonly ownerComment?: unknown;
+    };
+    if (
+      record.runId !== marker.runId ||
+      record.databaseName !== TEST_DB_NAME ||
+      record.ownerRoleName !== TEST_DB_OWNER_ROLE ||
+      record.ownerComment !== TEST_DB_OWNER_COMMENT
+    ) {
+      throw new Error(
+        '[test-setup] Refusing to remove a database ownership marker from another run'
+      );
+    }
+    await rm(marker.path, { force: true });
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') return;
+    throw error;
+  }
+}
 
 async function ensureRlsTestRole(): Promise<void> {
   const adminPool = getAdminPool();
@@ -30,7 +119,7 @@ async function ensureRlsTestRole(): Promise<void> {
     `);
 
     await adminPool.query(
-      `GRANT CONNECT ON DATABASE "${new URL(TEST_DB_URL).pathname.slice(1)}" TO ${RLS_TEST_ROLE}`
+      `GRANT CONNECT ON DATABASE "${TEST_DB_NAME.replaceAll('"', '""')}" TO ${RLS_TEST_ROLE}`
     );
     await testPool.query(`GRANT USAGE ON SCHEMA public TO ${RLS_TEST_ROLE}`);
     await testPool.query(`GRANT USAGE ON SCHEMA app TO ${RLS_TEST_ROLE}`);
@@ -61,11 +150,19 @@ export default async function globalSetup() {
   let cleanupRequired = false;
 
   try {
+    if (TEST_DB_IS_EPHEMERAL) {
+      // Validate the configured target and ownership context before the
+      // advisory-lock helper opens an administrative connection.
+      assertDisposableTestDatabaseTarget();
+      getOwnershipMarker();
+    }
+
     // Keep every setup path (pool, migrations and seed) on the same resolved
     // database. This matters when test-critical adds a suffix to an explicit
     // DATABASE_URL_TEST so its phases are physically isolated.
     process.env.DATABASE_URL_TEST = TEST_DB_URL;
     process.env.DATABASE_URL = TEST_DB_URL;
+    process.env.TEST_DB_URL_RESOLVED = '1';
     console.log(
       `[test-setup] Using test database ${TEST_DB_NAME}${TEST_DB_IS_EPHEMERAL ? ' (ephemeral)' : ''}`
     );
@@ -88,10 +185,9 @@ export default async function globalSetup() {
         return;
       }
 
-      await ensureTestDatabase();
-      await resetTestDatabase();
       cleanupRequired = true;
-      console.log('[test-setup] Test database reset');
+      await ensureTestDatabase(registerOwnedTestDatabase);
+      console.log('[test-setup] Fresh ephemeral test database created');
 
       await withTestClusterSetupLock(async () => {
         await applyDrizzleMigration();
@@ -119,11 +215,21 @@ export default async function globalSetup() {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Unknown error';
+    let cleanupMessage = '';
+    if (cleanupRequired) {
+      try {
+        await globalTeardown();
+        cleanupRequired = false;
+      } catch (cleanupError) {
+        cleanupMessage = ` Cleanup also failed: ${cleanupError instanceof Error ? cleanupError.message : 'Unknown cleanup error'}.`;
+      }
+    }
     if (requireTestDb) {
       throw new Error(
-        `[test-setup] Database setup failed for DB-required suite: ${message}. Start the isolated test database with pnpm test:db:start or run pnpm test:critical:bootstrap.`
+        `[test-setup] Database setup failed for DB-required suite: ${message}.${cleanupMessage} Start the isolated test database with pnpm test:db:start or run pnpm test:critical:bootstrap.`
       );
     }
+    if (cleanupMessage) throw new Error(`[test-setup] ${cleanupMessage.trim()}`);
     console.warn('[test-setup] Database not available, skipping DB-dependent setup:', message);
   }
 
@@ -136,6 +242,7 @@ export async function globalTeardown() {
   await withTestDatabaseLock(async () => {
     await dropTestDatabase();
   });
+  await removeOwnershipMarker();
   await closePools();
   console.log('[test-teardown] Done');
 }

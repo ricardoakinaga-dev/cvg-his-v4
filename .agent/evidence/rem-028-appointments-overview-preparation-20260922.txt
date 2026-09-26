@@ -1,0 +1,55 @@
+REM-028 — preparação do seam de overview/query da agenda
+Data: 2026-09-22T05:40:00.000000Z
+Escopo: overview primário, enriquecimento opcional, filtros/query, stale-response, permission fail-closed e caches
+Status: PASS_WITH_CONDITIONS para IMPLEMENTATION_READY
+
+## Autoridade e limite
+
+A instrução autoriza inspeção e implementação local reversível no worktree compartilhado.
+Não autoriza CI remoto, target, UAT, release, credenciais ou aceite de owner. O worktree
+dirty foi preservado.
+
+## Topologia observada
+
+- `AppointmentsListPage.vue` concentra os refs de `overview`, `loading`, `services`, `ownerCache`, `patientCache`, `permissionCodes` e `disposed`, além dos filtros estruturais e de texto.
+- Os handlers de período/filtro e o adapter `agendaContext` são page-bound; `loadOverview` recebe os parâmetros atuais e `route.query`/memória não devem ser movidos para o seam.
+- O workflow de overview usa request generation (`overviewRequest`), limpa o resultado anterior antes da nova leitura, publica a resposta primária sem esperar `servicesService`, owner ou patient, e bloqueia resposta/enriquecimento stale por `isCurrentOverview`.
+- `ApiError(403)` remove a permissão de leitura; falhas de services/owner/patient são opcionais e produzem fallback de label sem bloquear a grade.
+- Os testes focais cobrem loading/error, duas corridas de overview, erro stale, perda de permissão, unmount antes da resposta, enriquecimento atrasado e resposta atual vencendo uma antiga.
+
+## Decisão de seam
+
+O próximo corte será `apps/spa/src/pages/appointments/useAppointmentsOverview.ts`, um
+composable/controller candidate-bound que recebe dependências e getters tipados:
+
+- `getParams` para o contrato do overview, sem ler router/query diretamente;
+- `canReadScheduling` e `isDisposed` para fail-closed/stale;
+- callbacks de erro, 403 e reconciliação do appointment selecionado;
+- funções injetadas de overview, services, owner e patient.
+
+O composable será dono de `overview`, `loading`, `services`, caches e request generation,
+incluindo `loadOverview`, enriquecimento opcional e `invalidate`. A page continuará dona
+da fonte de permissão, sessão, `agendaContext`, router, filtros, action controller,
+seleção/drawer e da decisão de quando chamar o loader; não haverá store global nem leitura
+de URL dentro do composable.
+
+## Known-bads e verificação
+
+- Não aguardar enriquecimento opcional antes de publicar a resposta primária.
+- Não manter dados do dia anterior quando o novo request falhar; limpar overview/loading
+  com a mesma semântica atual.
+- Não aceitar resposta ou cache de request antigo, inclusive depois de unmount ou 403.
+- Não perder fallback `Tutor <id>`/`Paciente <id>`, isolamento de erro de services e
+  reconciliação do drawer selecionado.
+- Verificação esperada: teste focal novo do composable + `AppointmentsListPage.test.ts`,
+  `vue-tsc`, lint, build, diff e auditoria estática de ausência de router/store no seam.
+  Browser/visual, E7, owners e suíte SPA integral continuam condições abertas.
+
+## Evidência reproduzível
+
+- `nl -ba apps/spa/src/pages/appointments/AppointmentsListPage.vue | sed -n '448,477p;702,943p'`
+- `nl -ba apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts | sed -n '457,596p'`
+- `sed -n '1,55p;71,185p' apps/spa/src/services/scheduling.ts`
+- `sed -n '1,75p' apps/spa/src/services/owner.ts`
+- `sed -n '1,60p' apps/spa/src/services/patient.ts`
+- `sed -n '1,45p' apps/spa/src/services/services.ts`

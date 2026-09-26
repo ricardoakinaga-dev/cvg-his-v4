@@ -18,6 +18,10 @@ export default defineConfig({
       '@cvg-his-v2/design-system/src/vue': resolve(
         __dirname,
         '../../packages/design-system/src/vue'
+      ),
+      '@cvg-his-v2/shared-contracts': resolve(
+        __dirname,
+        '../../packages/shared/contracts/src/index.ts'
       )
     }
   },

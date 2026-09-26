@@ -1,0 +1,34 @@
+# REM-006 — baseline de coverage no runtime oficial
+
+timestamp_utc=2026-09-21T17:06:40+00:00
+repository=/home/ricardo/cvg-his-v4
+head=ad2f0373f68635f2579253b013a4382219906921
+runtime=node-v22.23.2
+package_manager=pnpm-10.33.0
+command=`pnpm test:coverage`
+exit_status=1
+duration=304.23s
+
+## Resultado agregado
+
+- Test files: 3 failed, 276 passed, 1 skipped (280).
+- Tests: 6 failed, 3000 passed, 3 skipped (3009).
+- Statements: 87.07% (10473/12027).
+- Branches: 81.79% (8177/9997), abaixo do threshold global congelado de 82%.
+- Functions: 88.86% (2339/2632).
+- Lines: 88.56% (9885/11161).
+
+## Falhas reproduzidas
+
+1. `tests/unit/http-command-helpers.test.ts:297`: a expectativa antiga exige `ValidationError`, mas o contrato corrente retorna `PayloadTooLargeError` para o limite excedido. Correção focal pertence à atualização do teste de REM-005.
+2. `tests/unit/api/startup-secrets-runtime.test.ts:59`: expectativa de descritores staging não inclui `METRICS_AUTH_TOKEN` em `staging/metrics`.
+3. `tests/unit/api/startup-secrets-runtime.test.ts:89`: expectativa de descritores development não inclui `METRICS_AUTH_TOKEN` em `development/metrics`.
+4. `tests/unit/api/startup-secrets-runtime.test.ts:140`: expectativa de `getMany` não inclui o descritor metrics.
+5. `tests/unit/api/startup-secrets-runtime.test.ts:174`: mock de retorno presume nenhum descritor e causa `resolvedSecrets` indefinido após o contrato metrics.
+6. `tests/unit/infra/complexity-hotspots.test.ts:16`: `apps/api/src/server.ts` tem 8406 linhas, excedendo o orçamento congelado de 8335 por 71 linhas.
+
+## Limites e decisão
+
+O comando não reduziu threshold nem alterou excludes. A cobertura confirma o known-bad previsto pelo programa e não é release readiness. REM-004/REM-005 precisam ser reabertos para sincronizar os testes agregados; a redução do hotspot segue a fatia arquitetural de REM-026, sem elevar o teto.
+
+result=FAIL

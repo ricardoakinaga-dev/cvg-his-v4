@@ -13,7 +13,7 @@ import type {
   InpatientStaySummary
 } from '@cvg-his-v2/shared-types';
 
-import { handleInpatientRoutes } from './inpatient-routes.js';
+import { handleInpatientListRoute, handleInpatientRoutes } from './inpatient-routes.js';
 
 class MockRequest extends Readable {
   public readonly method: string;
@@ -152,6 +152,63 @@ function createInpatientService(): InpatientService {
   );
   return service;
 }
+
+test('handleInpatientListRoute refreshes the account before listing filtered stays', async () => {
+  const calls: string[] = [];
+  let receivedFilters:
+    | { encounterId?: string; patientId?: string; includeDischarged?: boolean }
+    | undefined;
+  const stay = { id: 'stay-list-route' } as InpatientStaySummary;
+  const request = new MockRequest({
+    method: 'GET',
+    url: '/inpatient?encounterId=encounter-list-route&patientId=patient-list-route&includeDischarged=true'
+  });
+  const response = new MockResponse();
+
+  const handled = await handleInpatientListRoute(
+    '/inpatient',
+    new URL(request.url, 'http://localhost'),
+    request as never,
+    response as never,
+    'corr-inpatient-list-route',
+    {
+      inpatient: {
+        refreshAccount: async (accountId: string) => {
+          calls.push(`refresh:${accountId}`);
+        },
+        list: (accountId: string, filters: typeof receivedFilters) => {
+          calls.push(`list:${accountId}`);
+          receivedFilters = filters;
+          return [stay];
+        }
+      } as never,
+      audit: {
+        write: (entry: { entityId: string }) => {
+          calls.push(`audit:${entry.entityId}`);
+        }
+      } as never,
+      requirePrincipal: (_request, permission) => {
+        calls.push(`principal:${permission}`);
+        return createPrincipal();
+      }
+    }
+  );
+
+  assert.equal(handled, true);
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(calls, [
+    'principal:inpatient.read',
+    'refresh:acc_cvg_demo',
+    'audit:encounter-list-route',
+    'list:acc_cvg_demo'
+  ]);
+  assert.deepEqual(receivedFilters, {
+    encounterId: 'encounter-list-route',
+    patientId: 'patient-list-route',
+    includeDischarged: true
+  });
+  assert.deepEqual(response.bodyJson<{ items: unknown[] }>().items, [stay]);
+});
 
 test('handleInpatientRoutes generates handover preview with latest progress and attention flags', async () => {
   const response = new MockResponse();

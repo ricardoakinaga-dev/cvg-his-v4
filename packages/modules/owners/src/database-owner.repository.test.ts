@@ -40,6 +40,7 @@ vi.mock('@cvg-his-v2/tenant-context', async (importOriginal) => {
 });
 
 import { DatabaseOwnerRepository } from './repositories/database-owner.repository.js';
+import { requireAccountId } from '@cvg-his-v2/tenant-context';
 
 const timestamp = new Date('2026-09-16T12:00:00.000Z');
 const owner = {
@@ -196,4 +197,28 @@ test('DatabaseOwnerRepository requires tenant context for every mutation and rea
   await expect(repository.findById(owner.id)).rejects.toThrow(/tenant context/);
   await expect(repository.findByAccountId(mockState.accountId as never)).rejects.toThrow(/tenant context/);
   await expect(repository.delete(owner.id)).rejects.toThrow(/tenant context/);
+});
+
+test('DatabaseOwnerRepository returns null without querying for a malformed identifier', async () => {
+  vi.mocked(requireAccountId).mockReturnValue(mockState.accountId);
+  const driverFailure = Object.assign(new Error('mock driver failure 22P02'), { code: '22P02' });
+  const wrapped = Object.assign(new Error('mock query failure 22P02'), { cause: driverFailure });
+  const rejecting = {
+    select: vi.fn(() => ({ from: () => ({ where: () => ({ limit: () => Promise.reject(wrapped) }) }) }))
+  };
+  const repository = new DatabaseOwnerRepository(rejecting as never);
+
+  await expect(repository.findById('not-a-uuid' as never)).resolves.toBeNull();
+});
+
+test('DatabaseOwnerRepository propagates database failures other than invalid uuid input', async () => {
+  vi.mocked(requireAccountId).mockReturnValue(mockState.accountId);
+  const driverFailure = Object.assign(new Error('mock driver failure 57014'), { code: '57014' });
+  const wrapped = Object.assign(new Error('mock query failure 57014'), { cause: driverFailure });
+  const rejecting = {
+    select: vi.fn(() => ({ from: () => ({ where: () => ({ limit: () => Promise.reject(wrapped) }) }) }))
+  };
+  const repository = new DatabaseOwnerRepository(rejecting as never);
+
+  await expect(repository.findById(owner.id)).rejects.toThrow(/mock query failure 57014/);
 });

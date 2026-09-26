@@ -5,7 +5,6 @@
  */
 import { createHash } from 'node:crypto';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { createCorrelationId } from '@cvg-his-v2/shared-utils';
 import type { CorrelationId, ModuleName } from '@cvg-his-v2/shared-types';
 import type { ApiKeysService } from '@cvg-his-v2/module-api-keys';
 import type { AuditService } from '@cvg-his-v2/module-audit';
@@ -14,10 +13,14 @@ import { AppError, ValidationError } from '@cvg-his-v2/shared-errors';
 import { readJsonBody, validateRequestBody } from '../helpers/common.js';
 import { requireApiKey } from '../helpers/auth-helpers.js';
 import { appendAudit } from '../helpers/audit-helper.js';
-import type { EventBusService } from '@cvg-his-v2/module-event-bus';
+import type {
+  CreateOutboxEventInput,
+  EventBusService
+} from '@cvg-his-v2/module-event-bus';
 import type { PaymentGateway, CardPaymentIntentInput, CardPaymentIntentSummary } from '../payment-gateway.js';
 import type { CardTransactionRepository } from '../card-transaction-repository.js';
 import type { PixTransactionRepository } from '../pix-transaction-repository.js';
+import { formatTraceParent, type TraceableIncomingMessage } from '../tracing.js';
 
 export interface PaymentsHandlers {
   eventBus: EventBusService;
@@ -27,6 +30,38 @@ export interface PaymentsHandlers {
   cardTransactions: CardTransactionRepository;
   pixTransactions: PixTransactionRepository;
   billing: BillingService;
+  /** Production-like runtimes must receive a client Idempotency-Key for PIX creation. */
+  requirePixIdempotencyKey?: boolean;
+}
+
+/** Publish payment events with the same request identity used by API telemetry. */
+function publishPaymentEvent(
+  eventBus: Pick<EventBusService, 'publish'>,
+  request: IncomingMessage,
+  correlationId: string,
+  input: Omit<CreateOutboxEventInput, 'correlationId'>
+) {
+  const span = (request as TraceableIncomingMessage).span;
+  const traceparent = span
+    ? formatTraceParent(span.context.traceId, span.context.spanId, span.context.traceFlags)
+    : undefined;
+  const existingMeta = input.payload['_meta'];
+
+  return eventBus.publish({
+    ...input,
+    correlationId: correlationId as CorrelationId,
+    payload: {
+      ...input.payload,
+      _meta: {
+        ...(existingMeta && typeof existingMeta === 'object' && !Array.isArray(existingMeta)
+          ? (existingMeta as Record<string, unknown>)
+          : {}),
+        correlationId,
+        sourceService: 'cvg-his-v2-api',
+        traceparent
+      }
+    }
+  });
 }
 
 /**
@@ -50,7 +85,8 @@ export function handlePaymentsRoutes(
       eventBus,
       paymentGateway,
       apiKeys,
-      audit
+      audit,
+      requirePixIdempotencyKey: handlers.requirePixIdempotencyKey
     });
   }
 
@@ -110,10 +146,24 @@ async function handlePixIntentCreate(
     eventBus,
     paymentGateway,
     apiKeys,
-    audit
-  }: Pick<PaymentsHandlers, 'eventBus' | 'paymentGateway' | 'apiKeys' | 'audit'>
+    audit,
+    requirePixIdempotencyKey
+  }: Pick<
+    PaymentsHandlers,
+    'eventBus' | 'paymentGateway' | 'apiKeys' | 'audit' | 'requirePixIdempotencyKey'
+  >
 ): Promise<boolean> {
   const apiKeyPrincipal = await requireApiKey(request, 'payments.manage', apiKeys);
+  const rawIdempotencyKey = request.headers['idempotency-key'];
+  if (
+    rawIdempotencyKey !== undefined &&
+    (typeof rawIdempotencyKey !== 'string' || !/^[\x21-\x7e]{1,128}$/.test(rawIdempotencyKey))
+  ) {
+    throw new ValidationError('Idempotency-Key must contain 1 to 128 visible ASCII characters');
+  }
+  if (requirePixIdempotencyKey && rawIdempotencyKey === undefined) {
+    throw new ValidationError('Idempotency-Key header is required for PIX intent creation');
+  }
   const body = (await readJsonBody(request)) as Record<string, unknown>;
 
   validateRequestBody(
@@ -141,6 +191,7 @@ async function handlePixIntentCreate(
 
   const intent = await paymentGateway.createPixIntent({
     accountId: apiKeyPrincipal.apiKey.accountId,
+    ...(rawIdempotencyKey ? { idempotencyKey: rawIdempotencyKey } : {}),
     amount: body.amount,
     description: String(body.description),
     expirationMinutes:
@@ -149,8 +200,7 @@ async function handlePixIntentCreate(
         : undefined
   });
 
-  const event = await eventBus.publish({
-    correlationId: createCorrelationId('pix') as CorrelationId,
+  const event = await publishPaymentEvent(eventBus, request, correlationId, {
     moduleName: 'billing' as ModuleName,
     eventType: 'payment.pix.intent.created',
     payload: {
@@ -419,8 +469,7 @@ async function handleCardIntentCreate(
     });
     const event = current.response && intent.status === 'authorized_pending_capture'
       ? { id: current.response.eventId, correlationId: current.response.eventCorrelationId }
-      : await eventBus.publish({
-    correlationId: createCorrelationId('card') as CorrelationId,
+      : await publishPaymentEvent(eventBus, request, correlationId, {
     moduleName: 'billing' as ModuleName,
     eventType: current.response ? (intent.status === 'captured' ? 'payment.card.completed' : 'payment.card.failed') : 'payment.card.intent.created',
     payload: {
@@ -584,8 +633,7 @@ async function handleCardIntentCapture(
           capturedAt: captureResult.capturedAt, updatedAt: captureResult.capturedAt,
           providerChargeId: captureResult.providerChargeId,
           billingSettlementStatus: captureResult.billingRecordId ? 'pending_billing' : undefined });
-        const completedEvent = await eventBus.publish({
-          correlationId: createCorrelationId('card') as CorrelationId,
+        const completedEvent = await publishPaymentEvent(eventBus, request, correlationId, {
           moduleName: 'billing' as ModuleName,
           eventType: 'payment.card.completed',
           payload: {
@@ -634,8 +682,7 @@ async function handleCardIntentCapture(
       }
 
       await beginFinalization();
-      const failedEvent = await eventBus.publish({
-        correlationId: createCorrelationId('card') as CorrelationId,
+      const failedEvent = await publishPaymentEvent(eventBus, request, correlationId, {
         moduleName: 'billing' as ModuleName,
         eventType: 'payment.card.failed',
         payload: {
@@ -820,8 +867,7 @@ async function handlePixIntentConfirm(
     return true;
   }
 
-  const confirmedEvent = await eventBus.publish({
-    correlationId: createCorrelationId('pix') as CorrelationId,
+  const confirmedEvent = await publishPaymentEvent(eventBus, request, correlationId, {
     moduleName: 'billing' as ModuleName,
     eventType: 'payment.pix.confirmed',
     payload: {

@@ -70,6 +70,15 @@ const saleDetail = {
   cancellationHistory: []
 };
 
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((resolvePromise) => {
+    resolve = resolvePromise;
+  });
+
+  return { promise, resolve };
+}
+
 describe('SalesPage', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -138,16 +147,93 @@ describe('SalesPage', () => {
     expect(wrapper.text()).toContain('Forma de Pagamento');
   });
 
-  it('shows an API error state instead of falling back to local mock data', async () => {
-    mockCounterSalesList.mockRejectedValue(new Error('API indisponível'));
+  it('keeps loading and confirmed empty results distinct, including summary values', async () => {
+    const response = deferred<(typeof saleSummary)[]>();
+    mockCounterSalesList.mockReturnValueOnce(response.promise);
 
     const SalesPage = (await import('../SalesPage.vue')).default;
     const wrapper = mount(SalesPage);
     await flushPromises();
 
-    expect(wrapper.text()).toContain('Não foi possível carregar as vendas: API indisponível');
+    expect(wrapper.get('.sales-empty[role="status"]').text()).toContain('Carregando vendas');
+    expect(wrapper.find('.sales-empty--empty').exists()).toBe(false);
+    expect(wrapper.findAll('.sales-kpis .ds-stat-card--loading')).toHaveLength(4);
+    expect(wrapper.get('.sales-beta-toolbar [aria-live="polite"]').text()).toBe(
+      'Carregando resultados...'
+    );
+
+    response.resolve([]);
+    await flushPromises();
+
+    expect(wrapper.get('.sales-empty--empty').text()).toContain(
+      'Você ainda não tem vendas cadastradas'
+    );
+    expect(wrapper.find('.sales-empty--error').exists()).toBe(false);
+    expect(
+      wrapper
+        .findAll('.sales-kpis .ds-stat-card__value')
+        .slice(0, 3)
+        .map((value) => value.text())
+    ).toEqual(['0', '0', '0']);
+    expect(wrapper.get('.sales-beta-toolbar [aria-live="polite"]').text()).toBe(
+      'Mostrando 0 - 0 pág. de 0 resultados'
+    );
+  });
+
+  it('distinguishes no sales from no filter matches and lets the user clear filters', async () => {
+    const SalesPage = (await import('../SalesPage.vue')).default;
+    const wrapper = mount(SalesPage);
+    await flushPromises();
+
+    await wrapper.find('input[type="search"]').setValue('venda inexistente');
+
+    expect(wrapper.get('.sales-empty--empty').text()).toContain(
+      'Nenhuma venda corresponde aos filtros selecionados.'
+    );
+    expect(wrapper.text()).not.toContain('Você ainda não tem vendas cadastradas');
+
+    await wrapper.get('.sales-empty--empty button').trigger('click');
+
+    expect(wrapper.find('.sales-empty--empty').exists()).toBe(false);
+    expect(wrapper.find('.sale-card').exists()).toBe(true);
+  });
+
+  it('keeps API errors accessible and retries into a successful sales list', async () => {
+    const retryResponse = deferred<(typeof saleSummary)[]>();
+    mockCounterSalesList
+      .mockRejectedValueOnce(new Error('API indisponível'))
+      .mockReturnValueOnce(retryResponse.promise);
+
+    const SalesPage = (await import('../SalesPage.vue')).default;
+    const wrapper = mount(SalesPage);
+    await flushPromises();
+
+    expect(wrapper.get('.sales-empty--error[role="alert"]').text()).toContain(
+      'Não foi possível carregar as vendas: API indisponível'
+    );
+    expect(wrapper.find('.sales-empty--empty').exists()).toBe(false);
+    expect(wrapper.findAll('.sales-kpis .ds-stat-card--error')).toHaveLength(4);
+    expect(wrapper.get('.sales-beta-toolbar [aria-live="polite"]').text()).toBe(
+      'Resultados indisponíveis'
+    );
     expect(wrapper.text()).not.toContain('Roberto Lima');
     expect(wrapper.text()).not.toContain('Carla Martins');
+
+    await wrapper.get('.sales-empty--error button').trigger('click');
+    await flushPromises();
+
+    expect(wrapper.get('.sales-empty[role="status"]').text()).toContain('Carregando vendas');
+    expect(wrapper.find('.sales-empty--empty').exists()).toBe(false);
+    expect(wrapper.findAll('.sales-kpis .ds-stat-card--loading')).toHaveLength(4);
+
+    retryResponse.resolve([saleSummary]);
+    await flushPromises();
+
+    expect(mockCounterSalesList).toHaveBeenCalledTimes(2);
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+    expect(wrapper.find('.sales-empty--empty').exists()).toBe(false);
+    expect(wrapper.find('.sale-card').exists()).toBe(true);
+    expect(wrapper.findAll('.sales-kpis .ds-stat-card--error')).toHaveLength(0);
   });
 
   it('requires a trimmed cancellation reason and shows cancellation history in the detail', async () => {

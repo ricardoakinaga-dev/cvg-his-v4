@@ -1,0 +1,96 @@
+{
+  "evidence_id": "M21-CLINICAL-HANDOFF-WORKFLOW-ROUTES-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T13:07:48Z",
+  "scope": "Bounded extraction of mark-pending, resolve-pending, return-to-clinic, and send-to-finance clinical-handoff POST handlers into one injected route module.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is for the dirty working tree based on the recorded HEAD; it is not candidate or release evidence."
+  },
+  "environment": {
+    "node": "v22.23.2",
+    "pnpm": "10.33.0",
+    "node_env": "test",
+    "database_url_variables_unset": true,
+    "database_or_service_started": false,
+    "listener_or_port_opened": false
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "b476ec30aeb88fadb9167ab6806242285435a5a955383f3c85ebd9c90b314a4a",
+      "physical_lines_after": 3473,
+      "physical_lines_before_this_slice": 3599
+    },
+    {
+      "path": "apps/api/src/routes/clinical-handoff-workflow-routes.ts",
+      "sha256": "545dcbf507e244d9e6920b17e3c82d97d4f5ab272d1a505dd2fb66512a718cfa",
+      "physical_lines": 175
+    },
+    {
+      "path": "apps/api/src/routes/clinical-handoff-workflow-routes.test.ts",
+      "sha256": "bed2b22c60905d55b15e7e401a582fca90b4fc163a2eab012a1e00860d7bdc7a",
+      "physical_lines": 381
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "53d0a406bd58f664d39e520373d7f6836d29549b6f29101f2526b1eeb4ab914f",
+      "server_ts_budget": {
+        "current_lines": 3473,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      },
+      "server_test_budget": {
+        "current_lines": 6447,
+        "max_lines": 6481
+      }
+    }
+  ],
+  "behavior_preserved": [
+    "All four legacy broad path matchers and their branch order remain the same, including second-segment handoff IDs and the resolve issue ID at the legacy fifth split segment.",
+    "Each handler retains encounters.manage authorization before its existing body and identifier-validation sequence.",
+    "The send-to-finance handler retains its internal malformed-body empty-object fallback; the existing tenant-command wrapper may parse malformed JSON before dispatch and reject it before this handler or authorization, as it did before extraction.",
+    "Both clinical-handoff and encounter persistence waits finish before each audit; failures propagate without audit or success response.",
+    "Audit module, action, entity, summary, risk, correlation, 200 response, tenant-command wrapper, and position after acknowledgement and before detail reads are preserved."
+  ],
+  "checks": [
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx --test apps/api/src/routes/clinical-handoff-workflow-routes.test.ts apps/api/src/routes/clinical-handoff-acknowledge-route.test.ts apps/api/src/routes/clinical-handoff-send-route.test.ts apps/api/src/routes/clinical-handoffs-read-routes.test.ts",
+      "result": "PASS; 22/22 combined clinical-handoff workflow, acknowledge, send, and read route tests",
+      "exit_code": 0
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/api exec tsc -p tsconfig.json --noEmit",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; measured 3,473 server.ts lines under the existing 8,323-line ceiling",
+      "exit_code": 0
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/server.ts apps/api/src/routes/clinical-handoff-workflow-routes.ts apps/api/src/routes/clinical-handoff-workflow-routes.test.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check -- apps/api/src/server.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS; both new route files also passed a separate trailing-whitespace scan",
+      "exit_code": 0
+    }
+  ],
+  "independent_review": {
+    "status": "PASS",
+    "reviewer": "critic_m02_inventory_r6_refresh_i2",
+    "frozen_source_hashes_provided": true,
+    "result": "Compared the four extracted handlers with the former HEAD branches and found no behavior delta. Confirmed broad matchers, segment selection, body/auth/service order, persistence before audit, audit fields/order, 200 response, and tenant-command dispatch position. Independently reran 22/22 combined route tests, API typecheck, and complexity check. No files edited.",
+    "nuance": "The outer tenant-command wrapper may parse JSON before dispatch, so its malformed-JSON rejection can precede route authorization and the send-to-finance handler fallback. This wrapper behavior predates the extraction; the direct route-level fallback remains covered by its test."
+  },
+  "limitations": [
+    "Route tests use in-process streams and injected service stubs; PostgreSQL/RLS, durable clinical-handoff persistence, persisted audit behavior, and full cross-account HTTP behavior were not exercised by this slice.",
+    "M-21 remains partial; remaining API composition and full PROD-041 acceptance remain open.",
+    "M-02 candidate freeze, complete source review, overlay approval, and external CI remain open."
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "gate_id": "GATE-IMPLEMENTATION-READY-REMEDIACAO-INTEGRAL-REM-047-20260922",
+  "task": "REM-047",
+  "timestamp": "2026-09-22T10:23:24.000000Z",
+  "gate_type": "IMPLEMENTATION_READY",
+  "decision": "PASS_WITH_CONDITIONS",
+  "criteria": [
+    {
+      "id": "V-REM047-001",
+      "criterion": "F-029, dependência REM-013 e os três pacotes sem execução de testes foram identificados candidate-bound",
+      "status": "PASS"
+    },
+    {
+      "id": "V-REM047-002",
+      "criterion": "A primeira implementação tem teste focal seguro, local, reversível e sem target/credential/chaos real",
+      "status": "PASS"
+    },
+    {
+      "id": "V-REM047-003",
+      "criterion": "A distinção entre contratos runtime executáveis e interfaces TypeScript type-only está registrada",
+      "status": "PASS"
+    },
+    {
+      "id": "V-REM047-004",
+      "criterion": "Comandos de verificação, artefatos e limitações foram definidos antes da implementação",
+      "status": "PASS"
+    }
+  ],
+  "evidence": ".agent/evidence/rem-047-preparation-20260922.txt",
+  "limitations": [
+    "Nenhum teste local prova chaos em target compartilhado, recovery, RPO/RTO, provider real, UAT, CI/OCI, release ou go/no-go.",
+    "Interfaces e aliases TypeScript não têm comportamento runtime; a prova aplicável é compilação e uso tipado, complementada pelos exports runtime disponíveis.",
+    "Crítica independente fresca não foi executada; o veredito permanece candidate-bound e PASS_WITH_CONDITIONS."
+  ],
+  "next_action": "REM-047:IMPLEMENT",
+  "status": "READY"
+}

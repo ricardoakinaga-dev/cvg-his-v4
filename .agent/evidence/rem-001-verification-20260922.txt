@@ -1,0 +1,15 @@
+REM-001 VERIFY — 2026-09-22T10:57:56.000000Z
+
+Fresh read-only verification
+- `/home/ricardo/cvg-his-v4-backups/20260921-remediacao-integral-rem001/SHA256SUMS`: all 25 listed backup/control-plane artifacts returned `OK`.
+- `git bundle verify repository-all-refs.bundle`: bundle is okay, contains 13 refs and records a complete history; HEAD in the bundle is `ad2f0373f68635f2579253b013a4382219906921`.
+- Current repository HEAD is `ad2f0373f68635f2579253b013a4382219906921`; `origin/main..HEAD` remains 79 commits.
+- `git rev-list --objects --all` still exposes `.gauntlet/state.json`; blob `cd9335c6562fda5acf2e9d958a36c60baea8dec9` remains a 152651034-byte blob, so no history rewrite or removal was inferred.
+- `bundle-recovery.txt` and `bundle-verify.txt` retain the prior clone/recovery evidence; the bundle head and expected head match.
+- `history-rewrite-dry-run.txt` remains explicit: `REM-002 DRY-RUN — NÃO EXECUTADO`; no refs, push or publication were changed.
+
+Control boundary
+- This verification is read-only and uses the external backup path plus repository metadata only.
+- The independent read-only critique required for an unconditioned final acceptance is unavailable in the single-primary-agent mode. That limitation is recorded rather than simulated; the local preservation gate is therefore `PASS_WITH_CONDITIONS`.
+
+Result: REM-001 DONE only in local scope. REM-002 remains BLOCKED_WAIT_AUTHORITY for any history rewrite/removal/push action.

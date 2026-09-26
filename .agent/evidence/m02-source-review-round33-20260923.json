@@ -1,0 +1,88 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND33-20260923",
+  "recorded_at": "2026-09-23T10:20:55Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "docs/2026-09-21-auditoria-profunda-repositorio.md",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "62a643b37990920ac6b6d7dff854c6889f31c8e209e7ae09e3236f778485aff3",
+      "current_sha256": "62a643b37990920ac6b6d7dff854c6889f31c8e209e7ae09e3236f778485aff3",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Dated deep audit: effective 21/09; candidate identity, 68/100 formal score, RELEASE_BLOCKED status and 33 findings are historical to that evidence cutoff. It records safeguards against deployment, push, real credentials, real UAT and destructive restore. The recorded origin/main SHA is historical and does not identify the current remote tip."
+    },
+    {
+      "path": "docs/2026-09-21-roadmap-remediacao-integral.md",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "b871fe3009b05d7dd78719729382e7e359e07a81a160fc929c3aa1da51b2df0e",
+      "current_sha256": "b871fe3009b05d7dd78719729382e7e359e07a81a160fc929c3aa1da51b2df0e",
+      "sha_matches_inventory": true,
+      "scope_classification": "DOCUMENTATION_GOVERNANCE",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Dated 21/09 remediation roadmap organized as W0–W6. It preserves evidence and requires gate-backed promotion through candidate/CI/target/product/UAT/debt/re-audit work; destructive actions remain authority-gated. Historical sequencing is consistent with the later active control record, but does not establish current completion."
+    }
+  ],
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm docs:validate",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "Documentation links/governance and current Triple-A snapshot validators passed after the round-33 artifact and control updates.",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-21SEP-AUDIT-IS-HISTORICAL-CUTOFF",
+      "classification": "HOLD_SNAPSHOT_PROVENANCE",
+      "observation": "The deep audit is explicitly effective 21/09 and binds its score/release-blocked conclusion to the then-current candidate SHA and origin/main snapshot (363c87e...). The origin/main value predates the 23/09 base SHA 570920de...; retain the date and do not treat the old remote snapshot or recorded gate results as current. The current local HEAD remains ad2f0373..., but this content review does not revalidate the audit evidence."
+    },
+    {
+      "id": "M02-21SEP-ROADMAP-RETAINS-EVIDENCE-GATES",
+      "classification": "DOCUMENTATION_GOVERNANCE",
+      "observation": "The W0–W6 sequence separates preservation/reproduction, candidate preparation, CI/release, target validation, product/UAT, debt and re-audit, with promotion tied to gates and destructive actions explicitly authority-gated. It does not authorize any target or destructive operation. Use the active REM-010 backlog/state for present status; the dated roadmap is sequencing context."
+    },
+    {
+      "id": "M02-21SEP-AUDIT-SCORE-REMAINS-DATED",
+      "classification": "HOLD_HISTORICAL_SCORE",
+      "observation": "The audit records the formal 68/100 score and RELEASE_BLOCKED conclusion for its 21/09 evidence boundary. The later 23/09 local scorecard is supplemental; this review found no basis to relabel the historic score as a current score or to replace the formal baseline."
+    }
+  ],
+  "candidate_actions": [
+    "Keep the 21/09 effective date and remote snapshot explicit wherever the audit is cited.",
+    "Treat the W0–W6 roadmap as historical sequencing context, and use active control records for current progress.",
+    "Do not infer that any historical gate was rerun or that target, deployment, credential, UAT or destructive authority exists."
+  ],
+  "limitations": [
+    "Content and cross-reference review only; no historical audit gate, candidate, remote CI, target, deployment, UAT, credential or destructive operation was re-executed.",
+    "No external GBrain handoff or publication was performed.",
+    "A scoped scan found no /home/, /tmp/ or Windows absolute-path patterns in these two files; this is not a full PII review.",
+    "Reviewer is not independent; independent critique and all remaining path/provenance review stay open."
+  ],
+  "checkpoint_validation": {
+    "json_and_jsonl_parse": "PASS (177 JSON and 8 JSONL files under .agent; document-governance JSON also parsed)",
+    "git_diff_check": "PASS",
+    "docs_validate": "PASS",
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 32; no new REM-010/M-02 finding and no gate-v2 finding. The global controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T10:20:55Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 296,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 422,
+    "status_sha256": "1bd5cb90bbf36245c6a178faaaa96a733cfb84389bac12176cf8185204f5c9d9",
+    "note": "Read-only porcelain status after M-02 round 33 and checkpoint validation; original 386-path denominator unchanged. The round-33 review artifact is the thirty-sixth post-inventory path. No candidate, overlay or frozen SHA exists."
+  }
+}

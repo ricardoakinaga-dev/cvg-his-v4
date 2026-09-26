@@ -1,0 +1,100 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND3-20260923",
+  "recorded_at": "2026-09-23T06:50:36.436Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "review_state": "PARTIAL; two previously pending reports source paths reviewed; data-retention contract and live database proof remain on hold",
+  "paths_reviewed": [
+    {
+      "path": "packages/modules/reports/src/index.ts",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "5723a483dbd63519496c946ad35c657fc4418c9272fbb94552becdc53eb4b947",
+      "current_sha256": "5723a483dbd63519496c946ad35c657fc4418c9272fbb94552becdc53eb4b947",
+      "sha_matches_inventory": true,
+      "scope_classification": "REPORTS_PERSISTENCE_OR_RENDERING",
+      "content_review": "REVIEWED_WITH_RETENTION_CONTRACT_HOLD",
+      "review_notes": "The only behavioral call-site change in the inspected diff delegates export rendering to the previously reviewed pure renderer; nextRunAt was extracted to the previously reviewed UTC helper, and DatabaseReportRepository is re-exported from the package surface. The ReportsService persistence/service methods otherwise remain in this file. Existing reports tests cover the service with in-memory repositories; no DB behavior was run in this review.",
+      "candidate_overlay_decision": "HOLD_PENDING_EXPLICIT_REPORT_DATA_RETENTION_CONTRACT_AND_DATABASE_BOUNDARY_VERIFICATION"
+    },
+    {
+      "path": "packages/modules/reports/src/report-database-repository.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "b27b381b9dd78ed552a253a2ed7a93ab9f80c08c7b3e862f6f75582e14193901",
+      "current_sha256": "b27b381b9dd78ed552a253a2ed7a93ab9f80c08c7b3e862f6f75582e14193901",
+      "sha_matches_inventory": true,
+      "scope_classification": "REPORTS_PERSISTENCE_OR_RENDERING",
+      "content_review": "REVIEWED_WITH_RETENTION_CONTRACT_HOLD",
+      "review_notes": "The DatabaseReportRepository class and its SQL parameter/row-mapping helpers match the corresponding origin/main index.ts extraction exactly. All 15 repository calls use withTenantQuery(getPool()); reads and claim/update queries are account-scoped, claims use SKIP LOCKED and check claim token/lease before fenced writes. Migrations 0134 add composite account foreign keys and 0163 FORCE RLS. These are static observations, not executed SQL proof.",
+      "candidate_overlay_decision": "HOLD_PENDING_EXPLICIT_REPORT_DATA_RETENTION_CONTRACT_AND_DATABASE_BOUNDARY_VERIFICATION"
+    }
+  ],
+  "previously_reviewed_path_ref": {
+    "path": "packages/modules/reports/src/report-database-repository.test.ts",
+    "review_ref": ".agent/evidence/m02-source-review-round1-20260923.json#M02-SOURCE-REVIEW-ROUND1-20260923",
+    "scope": "The test constructs the lazy adapter and checks method presence/schedule cadence; it does not execute SQL."
+  },
+  "extraction_comparisons": [
+    {
+      "baseline": "origin/main:packages/modules/reports/src/index.ts",
+      "current": "packages/modules/reports/src/report-database-repository.ts",
+      "region": "DatabaseReportRepository class",
+      "result": "PASS; byte-for-byte match"
+    },
+    {
+      "baseline": "origin/main:packages/modules/reports/src/index.ts",
+      "current": "packages/modules/reports/src/report-database-repository.ts",
+      "region": "SQL parameter/row-mapping helpers from dateIso through v8 ignore stop",
+      "result": "PASS; byte-for-byte match"
+    }
+  ],
+  "static_boundary_review": {
+    "tenant_transaction": "All 15 methods using SQL call withTenantQuery(getPool()); withTenantQuery establishes and verifies app.current_account_id within a transaction.",
+    "tenant_predicates": "Read/update/claim SQL inspected carries account_id predicates; tenant row policies also exist in migration 0048.",
+    "fencing": "Schedule/delivery claims use FOR UPDATE SKIP LOCKED. Fenced execution/export/delivery writes require the schedule id, claim token, and unexpired lease in SQL.",
+    "relational_integrity": "Migration 0134 adds composite (account_id,id) keys and cross-table account-scoped foreign keys for exports, schedules, and deliveries; migration 0163 enables FORCE ROW LEVEL SECURITY.",
+    "runtime_database_verification": "Not executed in this review. Database integration test files exist for report delivery, schedule lease fencing, and scheduled execution/export fencing; they were held because test setup may use the explicit local database."
+  },
+  "findings_and_limits": [
+    "ReportExecutionDetail receives expiresAt generatedAt + 7 days, but the service getters/list/hydration path does not enforce that timestamp; repository findExecutions/findExports returns rows without expiry predicates, and no report execution/export purge path was found in the inspected application/migrations. report_exports has no expires_at column.",
+    "No report-specific retention contract was found in the inspected current report docs and artifact-retention policy files. Treat expiration meaning and durable deletion/retention as HOLD-CONTRACT for Product/Security-DPO review; this is not declared a defect without an authoritative policy.",
+    "saveSchedule uses ON CONFLICT (id) and relies on forced tenant RLS for tenant isolation on a conflicting global id; runtime role/RLS behavior was not proven by executing PostgreSQL integration tests.",
+    "Existing focused package suite passed 40/40 in round 1, but its Vitest global setup performed read-only queries and a transient advisory lock against the explicit local cvg_his_v2 database. That historical result does not exercise SQL methods; no further Vitest or DB-backed test was run.",
+    "The new report repository path remains blocked from candidate overlay until the data retention contract, SQL integration results on an approved disposable target, full path review, and independent candidate-bound critique are complete."
+  ],
+  "verification_results": [
+    {
+      "procedure": "Static byte comparison of the extracted repository class and SQL helper region against origin/main index.ts",
+      "result": "PASS",
+      "scope": "Source comparison only; no SQL execution."
+    },
+    {
+      "procedure_ref": ".agent/evidence/m02-source-review-round1-20260923.json#verification_results[1]",
+      "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm --filter @cvg-his-v2/module-reports test",
+      "result": "PASS",
+      "tests": "5 files, 40/40",
+      "limitation": "Historical round-1 run; Vitest globalSetup performed local read-only database checks. The repository adapter test only constructs the lazy adapter; it does not exercise SQL."
+    }
+  ],
+  "database_boundary_observation": {
+    "database_or_provider_called_in_round3": false,
+    "integration_tests_run_in_round3": false,
+    "why_held": "Previous Vitest setup contacted the explicit local database. Current SQL integration suites are not run until an approved disposable DB target or no-connection guard is established."
+  },
+  "candidate_actions": {
+    "candidate_worktree_created": false,
+    "overlay_performed": false,
+    "candidate_sha_frozen": null,
+    "global_candidate_status": "BLOCKED_PENDING_COMPLETE_PATH_REVIEW_INDEPENDENT_CRITIQUE_AND_RETENTION_CONTRACT"
+  },
+  "limitations": [
+    "Primary-operator source review only; no independent critic.",
+    "SQL, RLS, FK, transaction, and concurrency behavior were reviewed statically; no PostgreSQL command was executed.",
+    "The prior in-memory reports suite cannot establish persistence fencing, cross-tenant database isolation, or schema correctness.",
+    "Report execution expiry is ambiguous: seven-day expiresAt exists, but no enforceable retention rule or purge behavior was established.",
+    "Two reviewed paths retain their initial hashes. The new round-3 evidence artifact is post-inventory and must be added to the refreshed candidate-bound inventory."
+  ],
+  "review_followup_recorded_at": "2026-09-23T06:50:36.436Z"
+}

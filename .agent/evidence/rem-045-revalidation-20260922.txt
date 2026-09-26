@@ -1,0 +1,37 @@
+REM-045 REVALIDATION — 2026-09-22
+
+Reason for superseding gate:
+- The dry-run validator was hardened after the first gate to reject undeclared ACL profiles and any policy where the `unknown` class is not protected.
+- The original gate remains historical; this record is the current verification of the final script.
+
+Environment:
+- repository: /home/ricardo/cvg-his-v4
+- runtime: Node v22.23.2
+- package manager: pnpm 10.33.0
+- command time: 2026-09-22T11:37:09.000000Z
+
+Verification:
+- `node --test scripts/artifact-retention-dry-run.test.mjs`: PASS, 3/3;
+- `node --check scripts/artifact-retention-dry-run.mjs`: PASS;
+- real `node scripts/artifact-retention-dry-run.mjs --dry-run --max-candidates 20`: PASS, 418926 files, 52.2 GiB apparent size, 418733 protected, 0 errors, 0 candidates;
+- `pnpm exec prettier --check ...`: PASS;
+- `git diff --check`: PASS.
+
+Observed classes at this point-in-time:
+- legal-hold: 11 files, 506.5 KiB, all protected;
+- active-evidence: 418722 files, 52.2 GiB, all protected;
+- generated-run: 3 files, 518.5 KiB, no candidate;
+- coverage-run: 190 files, 10.1 MiB, no candidate.
+
+Final source hashes:
+- docs/engineering/artifact-retention-policy.json: eb65e2225a027f0f57dd6144513eb44875478da4959509337b26c7662613f8ad;
+- docs/operations/ARTIFACT_RETENTION_POLICY.md: 75af2b0f86c9f615fcbbd2afd4793098794e6dfe5b60b2afae71644a955deee1;
+- scripts/artifact-retention-dry-run.mjs: 06916c62a1a0a8e1718b67da868339aa99bc1a5265149d16a31590c85a58f0fa;
+- scripts/artifact-retention-dry-run.test.mjs: f6bdabfd1e4639cc2e84df5d9c849556c22277e52744a7d8feb57ab4878e0a63.
+
+Safety result:
+- no deletion, chmod, upload, provider mutation or external cleanup occurred;
+- the report is a point-in-time inventory taken before this revalidation evidence/gate was appended, so the controlled evidence roots can grow by the new records themselves;
+- active/legal/unknown evidence remains fail-closed and the CLI has no apply mode.
+
+Residual conditions remain unchanged: provider ACL/retention, destructive cleanup authority, independent fresh critic E7, CI/OCI, target, UAT, release and go/no-go are not proven.

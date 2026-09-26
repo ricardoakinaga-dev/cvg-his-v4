@@ -1,0 +1,105 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-REM-027-20260922",
+  "timestamp": "2026-09-22T01:31:00.000000Z",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "inventário candidate-bound de hotspots, owners, limites não crescentes e ordem por risco para REM-027",
+  "scope_ref": "REM-027",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-001",
+      "description": "O plano ativo, o backlog de REM-027, o manifesto executável, o validator, o teste focal e a documentação de ownership foram inspecionados no runtime oficial antes da implementação.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-027-PREPARE-20260922",
+        ".agent/evidence/rem-027-hotspot-inventory-20260922.txt",
+        ".agent/plans/remediacao-integral-20260921.md",
+        ".agent/backlog.json",
+        "docs/engineering/complexity-hotspots.json",
+        "docs/engineering/OWNERSHIP_AND_COMPLEXITY.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A preparação é local e não substitui revisão ou aprovação dos owners de domínio."
+    },
+    {
+      "id": "IR-002",
+      "description": "A lacuna de controle está delimitada: o manifesto atual mede apenas presença, owner, plano e teto; a implementação deve adicionar medição current, limite anterior, metadados de risco e ordem fail-closed sem elevar a régua.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-027-PREPARE-20260922",
+        ".agent/evidence/rem-027-hotspot-inventory-20260922.txt",
+        "scripts/check-complexity-hotspots.mjs",
+        "tests/unit/infra/complexity-hotspots.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Nenhuma mutação de implementação foi incluída no aceite deste gate; o resultado da implementação exigirá gate VERIFIED próprio."
+    },
+    {
+      "id": "IR-003",
+      "description": "A execução focal passou com 1 arquivo/3 testes e o orçamento público passou em 8/8 hotspots; o known-bad de crescimento/owner foi reproduzido e a próxima implementação tem procedimento de regressão definido.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-027-PREPARE-20260922",
+        ".agent/evidence/rem-027-hotspot-inventory-20260922.txt",
+        "package.json",
+        ".github/workflows/ci.yml"
+      ],
+      "confidence": "HIGH",
+      "limitations": "O teste é local e sintético; não prova CI remoto, target, UX/a11y ou release."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-027-hotspot-inventory-20260922.txt",
+    ".agent/verification.jsonl#VER-REM-027-PREPARE-20260922",
+    ".agent/plans/remediacao-integral-20260921.md",
+    ".agent/backlog.json",
+    "docs/engineering/complexity-hotspots.json",
+    "scripts/check-complexity-hotspots.mjs",
+    "tests/unit/infra/complexity-hotspots.test.ts",
+    "docs/engineering/OWNERSHIP_AND_COMPLEXITY.md",
+    "package.json",
+    ".github/workflows/ci.yml"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-REM-027-DOMAIN-REVIEW",
+      "description": "A ordem por risco e os owners são uma classificação operacional local; revisão/aceite dos owners de plataforma, frontend, clínica, financeiro, reports, scheduling e runtime ainda não foi solicitada nem inferida.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a implementação local do guard fail-closed; bloqueia qualquer claim de aprovação organizacional da priorização.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de promover a ordem de risco a compromisso de roadmap, abrir revisão com os owners indicados no manifesto.",
+      "due_at": "2026-09-22T16:00:00.000000Z",
+      "verification_method": "Obter revisão identificada dos owners, reconciliar rank/risco/limites com a decisão e superseder esta condição com evidência específica.",
+      "evidence_refs": [
+        ".agent/evidence/rem-027-hotspot-inventory-20260922.txt",
+        "docs/engineering/OWNERSHIP_AND_COMPLEXITY.md"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "inventário candidate-bound de hotspots, owners, limites não crescentes e ordem por risco para REM-027",
+    "decision": "A instrução autoriza inspeção e implementação local reversível; não autoriza aprovação organizacional, CI remoto, target, UAT, release ou mudança de autoridade.",
+    "evidence_ref": ".agent/evidence/rem-027-hotspot-inventory-20260922.txt",
+    "expires_or_revalidates": "Revalidar quando o manifesto, validator, testes, limites, owners/ranks ou o escopo cruzarem a fronteira local."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-027:IMPLEMENT",
+  "revalidation_triggers": [
+    "A implementação alterar o manifesto, validator, testes, gerador ou documentação sem verificação focal atualizada.",
+    "Qualquer tentativa de elevar limite, remover assertion, reduzir threshold ou apagar hotspot para obter PASS.",
+    "Avanço para revisão organizacional, CI remoto, target, UAT, release ou autoridade humana."
+  ],
+  "supersedes": null
+}

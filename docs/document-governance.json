@@ -2,86 +2,122 @@
   "schema_version": 1,
   "current_documents": {
     "baseline": {
-      "path": "docs/2026-09-20-auditoria-scorecard-db07cd02.md",
-      "effective_date": "2026-09-21"
+      "path": "docs/2026-09-26-auditoria-completa-sistema.md",
+      "effective_date": "2026-09-26"
     },
     "plan": {
-      "path": "docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md",
-      "effective_date": "2026-09-21"
+      "path": "docs/2026-09-26-plano-executivo-rodada-2.md",
+      "effective_date": "2026-09-26"
     },
     "roadmap": {
-      "path": "docs/2026-09-20-roadmap-nova-rodada-melhorias.md",
-      "effective_date": "2026-09-21"
+      "path": "docs/2026-09-26-roadmap-rodada-2.md",
+      "effective_date": "2026-09-26"
     },
     "backlog": {
-      "path": "docs/2026-09-20-backlog-nova-rodada-melhorias.md",
-      "effective_date": "2026-09-21"
+      "path": "docs/2026-09-26-backlog-rodada-2.md",
+      "effective_date": "2026-09-26"
     }
   },
   "historical_documents": [
     {
+      "path": "docs/2026-09-26-auditoria-programa.md",
+      "superseded_by": "docs/2026-09-26-auditoria-completa-sistema.md"
+    },
+    {
+      "path": "docs/2026-09-21-backlog-remediacao-integral.md",
+      "superseded_by": "docs/2026-09-26-backlog-rodada-2.md"
+    },
+    {
+      "path": "docs/2026-09-21-roadmap-remediacao-integral.md",
+      "superseded_by": "docs/2026-09-26-roadmap-rodada-2.md"
+    },
+    {
+      "path": "docs/2026-09-21-plano-executivo-remediacao-integral.md",
+      "superseded_by": "docs/2026-09-26-plano-executivo-rodada-2.md"
+    },
+    {
+      "path": "docs/2026-09-21-auditoria-profunda-repositorio.md",
+      "superseded_by": "docs/2026-09-26-auditoria-completa-sistema.md"
+    },
+    {
+      "path": "docs/2026-09-20-auditoria-scorecard-db07cd02.md",
+      "superseded_by": "docs/2026-09-26-auditoria-completa-sistema.md"
+    },
+    {
+      "path": "docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md",
+      "superseded_by": "docs/2026-09-26-plano-executivo-rodada-2.md"
+    },
+    {
+      "path": "docs/2026-09-20-roadmap-nova-rodada-melhorias.md",
+      "superseded_by": "docs/2026-09-26-roadmap-rodada-2.md"
+    },
+    {
+      "path": "docs/2026-09-20-backlog-nova-rodada-melhorias.md",
+      "superseded_by": "docs/2026-09-26-backlog-rodada-2.md"
+    },
+    {
       "path": "docs/2026-09-20-reauditoria-candidato-a9ff1b1a.md",
-      "superseded_by": "docs/2026-09-20-auditoria-scorecard-db07cd02.md"
+      "superseded_by": "docs/2026-09-26-auditoria-completa-sistema.md"
     },
     {
       "path": "docs/2026-09-15-auditoria-checkpoint-state-of-art-triplo-aaa.md",
-      "superseded_by": "docs/2026-09-20-auditoria-scorecard-db07cd02.md"
+      "superseded_by": "docs/2026-09-26-auditoria-completa-sistema.md"
     },
     {
       "path": "docs/2026-09-14-plano-executivo-state-of-art-triplo-aaa.md",
-      "superseded_by": "docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md"
+      "superseded_by": "docs/2026-09-26-plano-executivo-rodada-2.md"
     },
     {
       "path": "docs/2026-09-15-roadmap-pos-checkpoint-state-of-art-triplo-aaa.md",
-      "superseded_by": "docs/2026-09-20-roadmap-nova-rodada-melhorias.md"
+      "superseded_by": "docs/2026-09-26-roadmap-rodada-2.md"
     },
     {
       "path": "docs/2026-09-15-backlog-pos-checkpoint-state-of-art-triplo-aaa.md",
-      "superseded_by": "docs/2026-09-20-backlog-nova-rodada-melhorias.md"
+      "superseded_by": "docs/2026-09-26-backlog-rodada-2.md"
     },
     {
       "path": "docs/2026-09-14-relatorio-completo-estado-construcao.md",
-      "superseded_by": "docs/2026-09-20-auditoria-scorecard-db07cd02.md"
+      "superseded_by": "docs/2026-09-26-auditoria-completa-sistema.md"
     },
     {
       "path": "docs/2026-09-14-roadmap-state-of-art-triplo-aaa.md",
-      "superseded_by": "docs/2026-09-20-roadmap-nova-rodada-melhorias.md"
+      "superseded_by": "docs/2026-09-26-roadmap-rodada-2.md"
     },
     {
       "path": "docs/2026-09-14-backlog-state-of-art-triplo-aaa.md",
-      "superseded_by": "docs/2026-09-20-backlog-nova-rodada-melhorias.md"
+      "superseded_by": "docs/2026-09-26-backlog-rodada-2.md"
     },
     {
       "path": "docs/2026-09-06-relatorio-estado-atual-erp-cvg-his-v4.md",
-      "superseded_by": "docs/2026-09-20-auditoria-scorecard-db07cd02.md"
+      "superseded_by": "docs/2026-09-26-auditoria-completa-sistema.md"
     },
     {
       "path": "docs/2026-09-06-plano-executivo-erp-state-of-art-triplo-aaa.md",
-      "superseded_by": "docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md"
+      "superseded_by": "docs/2026-09-26-plano-executivo-rodada-2.md"
     },
     {
       "path": "docs/2026-09-06-roadmap-erp-state-of-art-triplo-aaa.md",
-      "superseded_by": "docs/2026-09-20-roadmap-nova-rodada-melhorias.md"
+      "superseded_by": "docs/2026-09-26-roadmap-rodada-2.md"
     },
     {
       "path": "docs/2026-09-06-backlog-erp-state-of-art-triplo-aaa.md",
-      "superseded_by": "docs/2026-09-20-backlog-nova-rodada-melhorias.md"
+      "superseded_by": "docs/2026-09-26-backlog-rodada-2.md"
     },
     {
       "path": "docs/2026-09-13-relatorio-estado-atual-erp-cvg-his-v4.md",
-      "superseded_by": "docs/2026-09-20-auditoria-scorecard-db07cd02.md"
+      "superseded_by": "docs/2026-09-26-auditoria-completa-sistema.md"
     },
     {
       "path": "docs/2026-09-13-plano-executivo-prontidao-producao.md",
-      "superseded_by": "docs/2026-09-20-plano-executivo-nova-rodada-melhorias.md"
+      "superseded_by": "docs/2026-09-26-plano-executivo-rodada-2.md"
     },
     {
       "path": "docs/2026-09-13-roadmap-prontidao-producao.md",
-      "superseded_by": "docs/2026-09-20-roadmap-nova-rodada-melhorias.md"
+      "superseded_by": "docs/2026-09-26-roadmap-rodada-2.md"
     },
     {
       "path": "docs/2026-09-13-backlog-prontidao-producao.md",
-      "superseded_by": "docs/2026-09-20-backlog-nova-rodada-melhorias.md"
+      "superseded_by": "docs/2026-09-26-backlog-rodada-2.md"
     }
   ],
   "linked_indexes": [

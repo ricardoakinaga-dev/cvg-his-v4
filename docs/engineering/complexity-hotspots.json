@@ -1,54 +1,361 @@
 {
-  "schema_version": 1,
+  "schema_version": 3,
   "measurement": "physical_lines_including_blanks",
+  "policy": {
+    "current_lines_must_match_measurement": true,
+    "max_lines_must_not_increase": true,
+    "risk_order": "ascending_risk_rank"
+  },
   "hotspots": [
-    {
-      "path": "apps/api/src/server.ts",
-      "owner": "PLAT",
-      "max_lines": 8335,
-      "decomposition_plan": "Extrair registro de domínios e composição de handlers por bounded context."
-    },
-    {
-      "path": "apps/spa/src/pages/patients/PatientDetailPage.vue",
-      "owner": "WEB-CLIN",
-      "max_lines": 4124,
-      "decomposition_plan": "Separar tabs clínicas, comandos e carregamento em componentes e composables tipados."
-    },
     {
       "path": "apps/spa/src/pages/sales/CounterSalesPage.vue",
       "owner": "WEB-FIN",
-      "max_lines": 3468,
+      "risk_rank": 1,
+      "risk_level": "HIGH",
+      "risk_reason": "Margem zero e concentração de catálogo, carrinho, pagamento e finalização financeira.",
+      "current_lines": 2779,
+      "previous_max_lines": 3468,
+      "max_lines": 2779,
       "decomposition_plan": "Extrair catálogo, carrinho, pagamento e finalização em fluxos testáveis."
-    },
-    {
-      "path": "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
-      "owner": "WEB-REPORTS",
-      "max_lines": 3186,
-      "decomposition_plan": "Separar filtros, execução, visualização e exportação por família de relatório."
-    },
-    {
-      "path": "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
-      "owner": "WEB-SCHED",
-      "max_lines": 3110,
-      "decomposition_plan": "Extrair agenda, filtros, edição e estados de sincronização em componentes de domínio."
-    },
-    {
-      "path": "apps/spa/src/router/routes.ts",
-      "owner": "WEB",
-      "max_lines": 2931,
-      "decomposition_plan": "Dividir as rotas por bounded context mantendo um agregador canônico."
     },
     {
       "path": "packages/modules/reports/src/index.ts",
       "owner": "REPORTS",
+      "risk_rank": 2,
+      "risk_level": "HIGH",
+      "risk_reason": "Agregador server-side ainda concentra contratos, consultas e agendamento; renderização pura e persistência SQL já foram extraídas para boundaries dedicados.",
+      "current_lines": 1750,
+      "previous_max_lines": 2631,
       "max_lines": 2631,
       "decomposition_plan": "Separar contratos, consultas, renderização e agendamento por módulo."
     },
     {
+      "path": "apps/api/src/server.ts",
+      "owner": "PLAT",
+      "risk_rank": 3,
+      "risk_level": "HIGH",
+      "risk_reason": "Composição cross-system permanece concentrada; stores de responsabilidade, catálogo e eventos preventivos, rotas de catálogos e notificações, envio, confirmação e fluxos de passagens clínicas, experimentos de caos, métricas de coleta, leituras de passagens clínicas e encontros, além de rotas de triagem, internação, prontuário e conteúdo de anexos, foram extraídos.",
+      "current_lines": 3477,
+      "previous_max_lines": 8335,
+      "max_lines": 8323,
+      "decomposition_plan": "Extrair registro de domínios e composição de handlers por bounded context."
+    },
+    {
       "path": "apps/worker/src/runner.ts",
       "owner": "RUNTIME",
-      "max_lines": 2147,
+      "risk_rank": 4,
+      "risk_level": "HIGH",
+      "risk_reason": "Bootstrap operacional com leases, consumidores, retries e shutdown concentrados em 8 linhas de margem.",
+      "current_lines": 231,
+      "previous_max_lines": 2147,
+      "max_lines": 2139,
       "decomposition_plan": "Extrair bootstrap, leases, consumidores e shutdown para unidades isoladas."
+    },
+    {
+      "path": "apps/spa/src/router/routes.ts",
+      "owner": "WEB",
+      "risk_rank": 5,
+      "risk_level": "MEDIUM",
+      "risk_reason": "Agregador de navegação SPA com 11 linhas de margem e impacto transversal em carregamento de domínios.",
+      "current_lines": 2920,
+      "previous_max_lines": 2931,
+      "max_lines": 2920,
+      "decomposition_plan": "Dividir as rotas por bounded context mantendo um agregador canônico."
+    },
+    {
+      "path": "apps/spa/src/pages/patients/PatientDetailPage.vue",
+      "owner": "WEB-CLIN",
+      "risk_rank": 6,
+      "risk_level": "MEDIUM",
+      "risk_reason": "Jornada clínica extensa com 49 linhas de margem e concentração de tabs, comandos e carregamento.",
+      "current_lines": 4007,
+      "previous_max_lines": 4124,
+      "max_lines": 4051,
+      "decomposition_plan": "Separar tabs clínicas, comandos e carregamento em componentes e composables tipados."
+    },
+    {
+      "path": "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+      "owner": "WEB-SCHED",
+      "risk_rank": 7,
+      "risk_level": "MEDIUM",
+      "risk_reason": "Jornada de agenda com 28 linhas de margem e mistura de filtro, edição e sincronização.",
+      "current_lines": 2383,
+      "previous_max_lines": 3110,
+      "max_lines": 2383,
+      "decomposition_plan": "Extrair agenda, filtros, edição e estados de sincronização em componentes de domínio."
+    },
+    {
+      "path": "apps/spa/src/pages/reports/ReportWorkbenchPage.vue",
+      "owner": "WEB-REPORTS",
+      "risk_rank": 8,
+      "risk_level": "MEDIUM",
+      "risk_reason": "Workbench de relatórios com 44 linhas de margem e fronteiras de filtro, execução, visualização e exportação.",
+      "current_lines": 2750,
+      "previous_max_lines": 3186,
+      "max_lines": 2750,
+      "decomposition_plan": "Separar filtros, execução, visualização e exportação por família de relatório."
+    },
+    {
+      "path": "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue",
+      "owner": "WEB-CLIN",
+      "risk_rank": 9,
+      "risk_level": "HIGH",
+      "risk_reason": "Prontuário clínico reúne rota, formulário estruturado, contexto operacional, timeline e anexos.",
+      "current_lines": 3002,
+      "previous_max_lines": 3002,
+      "max_lines": 3002,
+      "decomposition_plan": "Extrair seções clínicas e workflows por domínio mantendo rota e composição clínica no page owner."
+    },
+    {
+      "path": "scripts/validate-supply-chain.mjs",
+      "owner": "SEC-SUPPLY",
+      "risk_rank": 10,
+      "risk_level": "CRITICAL",
+      "risk_reason": "Validador de proveniência e cadeia de dependências concentra regras e políticas de release.",
+      "current_lines": 3607,
+      "previous_max_lines": 3607,
+      "max_lines": 3607,
+      "decomposition_plan": "Separar políticas, verificações por artefato e serialização de evidência em módulos coesos."
+    },
+    {
+      "path": "scripts/run-triple-a-release-gate.mjs",
+      "owner": "QUALITY-GATES",
+      "risk_rank": 11,
+      "risk_level": "HIGH",
+      "risk_reason": "Gate de release acumula coordenação de testes, artefatos, identidade OCI e aprovação.",
+      "current_lines": 2728,
+      "previous_max_lines": 2728,
+      "max_lines": 2728,
+      "decomposition_plan": "Separar seleção de gates, execução, agregação de evidência e decisão de saída."
+    },
+    {
+      "path": "scripts/validate-test-skip-policy.mjs",
+      "owner": "QUALITY-TEST",
+      "risk_rank": 12,
+      "risk_level": "HIGH",
+      "risk_reason": "Validador de skips concentra parsing, exceções, escopo e semântica de política.",
+      "current_lines": 2479,
+      "previous_max_lines": 2479,
+      "max_lines": 2479,
+      "decomposition_plan": "Separar parser, regras de allowlist, resolução de evidências e apresentação de diagnósticos."
+    },
+    {
+      "path": "apps/spa/src/pages/DashboardPage.vue",
+      "owner": "WEB-OPS",
+      "risk_rank": 13,
+      "risk_level": "HIGH",
+      "risk_reason": "Dashboard mistura carregamento e apresentação de domínios operacionais, clínicos e financeiros.",
+      "current_lines": 2860,
+      "previous_max_lines": 2860,
+      "max_lines": 2860,
+      "decomposition_plan": "Separar projeções e painéis por domínio com estado de carga e falha explícito."
+    },
+    {
+      "path": "apps/spa/src/layouts/AppLayout.vue",
+      "owner": "WEB",
+      "risk_rank": 14,
+      "risk_level": "HIGH",
+      "risk_reason": "Shell global combina navegação, identidade da sessão, alertas e responsividade para todos os fluxos.",
+      "current_lines": 2803,
+      "previous_max_lines": 2803,
+      "max_lines": 2803,
+      "decomposition_plan": "Extrair navegação, controles de sessão e apresentação de alertas mantendo o shell como compositor."
+    },
+    {
+      "path": "apps/spa/src/pages/encounters/EncounterDetailPage.vue",
+      "owner": "WEB-CLIN",
+      "risk_rank": 15,
+      "risk_level": "HIGH",
+      "risk_reason": "Detalhe do atendimento concentra contexto e ações clínicas com impacto sobre jornadas próximas.",
+      "current_lines": 2217,
+      "previous_max_lines": 2217,
+      "max_lines": 2217,
+      "decomposition_plan": "Separar resumo, timeline e ações do atendimento em subfeatures com ownership explícito."
+    },
+    {
+      "path": "apps/spa/src/pages/owners/OwnerDetailPage.vue",
+      "owner": "WEB-CUSTOMER",
+      "risk_rank": 16,
+      "risk_level": "MEDIUM",
+      "risk_reason": "Detalhe do tutor reúne dados cadastrais e projeções relacionadas em uma única página.",
+      "current_lines": 2032,
+      "previous_max_lines": 2032,
+      "max_lines": 2032,
+      "decomposition_plan": "Separar formulário, resumo e relações do tutor mantendo navegação e contexto na página."
+    },
+    {
+      "path": "apps/api/src/server.test.ts",
+      "owner": "API-TEST",
+      "risk_rank": 17,
+      "risk_level": "HIGH",
+      "risk_reason": "Testes HTTP do servidor concentram fixtures de composição, autenticação e contratos de vários domínios.",
+      "current_lines": 6447,
+      "previous_max_lines": 6481,
+      "max_lines": 6481,
+      "decomposition_plan": "Dividir suites por bounded context preservando setup de segurança compartilhado e testes de composição."
+    },
+    {
+      "path": "apps/api/src/routes/reports-routes.test.ts",
+      "owner": "API-REPORTS-TEST",
+      "risk_rank": 18,
+      "risk_level": "HIGH",
+      "risk_reason": "Testes de relatórios concentram filtros, autorização, formato e semântica de execução.",
+      "current_lines": 3956,
+      "previous_max_lines": 3956,
+      "max_lines": 3956,
+      "decomposition_plan": "Separar casos por família de relatório e boundary de autorização com fixtures locais claras."
+    },
+    {
+      "path": "apps/api/src/routes/auth-routes.test.ts",
+      "owner": "API-SECURITY-TEST",
+      "risk_rank": 19,
+      "risk_level": "CRITICAL",
+      "risk_reason": "Testes de identidade cobrem fluxos sensíveis de sessão e autorização em um arquivo concentrado.",
+      "current_lines": 3067,
+      "previous_max_lines": 3067,
+      "max_lines": 3067,
+      "decomposition_plan": "Agrupar por sessão, renovação, identidade e política mantendo cenários negativos junto ao contrato."
+    },
+    {
+      "path": "apps/worker/src/runner.test.ts",
+      "owner": "RUNTIME-TEST",
+      "risk_rank": 20,
+      "risk_level": "HIGH",
+      "risk_reason": "Suite do worker reúne bootstrap, leases, consumidores, retries e shutdown.",
+      "current_lines": 3522,
+      "previous_max_lines": 3522,
+      "max_lines": 3522,
+      "decomposition_plan": "Dividir por ciclo de vida, lease e consumidor sem duplicar fixtures de segurança operacional."
+    },
+    {
+      "path": "tests/integration/process/worker-run-once-reports.test.ts",
+      "owner": "PROCESS-TEST",
+      "risk_rank": 21,
+      "risk_level": "HIGH",
+      "risk_reason": "Suite de processo valida execução persistente do worker e relatórios num fluxo amplo.",
+      "current_lines": 3331,
+      "previous_max_lines": 3331,
+      "max_lines": 3331,
+      "decomposition_plan": "Separar ciclo do processo, entrega de eventos e resultado de relatórios mantendo o cenário crítico integrado."
+    },
+    {
+      "path": "tests/integration/database/inpatient-clinical-financial-vertical-http-postgres.test.ts",
+      "owner": "DB-INTEGRATION-TEST",
+      "risk_rank": 22,
+      "risk_level": "CRITICAL",
+      "risk_reason": "Jornada HTTP de internação, prontuário e financeiro reúne múltiplos domínios e prova PostgreSQL/RLS.",
+      "current_lines": 3133,
+      "previous_max_lines": 3133,
+      "max_lines": 3133,
+      "decomposition_plan": "Manter um fluxo vertical canônico e extrair fixtures/assertions por domínio sem reduzir cobertura de integração."
+    },
+    {
+      "path": "apps/spa/src/pages/reports/__tests__/ReportWorkbenchPage.test.ts",
+      "owner": "WEB-REPORTS-TEST",
+      "risk_rank": 23,
+      "risk_level": "MEDIUM",
+      "risk_reason": "Workbench possui muitos comportamentos de filtro, execução e exportação testados numa suite concentrada.",
+      "current_lines": 3044,
+      "previous_max_lines": 3044,
+      "max_lines": 3044,
+      "decomposition_plan": "Dividir por família de relatório e estados de execução mantendo as assertions de contrato de página."
+    },
+    {
+      "path": "tests/unit/infra/test-skip-policy.test.ts",
+      "owner": "QUALITY-TEST",
+      "risk_rank": 24,
+      "risk_level": "HIGH",
+      "risk_reason": "Suite da política de skips reúne parser, fixtures, allowlist, validação e casos negativos.",
+      "current_lines": 2538,
+      "previous_max_lines": 2538,
+      "max_lines": 2538,
+      "decomposition_plan": "Agrupar testes por política e camada de entrada sem eliminar mutações negativas."
+    },
+    {
+      "path": "apps/api/src/runtime.test.ts",
+      "owner": "API-RUNTIME-TEST",
+      "risk_rank": 25,
+      "risk_level": "HIGH",
+      "risk_reason": "Suite de runtime concentra boundaries de requisição, inicialização e encerramento do servidor.",
+      "current_lines": 2532,
+      "previous_max_lines": 2532,
+      "max_lines": 2532,
+      "decomposition_plan": "Separar lifecycle, configuração e integração de request mantendo provas de composição."
+    },
+    {
+      "path": "packages/modules/access-control/src/access-control.test.ts",
+      "owner": "ACCESS-CONTROL-TEST",
+      "risk_rank": 26,
+      "risk_level": "HIGH",
+      "risk_reason": "Suite de autorização concentra avaliação de políticas e casos de escopo por recurso.",
+      "current_lines": 2411,
+      "previous_max_lines": 2411,
+      "max_lines": 2411,
+      "decomposition_plan": "Dividir por policy family e cenário de negação mantendo casos tenant-bound explícitos."
+    },
+    {
+      "path": "scripts/validate-supply-chain.test.mjs",
+      "owner": "SUPPLY-CHAIN-TEST",
+      "risk_rank": 27,
+      "risk_level": "HIGH",
+      "risk_reason": "Suite de cadeia de suprimentos reúne parser de pacote, proveniência e verificações negativas.",
+      "current_lines": 2114,
+      "previous_max_lines": 2114,
+      "max_lines": 2114,
+      "decomposition_plan": "Separar suites por manifesto, assinatura e atestação mantendo fixtures adversariais."
+    },
+    {
+      "path": "docs/frontend/implementation/browser-continuity.mjs",
+      "owner": "DOCS-BROWSER-TEST",
+      "risk_rank": 28,
+      "risk_level": "HIGH",
+      "risk_reason": "Harness executável concentra continuidade de navegador e verificações de evidência visual.",
+      "current_lines": 7856,
+      "previous_max_lines": 7856,
+      "max_lines": 7856,
+      "decomposition_plan": "Dividir helpers e cenários por fluxo mantendo a limpeza determinística e as assertions de continuidade."
     }
-  ]
+  ],
+  "discovery": {
+    "threshold_lines": 2000,
+    "roots": ["apps", "packages", "scripts", "tests", "e2e", "docs/frontend/implementation"],
+    "extensions": [".cjs", ".css", ".js", ".jsx", ".mjs", ".scss", ".sql", ".ts", ".tsx", ".vue"],
+    "ignored_directories": [
+      ".git",
+      ".next",
+      ".turbo",
+      "build",
+      "coverage",
+      "dist",
+      "node_modules",
+      "vite-cache"
+    ],
+    "first_capture_policy": "For newly registered files, previous_max_lines and max_lines start at the first measured size; no historical reduction is claimed."
+  },
+  "owner_registry": {
+    "WEB-FIN": "SPA counter-sales and finance workbench",
+    "REPORTS": "Shared report query, rendering, and persistence modules",
+    "PLAT": "API platform composition and shared boundaries",
+    "RUNTIME": "Worker runtime, leases, and consumer lifecycle",
+    "WEB": "SPA routing, navigation, and shared application shell",
+    "WEB-CLIN": "SPA patient, encounter, and medical-record workflows",
+    "WEB-SCHED": "SPA scheduling and appointment workflows",
+    "WEB-REPORTS": "SPA report filters, execution, result, and export workflows",
+    "WEB-OPS": "SPA dashboard and operational summaries",
+    "WEB-CUSTOMER": "SPA owner and customer record workflows",
+    "SEC-SUPPLY": "Supply-chain validation and provenance tooling",
+    "QUALITY-GATES": "Release and quality-gate command tooling",
+    "API-TEST": "API composition and response behavior tests",
+    "API-REPORTS-TEST": "API report route tests",
+    "API-SECURITY-TEST": "API authentication and authorization route tests",
+    "RUNTIME-TEST": "Worker runtime behavior tests",
+    "PROCESS-TEST": "Worker process critical-flow tests",
+    "DB-INTEGRATION-TEST": "Database-backed clinical and financial journey tests",
+    "WEB-REPORTS-TEST": "SPA report workbench tests",
+    "QUALITY-TEST": "Test skip policy parser and validation tests",
+    "API-RUNTIME-TEST": "API runtime lifecycle tests",
+    "ACCESS-CONTROL-TEST": "Access control module tests",
+    "SUPPLY-CHAIN-TEST": "Supply-chain validator behavior tests",
+    "DOCS-BROWSER-TEST": "Executable browser-continuity harness and visual-verification workflows"
+  }
 }

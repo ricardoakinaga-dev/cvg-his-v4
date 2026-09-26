@@ -1,0 +1,106 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND26-20260923",
+  "recorded_at": "2026-09-23T09:47:59Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "tests/unit/api/raw-request-body.test.ts",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "10526b6c38b95bdca87ff55a3bab4c222b26e28cf667f3bdccddf4980350b621",
+      "current_sha256": "10526b6c38b95bdca87ff55a3bab4c222b26e28cf667f3bdccddf4980350b621",
+      "sha_matches_inventory": true,
+      "scope_classification": "TEST_OR_QUALITY_CONTRACT",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "The diff adds synthetic header validation cases, wraps invalid chunk conversion in a typed stream error, and tests settled guards under sticky listeners. Production helper source is unchanged and the two current callers supply fixed 65,536-byte limits."
+    },
+    {
+      "path": "tests/unit/api/response-buffer.test.ts",
+      "git_status_at_inventory": "??",
+      "inventory_sha256": "7dcad755f7e0314d46b7970b2e9c99d7566a6e309b28ab264a2e03e54c6cc814",
+      "current_sha256": "7dcad755f7e0314d46b7970b2e9c99d7566a6e309b28ab264a2e03e54c6cc814",
+      "sha_matches_inventory": true,
+      "scope_classification": "TEST_OR_QUALITY_CONTRACT",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "New untracked coverage test uses a fake ServerResponse target to exercise optional writeHead headers/status message replay and omission of undefined statusMessage."
+    }
+  ],
+  "candidate_relative_change": {
+    "raw_request_body_test": "Adds three test cases and a request fixture with sticky event listeners; does not change production code.",
+    "response_buffer_test": "Adds a new untracked Vitest file with two behavior/coverage assertions for optional headers/statusMessage and omitted undefined statusMessage.",
+    "source_relationship": "apps/api/src/helpers/raw-request-body.ts and response-buffer.ts are clean baseline source paths. The raw-body helper call sites pass fixed positive 65,536-byte constants."
+  },
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm exec vitest run --config vitest.unit.config.ts tests/unit/api/raw-request-body.test.ts tests/unit/api/response-buffer.test.ts",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "2 files passed; 10 tests passed. Node environment, no setup/globalSetup; test inputs are in-memory streams and a fake response target.",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0; Vitest 4.1.11."
+  },
+  "boundary_review": {
+    "raw_body": "Tests use Node Readable/EventEmitter objects and synthetic headers. They do not open a socket or run the API server. Late signals are exercised with deliberately sticky listener methods to ensure settled callbacks are inert.",
+    "buffered_response": "Tests use an in-memory fake ServerResponse; the focused new assertions do not exercise a real HTTP response, connection close, or the full header/body replay surface.",
+    "external_effects": "No database, network, provider, browser or target was touched; no persistent test fixture is created."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-RAW-BODY-TEST-DOES-NOT-COVER-LIVE-SOCKET",
+      "classification": "HOLD_RUNTIME_BOUNDARY",
+      "observation": "Synthetic stream tests establish byte count, selected content-length handling and typed event errors, but do not prove Node HTTP parser behavior, socket backpressure, client disconnect handling or route integration."
+    },
+    {
+      "id": "M02-RESPONSE-BUFFER-TEST-USES-FAKE-RESPONSE",
+      "classification": "HOLD_HTTP_INTEGRATION",
+      "observation": "The new tests improve coverage for optional writeHead/statusMessage branches using a test double; they do not establish wire-level response semantics or all proxy methods."
+    },
+    {
+      "id": "M02-TEST-SUITE-IS-FOCUSED",
+      "classification": "LOCAL_TEST_EVIDENCE",
+      "observation": "Both suites passed under the Node-only unit config, which avoids the root shared-database setup. This is appropriate for these unit contracts but is not an API integration or candidate-bound result."
+    }
+  ],
+  "candidate_actions": [
+    "Retain the body-size and event-settlement edge cases, and keep the response-buffer test paired with the existing helper implementation.",
+    "Use HTTP-level route tests for socket/parser behavior when the approved disposable runtime boundary is available; do not infer that from this suite.",
+    "Do not run broad Vitest or database-backed API tests in the shared environment."
+  ],
+  "limitations": [
+    "Production helper implementations are clean origin/main paths; this round reviewed only two dirty test paths plus their read-only source relationships.",
+    "No live API, socket, provider, database, browser, candidate overlay or CI run occurred.",
+    "Self-review only; 42 original inventory paths remain pending and independent M-02 critique is open."
+  ],
+  "checkpoint_validation": {
+    "docs_validate": {
+      "result": "PASS",
+      "command": "pnpm docs:validate"
+    },
+    "json_and_jsonl_parse": {
+      "result": "PASS",
+      "scope": "state, backlog, content-scope, round-26 evidence, execution log and verification log"
+    },
+    "git_diff_check": {
+      "result": "PASS",
+      "command": "git diff --check"
+    },
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 25; no new REM-010/M-02 finding and no gate-v2 finding. The global controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T09:49:27Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 289,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 415,
+    "status_sha256": "2a7c9bd494ad97c95a68194c9340b08505e497eae72568d5209031c3159f07c5",
+    "note": "Read-only porcelain status after M-02 round 26 and checkpoint validation; original 386-path denominator unchanged. Round-26 evidence is the twenty-ninth post-inventory artifact."
+  }
+}

@@ -1,0 +1,94 @@
+{
+  "evidence_id": "M27-ATTACHMENT-UPLOAD-STORAGE-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T11:53:16Z",
+  "scope": "Local upload acceptance for attachment content validation, authorization, storage failure handling, metadata publication, audit, and OpenAPI contract.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to the current dirty worktree at the recorded HEAD. It is not candidate, target, or release evidence."
+  },
+  "implementation": {
+    "behavior": [
+      "File storage write exceptions are replaced by a generic INTERNAL_ERROR/Unexpected error before API serialization and routine request-error logging.",
+      "Checksum mismatch cleanup delete exceptions are replaced by the same generic error before attachment metadata is created.",
+      "The HTTP route rejects a principal without attachments.manage before reaching storage.",
+      "Only a successful upload appears in the attachment list and creates an attachments.upload audit event."
+    ],
+    "changed_paths": [
+      {
+        "path": "packages/modules/attachments/src/index.ts",
+        "sha256": "4c7d1902a368a679edbf983f8816da4da0a1d7e80aae4aa90307864abb752d17"
+      },
+      {
+        "path": "packages/modules/attachments/src/attachments.test.ts",
+        "sha256": "c0122668b3529ce11b2e69ca1f5b2497e4e24694adb16c9691d1a65d34871298"
+      },
+      {
+        "path": "apps/api/src/server.test.ts",
+        "sha256": "52b7fba9c72f933f961b2c5b8ca455bc005406f2f99221ed5c053d4fc686b57c"
+      }
+    ],
+    "runtime_artifact": {
+      "path": "packages/modules/attachments/dist/index.js",
+      "sha256": "70bedff427712655df7cd1a833854481ed5c018bf49752bc655efb8e3d5482e7",
+      "build_command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/module-attachments build",
+      "result": "PASS; API HTTP test imported the freshly built workspace package."
+    }
+  },
+  "checks": [
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec vitest run --config /tmp/cvg-his-m27-no-db-vitest.config.mjs --reporter=dot",
+      "result": "PASS, 1 file / 22 tests; setup 0. Covers storage exceptions, cleanup behavior, validation, and publication boundaries.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx --test --test-name-pattern='attachment upload rejects mismatched content|attachment HTTP boundary returns canonical 413|diagnostic summaries, orders and attachments fail closed across authenticated accounts' apps/api/src/server.test.ts",
+      "result": "PASS, 3/3 selected HTTP tests. Verifies 403 before storage for a principal lacking attachments.manage, MIME/magic mismatch before storage, generic 500 for store and cleanup-delete failures, failed-upload absence from persisted list/audit, exactly one successful attachment and upload audit, cross-account target denial, and canonical oversized-body 413. Request-error logs for the two synthetic provider failures contain only AppError/Unexpected error; provider markers are absent.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx --test --test-name-pattern='attachment base64 accepts the exact decoded frontier' apps/api/src/server.test.ts",
+      "result": "PASS, 1/1. Exact decoded 25 MiB file frontier is accepted; one byte above is rejected with PAYLOAD_TOO_LARGE/413.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx --test --test-name-pattern='attachment OpenAPI documents' apps/api/src/routes/openapi-routes.test.ts",
+      "result": "PASS, 1/1 attachment OpenAPI contract test; upload request/success schemas and 400/401/403/404/413/500 error responses are asserted.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/module-attachments typecheck && env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/api exec tsc -p tsconfig.json --noEmit",
+      "result": "PASS; module and API typechecks produced no diagnostics.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/server.test.ts packages/modules/attachments/src/index.ts packages/modules/attachments/src/attachments.test.ts && git diff --check -- apps/api/src/server.test.ts packages/modules/attachments/src/index.ts packages/modules/attachments/src/attachments.test.ts",
+      "result": "PASS; formatting and scoped whitespace checks were clean.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    }
+  ],
+  "independent_review": {
+    "result": "PASS",
+    "critic_id": "critic_m21_attachment_content_i2",
+    "reviewed_sha256": {
+      "packages/modules/attachments/src/index.ts": "4c7d1902a368a679edbf983f8816da4da0a1d7e80aae4aa90307864abb752d17",
+      "packages/modules/attachments/src/attachments.test.ts": "c0122668b3529ce11b2e69ca1f5b2497e4e24694adb16c9691d1a65d34871298",
+      "apps/api/src/server.test.ts": "52b7fba9c72f933f961b2c5b8ca455bc005406f2f99221ed5c053d4fc686b57c",
+      "apps/api/src/openapi.yaml": "6320120aad49f36fcd19960cc66b1663e64fc89b699feae12b014369bc4a4906"
+    },
+    "findings": "The first review requested a focused checksum-cleanup delete failure case. The follow-up test now covers it at service and HTTP boundaries. The final review confirmed generic failure envelopes/logs, no failed-upload metadata or audit, successful owner publication/audit, and alignment with the attachment OpenAPI status family."
+  },
+  "limitations": [
+    "File storage and repository in the HTTP test are in-memory fakes; this does not prove real S3/MinIO behavior, durable cleanup, PostgreSQL/RLS, or transactionality.",
+    "A cleanup delete outage can leave an unreferenced stored object; metadata and audit remain unpublished, but orphan inventory/retention reconciliation is outside this slice.",
+    "No live ClamAV, production storage, database, external service, Docker, listener, port, remote CI, target, or UAT was used.",
+    "M-27 remains partial pending real provider, persistence, and target-backed acceptance."
+  ]
+}

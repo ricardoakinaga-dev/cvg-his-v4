@@ -60,6 +60,7 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'AUTH_SECRET', path: 'staging/api', required: true },
       { key: 'AUTH_SECRET_PREVIOUS', path: 'staging/api_previous', required: false },
       { key: 'AUTH_SECRET_VERSION', path: 'staging/api_version', required: false },
+      { key: 'METRICS_AUTH_TOKEN', path: 'staging/metrics', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEY', path: 'staging/mfa', required: true },
       { key: 'MFA_SECRET_ENCRYPTION_KEY_VERSION', path: 'staging/mfa_version', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEYRING_JSON', path: 'staging/mfa_keyring', required: false },
@@ -90,6 +91,7 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'AUTH_SECRET', path: 'development/api', required: false },
       { key: 'AUTH_SECRET_PREVIOUS', path: 'development/api_previous', required: false },
       { key: 'AUTH_SECRET_VERSION', path: 'development/api_version', required: false },
+      { key: 'METRICS_AUTH_TOKEN', path: 'development/metrics', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEY', path: 'development/mfa', required: false },
       {
         key: 'MFA_SECRET_ENCRYPTION_KEY_VERSION',
@@ -122,6 +124,7 @@ describe('startup-secrets runtime coverage', () => {
     const getMany = vi.fn(async () => ({
       AUTH_SECRET: 'vault-auth-secret',
       DATABASE_URL: '   ',
+      METRICS_AUTH_TOKEN: '   ',
       PAGARME_API_KEY: 'vault-pagarme',
       SETUP_BOOTSTRAP_TOKEN: 'vault-setup-token'
     }));
@@ -141,6 +144,7 @@ describe('startup-secrets runtime coverage', () => {
       { key: 'AUTH_SECRET', path: 'production/api', required: true },
       { key: 'AUTH_SECRET_PREVIOUS', path: 'production/api_previous', required: false },
       { key: 'AUTH_SECRET_VERSION', path: 'production/api_version', required: false },
+      { key: 'METRICS_AUTH_TOKEN', path: 'production/metrics', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEY', path: 'production/mfa', required: false },
       { key: 'MFA_SECRET_ENCRYPTION_KEY_VERSION', path: 'production/mfa_version', required: false },
       {
@@ -179,6 +183,7 @@ describe('startup-secrets runtime coverage', () => {
         AUTH_SECRET_PREVIOUS: 'configured-prev-auth',
         MFA_SECRET_ENCRYPTION_KEY: 'configured-mfa-secret',
         AUTH_SECRET_VERSION: '2026-q2',
+        METRICS_AUTH_TOKEN: 'configured-metrics-token',
         MFA_SECRET_ENCRYPTION_KEY_VERSION: '2026-h1',
         MFA_SECRET_ENCRYPTION_KEYRING_JSON: '{"2025-h2":"configured-previous-mfa-secret"}',
         DATABASE_URL: 'postgres://configured',
@@ -201,6 +206,7 @@ describe('startup-secrets runtime coverage', () => {
     expect(resolved.AUTH_SECRET).toBe('configured-auth');
     expect(resolved.AUTH_SECRET_PREVIOUS).toBe('configured-prev-auth');
     expect(resolved.MFA_SECRET_ENCRYPTION_KEY).toBe('configured-mfa-secret');
+    expect(resolved.METRICS_AUTH_TOKEN).toBe('configured-metrics-token');
     expect(resolved.MFA_SECRET_ENCRYPTION_KEYRING_JSON).toContain('2025-h2');
     expect(resolved.SETUP_BOOTSTRAP_TOKEN).toBe('configured-setup-token');
   });
@@ -278,6 +284,24 @@ describe('startup-secrets runtime coverage', () => {
     expect(loadApiConfigMock).not.toHaveBeenCalled();
   });
 
+  it('does not validate a setup token when the optional secret is absent', async () => {
+    const secretsManager = {
+      provider: 'vault',
+      getMany: vi.fn(async () => ({}))
+    };
+    createSecretsManagerMock.mockResolvedValue(secretsManager);
+
+    await expect(
+      resolveApiStartup({
+        NODE_ENV: 'test',
+        VAULT_ENABLED: 'true',
+        VAULT_URL: 'http://vault:8200'
+      })
+    ).resolves.toMatchObject({ secretsManager });
+
+    expect(validateSetupBootstrapTokenMock).not.toHaveBeenCalled();
+  });
+
   it('passes the normalized production-like environment to the secrets factory', async () => {
     const startupError = new Error(
       'Vault configuration incomplete; refusing env fallback in production-like environment'
@@ -339,5 +363,29 @@ describe('startup-secrets runtime coverage', () => {
       mfaEncryptionKeyVersion: undefined,
       rotationReady: false
     });
+  });
+
+  it('evaluates rotation readiness for non-production and production without a previous secret', () => {
+    expect(
+      buildSecretRotationStatusReport({
+        provider: 'env',
+        env: {
+          NODE_ENV: 'test',
+          AUTH_SECRET: 'configured-auth',
+          AUTH_SECRET_VERSION: '2026-q2'
+        }
+      }).rotationReady
+    ).toBe(true);
+
+    expect(
+      buildSecretRotationStatusReport({
+        provider: 'env',
+        env: {
+          NODE_ENV: 'production',
+          AUTH_SECRET: 'configured-auth',
+          AUTH_SECRET_VERSION: '2026-q2'
+        }
+      }).rotationReady
+    ).toBe(false);
   });
 });

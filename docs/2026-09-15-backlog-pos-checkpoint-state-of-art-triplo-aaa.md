@@ -4,7 +4,7 @@ document_kind: backlog
 effective_date: 2026-09-15
 owner: Liderança técnica, Produto e Operações CVG-HIS
 review_cycle: on-task-completion-or-blocker-change
-superseded_by: docs/2026-09-20-backlog-nova-rodada-melhorias.md
+superseded_by: docs/2026-09-26-backlog-rodada-2.md
 ---
 
 # Backlog executável pós-checkpoint — State of Art / Triplo AAA

@@ -4,7 +4,7 @@ document_kind: roadmap
 effective_date: 2026-09-13
 owner: Liderança técnica, Produto e Operações CVG-HIS
 review_cycle: archived
-superseded_by: docs/2026-09-20-roadmap-nova-rodada-melhorias.md
+superseded_by: docs/2026-09-26-roadmap-rodada-2.md
 ---
 
 [Relatório atual](2026-09-13-relatorio-estado-atual-erp-cvg-his-v4.md) · [Plano executivo](2026-09-13-plano-executivo-prontidao-producao.md) · [Roadmap](2026-09-13-roadmap-prontidao-producao.md) · [Backlog executável](2026-09-13-backlog-prontidao-producao.md)

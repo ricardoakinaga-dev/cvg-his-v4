@@ -1,0 +1,46 @@
+{
+  "evidence_id": "M02-R9-STALENESS-REVIEW-20260924",
+  "recorded_at_utc": "2026-09-24T12:33:16Z",
+  "scope": "Read-only reconciliation of the previously passing r9 status inventory against a later exact live status snapshot.",
+  "r9_snapshot": {
+    "path": ".agent/evidence/m02-current-worktree-inventory-20260924-r9.json",
+    "sha256": "ed1dfdc3070af2f1ff97e831f432e1453ec6b2e7418441bad2d20b43180dc89a",
+    "path_count": 621,
+    "status_bytes": 36771,
+    "status_sha256": "b6b75f9049334bd50ee3ecee5189b74f15104de84870d7a561610e613b14feb3"
+  },
+  "live_snapshot": {
+    "command": "git status --porcelain=v1 -z --untracked-files=all --no-renames -- . ':(exclude).gauntlet' ':(exclude).gauntlet/**'",
+    "path_count": 630,
+    "status_bytes": 37197,
+    "status_sha256": "abe8866bded3724ccfae47a3ed8baa8e9a81e858055bd51b66cdd3de2c3dbcd7",
+    "comparison": {
+      "current_only_path_count": 10,
+      "r9_only_path_count": 1,
+      "common_path_status_changes": 0,
+      "protected_path_differences": 0,
+      "current_only_paths": [
+        { "status": " M", "path": "tests/unit/api/request-boundaries.test.ts" },
+        { "status": "??", "path": "tests/unit/api/attachment-upload-content.test.ts" },
+        { "status": "??", "path": "tests/unit/api/fatal-runtime.test.ts" },
+        { "status": "??", "path": "tests/unit/api/initialized-database-pool.test.ts" },
+        { "status": "??", "path": "tests/unit/api/server-test-support.test.ts" },
+        { "status": "??", "path": "tests/unit/api/tenant-command.test.ts" },
+        { "status": "??", "path": "tests/unit/api/vetus-cache-recovery.test.ts" },
+        { "status": "??", "path": "tests/unit/db/database-preflight-unit.test.ts" },
+        { "status": "??", "path": "tests/unit/db/migration-files.test.ts" },
+        { "status": "??", "path": "tests/unit/shared/transaction-scope.test.ts" }
+      ],
+      "r9_only_paths": [{ "status": "??", "path": "apps/api/.tmp-ag2-pinpoint.mjs" }]
+    }
+  },
+  "review": {
+    "r9_refresh_review": "An earlier independent I2 check matched r9 at that review point. A later exact status check superseded that result because the worktree status had changed.",
+    "replacement_exact_status_review": "FAIL; found the 630-path live snapshot and did not print paths or access protected files.",
+    "initial_i1_attempts": "The first two command constructions were malformed; neither printed status paths or accessed protected files. The reviewer was stopped before a valid status invocation, and a replacement reviewer completed the exact check.",
+    "protected_state_accessed": false,
+    "protected_paths_printed": false,
+    "files_or_services_changed_by_review": false
+  },
+  "disposition": "r9 is retained as historical evidence but is stale against this later snapshot. New and changed test paths remain unreviewed/HOLD in the next inventory. A subsequent inventory refresh must bind the updated disposition report and supersede r9."
+}

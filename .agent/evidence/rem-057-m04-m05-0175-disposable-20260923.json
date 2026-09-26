@@ -1,0 +1,104 @@
+{
+  "artifact_id": "REM-057-M04-M05-0175-disposable-20260923",
+  "recorded_at": "2026-09-23",
+  "result": "PASS_LOCAL_DISPOSABLE_PROOF_ONLY",
+  "scope": {
+    "migration_target": "0175_access_control_change_versions",
+    "baseline_target": "0174_feature_flag_override_tenant_ownership",
+    "baseline_applied_migrations": 173,
+    "migration_source_sha256": "5c0cc2fa9d811f63ef55e4de390744d5ea360ef46d8a5c1450a45f0d5a3ffc1e",
+    "database_image": "postgres:16-alpine",
+    "network_mode": "none",
+    "published_ports": 0,
+    "client_transport": "private Unix socket",
+    "server_tcp_listen_addresses": "",
+    "authentication": "SCRAM-SHA-256",
+    "test_data": "synthetic only"
+  },
+  "migration_role": {
+    "name": "cvg_migration_0175",
+    "superuser": false,
+    "createdb": false,
+    "createrole": false,
+    "replication": false,
+    "bypassrls": false,
+    "database_create": false,
+    "database_owner": "postgres"
+  },
+  "checks": {
+    "migration_applied_as_restricted_role": true,
+    "checksum_matches_source": true,
+    "columns": [
+      "account_id uuid not null",
+      "version bigint not null",
+      "updated_at timestamp with time zone not null"
+    ],
+    "primary_key": true,
+    "foreign_key": true,
+    "tenant_rls_policies": 1,
+    "security_definer_functions": 5,
+    "triggers": 13,
+    "account_insert_initializes_versions": true,
+    "tenant_a_sees_only_a": true,
+    "tenant_b_sees_only_b": true,
+    "repeat_is_idempotent": true
+  },
+  "secret_handling": {
+    "credential_generated_ephemerally": true,
+    "credential_written_to_repository_or_git": false,
+    "credential_present_in_command_or_container_logs": false
+  },
+  "cleanup": {
+    "owned_container_removed": true,
+    "owned_temporary_directory_removed": true
+  },
+  "limitations": [
+    "This proves the migration against one disposable local PostgreSQL 16 instance only.",
+    "The approved production credential delivery channel and production identity mapping remain unverified.",
+    "A repeat against the exact candidate overlay and SHA is required before REM-057 can close.",
+    "Migration 0175 has no revert script; rollback must keep its additive schema and run the old application, while a new application requires 0175 to be applied. No schema-down operation was tested."
+  ],
+  "operational_documentation": {
+    "upgrade_rollback_runbook": "docs/engineering/INSTALL_UPGRADE_ROLLBACK.md",
+    "database_role_matrix": "docs/security/DATABASE_ROLE_MATRIX.md",
+    "recorded_contract": "0175 has no down migration; application rollback keeps its additive schema; the old binary is expected to ignore new objects, while the new binary requires 0175.",
+    "production_status": "the proposed dedicated migration login, object grants, identity and approved secret channel are not configured or approved for a target",
+    "mixed_version_status": "documented expectation only; exact old/new candidate binaries have not been exercised"
+  },
+  "design_decision": {
+    "problem": "Run migration 0175 without administrator credentials while preserving tenant isolation and application rollback.",
+    "current_facts": [
+      "The migration runner accepts the database identity from its connection URL.",
+      "The existing installer capability role is NOLOGIN and is not a migration login.",
+      "The prior generic migration harness uses an administrator and published host port, so it is not evidence for this contract.",
+      "A disposable local run succeeded with a non-superuser login and object ownership limited to the tables/schema needed by 0175."
+    ],
+    "unknowns": [
+      "Approved production migration identity and secret provider",
+      "Exact grants/ownership policy in the deployment target",
+      "Compatibility of the release-specific old/new application binaries"
+    ],
+    "constraints": [
+      "No shared database, service, port, target or real credential was used.",
+      "The proof must run offline with synthetic data and clean up only its own container and temporary files."
+    ],
+    "invariants": [
+      "Runtime API/worker credentials do not apply migrations.",
+      "Migration login cannot be superuser, create databases/roles, replicate or bypass RLS.",
+      "Tenant-scoped reads remain isolated after account version initialization.",
+      "Application rollback preserves additive migration schema; no schema-down action."
+    ],
+    "candidates_considered": [
+      "Reuse existing administrator login: rejected because it violates minimum privilege.",
+      "Promote cvg_installer to a login: rejected because it is a NOLOGIN capability role with a distinct runtime purpose.",
+      "Use a dedicated per-target migration login with only migration-required object grants: selected for local proof; production approval remains open."
+    ],
+    "verification_boundary": "Disposable PostgreSQL 16 container, network none, no published ports, Unix socket, synthetic role/secret/data; exact schema, privilege flags, tenant RLS and idempotence were observed.",
+    "failure_and_recovery": "A failed migration stops the local runner; cleanup removes only its owned container/temp directory. Production rollback keeps schema 0175 and redeploys the prior application only after candidate compatibility probes pass.",
+    "residual_risks": [
+      "No production role/secret channel or ownership grant plan has been approved.",
+      "No exact release binaries were mixed-version tested.",
+      "No restore or schema-down rehearsal was performed."
+    ]
+  }
+}

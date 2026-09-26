@@ -1,0 +1,130 @@
+{
+  "evidence_id": "M21-ATTACHMENT-UPLOAD-ROUTE-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T12:14:51Z",
+  "scope": "Bounded extraction of POST /attachments plus API test-harness decomposition and M-23 hotspot measurement refresh.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is for the dirty working tree based on the recorded HEAD; it is not candidate or release evidence."
+  },
+  "environment": {
+    "node": "v22.23.2",
+    "pnpm": "10.33.0",
+    "node_env": "test",
+    "database_url_variables_unset": true,
+    "database_or_service_started": false,
+    "listener_or_port_opened": false
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "0f7775ab0e86c839205f43f642eceeab0e4b05f94f72311ef3f8b30605bb1662",
+      "physical_lines_after": 3673,
+      "physical_lines_before_this_slice": 3773
+    },
+    {
+      "path": "apps/api/src/server.test.ts",
+      "sha256": "4e3e910753f3f36c485d017f37d2ca218b3e46ca0762a5a55b08809c738387f7",
+      "physical_lines_after": 6447,
+      "hotspot_max_lines": 6481
+    },
+    {
+      "path": "apps/api/src/server-test-support.ts",
+      "sha256": "bdfd48733bd372a209f994ec55a7099d35ccfee880db75bbd63da9bda2cc1246",
+      "physical_lines": 205
+    },
+    {
+      "path": "apps/api/src/routes/attachment-upload-route.ts",
+      "sha256": "4cfb0de45f3c6b5aca80a2a3a1c033154be3f1aa858d4be85bf8a8c2fa0a9f15",
+      "physical_lines": 125
+    },
+    {
+      "path": "apps/api/src/routes/attachment-upload-route.test.ts",
+      "sha256": "fa92e60070e6947fdb90a36d139b387fe2cd74ff4c3e833ba423c3b3f53c41c0",
+      "physical_lines": 228
+    },
+    {
+      "path": "apps/api/src/helpers/attachment-upload-content.ts",
+      "sha256": "ab9d336a2cb2f4fc6d08ba69131477ea37977d2d5128820d8202d463071dd648",
+      "physical_lines": 40
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "b278bab9e9085ad8d64fa8fa9b1e60b7cbed7777011e2745e9f4c1b04196a6b6",
+      "server_ts_budget": {
+        "current_lines": 3673,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      },
+      "server_test_budget": {
+        "current_lines": 6447,
+        "max_lines": 6481,
+        "previous_max_lines": 6481
+      }
+    }
+  ],
+  "behavior_preserved": [
+    "The route is dispatched at its previous position inside the tenant command and idempotency envelope.",
+    "The handler keeps permission check, cached JSON read with the 25 MiB request bound, account-target validation, base64 decoding, upload, linked medical-record event, persistence wait, audit, and 201 response in the same order.",
+    "Encounter, medical-record, and diagnostic-order links keep their prior event mapping and summaries.",
+    "The decoder remains available from server.js for existing callers and tests without importing server.js into the route module."
+  ],
+  "checks": [
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx --test apps/api/src/routes/attachment-upload-route.test.ts",
+      "result": "PASS; 3/3 route tests",
+      "exit_code": 0
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx --test --test-name-pattern='attachment upload rejects mismatched content|attachment HTTP boundary returns canonical 413|diagnostic summaries, orders and attachments fail closed across authenticated accounts' apps/api/src/server.test.ts",
+      "result": "PASS; 3/3 selected HTTP tests, including M-27 upload failures/success, size limit, and cross-account denial",
+      "exit_code": 0
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx --test --test-name-pattern='attachment base64 accepts the exact decoded frontier' apps/api/src/server.test.ts",
+      "result": "PASS; 1/1 exact decoded-size frontier test",
+      "exit_code": 0
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/api exec tsc -p tsconfig.json --noEmit",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; hotspot measurements and unchanged line ceilings validate",
+      "exit_code": 0
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/server.test.ts apps/api/src/server-test-support.ts apps/api/src/routes/attachment-upload-route.ts apps/api/src/routes/attachment-upload-route.test.ts apps/api/src/helpers/attachment-upload-content.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check -- apps/api/src/server.ts apps/api/src/server.test.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS; new files also checked for trailing whitespace",
+      "exit_code": 0
+    }
+  ],
+  "attempt_notes": [
+    "An initial selected HTTP invocation omitted NODE_ENV=test and seed-user login failed; the same selection passed after rerun with NODE_ENV=test and database URL variables unset. No application defect was attributed to that environment-only failure."
+  ],
+  "independent_review": {
+    "status": "PASS",
+    "reviewer": "critic_m21_attachment_content_i2",
+    "frozen_source_hashes_provided": true,
+    "result": "Confirmed the former inline behavior and order, exact dispatch location inside the tenant/idempotency envelope, body-cache reuse, decoder re-export, and test-harness behavior. No files edited.",
+    "reviewer_observations": [
+      "The HTTP command pre-read and route body read share the request-body cache.",
+      "The route tests and API attachment frontier/upload selection passed under Node v22.23.2 with database URL variables unset.",
+      "The complexity entry matches 3,673 server.ts lines and 6,447 server.test.ts lines; no database, listener, service, or port was used."
+    ]
+  },
+  "limitations": [
+    "Tests use the in-process API and local in-memory storage fixtures; PostgreSQL/RLS and durable provider behavior were not exercised.",
+    "A failed object cleanup can leave an unreferenced blob for retention/orphan reconciliation, as recorded in M-27 evidence.",
+    "M-21 remains partial; remaining API composition, persistent cross-service behavior, and PROD-041 acceptance remain open.",
+    "M-02 candidate freeze, complete source review, overlay approval, and external CI remain open."
+  ]
+}

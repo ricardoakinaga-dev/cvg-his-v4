@@ -1,0 +1,106 @@
+{
+  "evidence_id": "M02-SOURCE-REVIEW-ROUND25-20260923",
+  "recorded_at": "2026-09-23T09:44:30Z",
+  "reviewer": "/root (primary operator; self-review, not independent)",
+  "repository": "/home/ricardo/cvg-his-v4",
+  "shared_head": "ad2f0373f68635f2579253b013a4382219906921",
+  "candidate_base_sha": "570920de3d12d9a1043aa2c36102a89d39f04569",
+  "inventory_ref": ".agent/evidence/m02-inventory-20260923.jsonl#M02-WORKTREE-PATH-INVENTORY-20260923-01",
+  "paths_reviewed": [
+    {
+      "path": "infra/scripts/validate-backup-restore.mjs",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "b7efe46f7e5d22f36f2fc8cbc71ebc3ce1dcd4a0367e2d54a7557221205d98f2",
+      "current_sha256": "b7efe46f7e5d22f36f2fc8cbc71ebc3ce1dcd4a0367e2d54a7557221205d98f2",
+      "sha_matches_inventory": true,
+      "scope_classification": "INFRA_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Delta replaces stale roadmap/backlog regexes with a bounded check for exact current W3 and REM-024 clauses. The program reads project/docs files and checks substring presence; it does not execute backup-v2.sh or restore-drill-v2.sh."
+    },
+    {
+      "path": "infra/scripts/validate-backup-restore.test.mjs",
+      "git_status_at_inventory": " M",
+      "inventory_sha256": "277af2e73154864443a582f054c7be9d51c8018183d923d63c7249d750da6a23",
+      "current_sha256": "277af2e73154864443a582f054c7be9d51c8018183d923d63c7249d750da6a23",
+      "sha_matches_inventory": true,
+      "scope_classification": "INFRA_SOURCE_OR_TEST",
+      "counted_as_new_original_path_this_round": true,
+      "review_notes": "Delta replaces stale roadmap/backlog regexes with a bounded check for exact current W3 and REM-024 clauses. The program reads project/docs files and checks substring presence; it does not execute backup-v2.sh or restore-drill-v2.sh."
+    }
+  ],
+  "candidate_relative_change": {
+    "source": "Replaces prior substring/regex matching for stale roadmap/backlog identifiers with exact current W3 exit text and REM-024 backlog-row phrases; success output now explicitly states the check is documentation consistency, not restore evidence.",
+    "test": "Adds a named REM-024 representative restore/rollback requirement mutation, splits hash/count/RLS and approved RPO/RTO mutation cases, changes the roadmap test to target the W3 section, and adds an empty-manifest rejection case.",
+    "package_script": "ops:backup:check runs node --test infra/scripts/validate-backup-restore.test.mjs followed by node infra/scripts/validate-backup-restore.mjs."
+  },
+  "verification": {
+    "command": "PATH=\"/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH\" pnpm ops:backup:check",
+    "result": "PASS",
+    "exit_status": 0,
+    "summary": "Node TAP: 6/6 tests passed. Local consistency CLI: 15/15 textual checks passed. The command only read project files and created/removed synthetic documentation fixtures under os.tmpdir().",
+    "environment": "Linux local workspace; Node.js v22.23.2; pnpm 10.33.0."
+  },
+  "boundary_review": {
+    "checker_behavior": "Reads repository scripts, package.json and documents selected by docs/document-governance.json. It checks for required substrings/phrases and prints labels. It does not invoke either backup or restore shell script and performs no writes.",
+    "test_behavior": "Each test copies source/docs to a mkdtemp fixture, invokes the local Node checker with fixtureRoot as cwd, mutates copied roadmap/backlog/manifest inputs, and removes the fixture in finally after successful setup.",
+    "external_effects": "No database, network, credentials, backup storage, target, Docker, restore or rollback was used."
+  },
+  "findings_and_limits": [
+    {
+      "id": "M02-BACKUP-RESTORE-CHECK-IS-TEXTUAL",
+      "classification": "HOLD_SEMANTIC_GATE_SCOPE",
+      "observation": "The 15 checks prove required marker strings exist in current sources/docs. They do not prove shell control flow, command safety, actual backup integrity, or successful restoration; marker text in dead code/comments could satisfy substring checks."
+    },
+    {
+      "id": "M02-BACKUP-DOC-PATH-CONTAINMENT",
+      "classification": "HOLD_PATH_BOUNDARY",
+      "observation": "Document paths from docs/document-governance.json are resolved against process.cwd() without repository-root containment checks. Current canonical paths are repository-local, but absolute or parent-relative manifest paths could make the checker read outside the checkout."
+    },
+    {
+      "id": "M02-BACKUP-TEST-FIXTURE-SETUP-CLEANUP",
+      "classification": "HOLD_TEST_ROBUSTNESS",
+      "observation": "createFixture() allocates its temp directory and copies files before each test enters try/finally, so a setup/copy error can leave a partial temp directory. The test named “missing documentation manifest” writes an empty manifest rather than deleting the file. spawnSync has no timeout."
+    }
+  ],
+  "candidate_actions": [
+    "Retain the explicit W3/REM-024 text linkage as a local documentation consistency check and keep its PASS separate from operational restore evidence.",
+    "Constrain resolved documentation paths to the checkout and make the fixture setup itself cleanup-safe; test an actually absent manifest if that is the intended case.",
+    "Keep real backup/restore, RPO/RTO and target certification gated under REM-024/M-14."
+  ],
+  "limitations": [
+    "The test only validates selected required/missing textual markers; no shell scripts were executed.",
+    "No real backup/restore/rollback, checksum verification against a real archive, database, target, tenant/RLS recovery or RPO/RTO measurement occurred.",
+    "This is self-review; complete M-02 path review, candidate-bound critique and release approval remain open."
+  ],
+  "checkpoint_validation": {
+    "docs_validate": {
+      "result": "PASS",
+      "command": "pnpm docs:validate"
+    },
+    "json_and_jsonl_parse": {
+      "result": "PASS",
+      "scope": "state, backlog, content-scope, round-25 evidence, execution log and verification log"
+    },
+    "git_diff_check": {
+      "result": "PASS",
+      "command": "git diff --check"
+    },
+    "global_controller": {
+      "result": "FAIL",
+      "exit_status": 1,
+      "summary": "RESULT FAIL (pass=6 warn=0 fail=788), unchanged from round 24; no new REM-010/M-02 finding and no gate-v2 finding. The global controller remains non-approving."
+    }
+  },
+  "current_shared_worktree_snapshot": {
+    "captured_at_utc": "2026-09-23T09:46:04Z",
+    "head": "ad2f0373f68635f2579253b013a4382219906921",
+    "base": "570920de3d12d9a1043aa2c36102a89d39f04569",
+    "modified_tracked_paths": 126,
+    "untracked_paths": 288,
+    "deleted_paths": 0,
+    "staged_paths": 0,
+    "total_dirty_paths": 414,
+    "status_sha256": "18e2a2bbf30205b07332d33bbb37a858df963f6920b18395ae821acf31a5f870",
+    "note": "Read-only porcelain status after M-02 round 25 and checkpoint validation; original 386-path denominator unchanged. Round-25 evidence is the twenty-eighth post-inventory artifact."
+  }
+}

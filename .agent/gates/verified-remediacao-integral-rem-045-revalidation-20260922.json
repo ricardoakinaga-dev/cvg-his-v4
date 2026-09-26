@@ -1,0 +1,72 @@
+{
+  "gate_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-045-REVALIDATION-20260922",
+  "supersedes": ".agent/gates/verified-remediacao-integral-rem-045-20260922.json",
+  "task": "REM-045",
+  "timestamp": "2026-09-22T11:37:09.000000Z",
+  "gate_type": "VERIFIED_REVALIDATION",
+  "decision": "PASS_WITH_CONDITIONS",
+  "criteria": [
+    {
+      "id": "V-REM045-RV-001",
+      "criterion": "O validador final rejeita ACL não declarada e configuração permissiva da classe unknown.",
+      "status": "PASS",
+      "observed": "A validação de policy exige acl_profile declarado, protected boolean e unknown.protected=true; policy atual passa.",
+      "evidence_refs": [
+        ".agent/evidence/rem-045-revalidation-20260922.txt",
+        "scripts/artifact-retention-dry-run.mjs",
+        "docs/engineering/artifact-retention-policy.json"
+      ]
+    },
+    {
+      "id": "V-REM045-RV-002",
+      "criterion": "Teste focal, sintaxe, formatação e diff permanecem verdes após o endurecimento.",
+      "status": "PASS",
+      "observed": "Native Node 3/3, node --check, Prettier check e git diff --check passaram.",
+      "evidence_refs": [
+        ".agent/evidence/rem-045-revalidation-20260922.txt",
+        "scripts/artifact-retention-dry-run.test.mjs"
+      ]
+    },
+    {
+      "id": "V-REM045-RV-003",
+      "criterion": "Inventário real candidate-bound não emite exclusões e mantém proteção da evidência.",
+      "status": "PASS_WITH_CONDITIONS",
+      "observed": "418926 arquivos, 52.2 GiB aparentes, 418733 protegidos, 0 erros e 0 candidatos; execução somente --dry-run.",
+      "evidence_refs": [".agent/evidence/rem-045-revalidation-20260922.txt"]
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-045-revalidation-20260922.txt",
+    ".agent/evidence/rem-045-artifact-retention-20260922.txt",
+    "docs/engineering/artifact-retention-policy.json",
+    "docs/operations/ARTIFACT_RETENTION_POLICY.md",
+    "scripts/artifact-retention-dry-run.mjs",
+    "scripts/artifact-retention-dry-run.test.mjs"
+  ],
+  "source_hashes": {
+    "docs/engineering/artifact-retention-policy.json": "eb65e2225a027f0f57dd6144513eb44875478da4959509337b26c7662613f8ad",
+    "docs/operations/ARTIFACT_RETENTION_POLICY.md": "75af2b0f86c9f615fcbbd2afd4793098794e6dfe5b60b2afae71644a955deee1",
+    "scripts/artifact-retention-dry-run.mjs": "06916c62a1a0a8e1718b67da868339aa99bc1a5265149d16a31590c85a58f0fa",
+    "scripts/artifact-retention-dry-run.test.mjs": "f6bdabfd1e4639cc2e84df5d9c849556c22277e52744a7d8feb57ab4878e0a63"
+  },
+  "limitations": [
+    "O inventário é uma fotografia antes do append desta própria evidência/gate; os roots controlados podem crescer por novos registros.",
+    "ACL/retention de provedor externo e limpeza destrutiva não foram executadas.",
+    "A crítica independente fresca E7 permanece ausente por modo de agente único.",
+    "CI/OCI, target, UAT, release e go/no-go permanecem fora do claim."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM045-RV-AUTHORITY",
+      "description": "Qualquer exclusão, chmod ou alteração de retenção externa exige autorização explícita no escopo exato.",
+      "non_blocking": true,
+      "status": "OPEN",
+      "owner": "lead",
+      "authority_state": "REQUIRED_FOR_DESTRUCTIVE_ACTION",
+      "verification_method": "Novo dry-run e gate superseding antes da ação."
+    }
+  ],
+  "residual_risk": "MEDIUM",
+  "next_action": "REM-045:REOPEN-IF-DRIFT",
+  "status": "DONE_LOCAL"
+}

@@ -1,0 +1,98 @@
+{
+  "evidence_id": "M21-CLINICAL-HANDOFF-SEND-ROUTE-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T12:45:57Z",
+  "scope": "Bounded extraction of POST /clinical-handoffs/send-to-reception into an injected API route module.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is for the dirty working tree based on the recorded HEAD; it is not candidate or release evidence."
+  },
+  "environment": {
+    "node": "v22.23.2",
+    "pnpm": "10.33.0",
+    "node_env": "test",
+    "database_url_variables_unset": true,
+    "database_or_service_started": false,
+    "listener_or_port_opened": false
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "f005ca098e5255252a7e67a67b4c5dcda66df7fa394347049a95e564b397c700",
+      "physical_lines_after": 3618,
+      "physical_lines_before_this_slice": 3635
+    },
+    {
+      "path": "apps/api/src/routes/clinical-handoff-send-route.ts",
+      "sha256": "575d7061baff885644dc758cacdf0c6f4135a731847a58b7a6cbd19998fd1bb8",
+      "physical_lines": 67
+    },
+    {
+      "path": "apps/api/src/routes/clinical-handoff-send-route.test.ts",
+      "sha256": "5188ffb5798b1d2916fd5b8aa10661592c4c1a739bf6092b2a7606aeb1fde416",
+      "physical_lines": 190
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "710eb507feb0bca37b6354b617829bf2ab37db1dabd35c0cf83297fe7c2d0c07",
+      "server_ts_budget": {
+        "current_lines": 3618,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      },
+      "server_test_budget": {
+        "current_lines": 6447,
+        "max_lines": 6481
+      }
+    }
+  ],
+  "behavior_preserved": [
+    "The exact POST route is dispatched at its former position after clinical-handoff reads and before acknowledgement handling, inside the tenant command and idempotency wrapper.",
+    "The handler preserves encounters.manage authorization before body parsing and handoff creation.",
+    "Both clinical-handoff and encounter persistence waits finish before the audit is appended; persistence failure propagates without audit or success response.",
+    "Audit module, action, entity, summary, risk, and correlation values remain unchanged, followed by the same 201 response and serialized handoff."
+  ],
+  "checks": [
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec tsx --test apps/api/src/routes/clinical-handoff-send-route.test.ts apps/api/src/routes/clinical-handoffs-read-routes.test.ts",
+      "result": "PASS; 11/11 clinical-handoff send/read route tests",
+      "exit_code": 0
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm --filter @cvg-his-v2/api exec tsc -p tsconfig.json --noEmit",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm complexity:check",
+      "result": "PASS; measured 3,618 server.ts lines under the existing 8,323-line ceiling",
+      "exit_code": 0
+    },
+    {
+      "command": "env -u DATABASE_URL -u TEST_DATABASE_URL -u DATABASE_URL_TEST NODE_ENV=test PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH pnpm exec prettier --check apps/api/src/server.ts apps/api/src/routes/clinical-handoff-send-route.ts apps/api/src/routes/clinical-handoff-send-route.test.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS",
+      "exit_code": 0
+    },
+    {
+      "command": "git diff --check -- apps/api/src/server.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS; both new route files also passed a separate trailing-whitespace scan",
+      "exit_code": 0
+    }
+  ],
+  "attempt_notes": [
+    "The first complexity check detected the stale recorded server.ts count after extraction. The hotspot entry was updated to the measured 3,618 lines without changing the ceiling, after which the gate passed.",
+    "The first Prettier check reported formatting differences in server.ts; the file was formatted and the final source check passed."
+  ],
+  "independent_review": {
+    "status": "PASS",
+    "reviewer": "critic_m02_inventory_r6_refresh_i2",
+    "frozen_source_hashes_provided": true,
+    "result": "Compared the extracted route with the former HEAD branch and confirmed exact matching, permission/body/create order, both persistence waits before audit, response semantics, and dispatch inside the tenant-command wrapper. Independently reran the 11 focused tests, API typecheck, and complexity check. No files edited."
+  },
+  "limitations": [
+    "Route tests use in-process streams and injected stubs; PostgreSQL/RLS, durable handoff persistence, persisted audit behavior, worker flow, and full cross-account HTTP behavior were not exercised by this slice.",
+    "M-21 remains partial; remaining API composition and full PROD-041 acceptance remain open.",
+    "M-02 candidate freeze, complete source review, overlay approval, and external CI remain open."
+  ]
+}

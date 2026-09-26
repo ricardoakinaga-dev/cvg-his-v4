@@ -24,7 +24,7 @@
   "scripts": {
     "build": "tsc -b tsconfig.json --force",
     "typecheck": "tsc -p tsconfig.json --noEmit",
-    "lint": "tsc -p tsconfig.json --noEmit",
+    "lint": "node ../../../scripts/run-semantic-lint.mjs",
     "test": "cd ../../.. && vitest run packages/modules/inventory/src/*.test.ts"
   }
 }

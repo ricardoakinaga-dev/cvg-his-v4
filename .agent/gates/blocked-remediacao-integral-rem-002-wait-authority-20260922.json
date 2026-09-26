@@ -1,0 +1,78 @@
+{
+  "record_id": "GATE-REM-002-AUDIT-RESOLVED-WAIT-AUTHORITY-20260922",
+  "timestamp": "2026-09-22T12:07:36.000000Z",
+  "gate_id": "AUDIT_RESOLVED",
+  "scope": "REM-002 history rewrite/removal of the prohibited blob from the publishable interval; local preparation is preserved and external/destructive authority is unresolved.",
+  "scope_ref": "REM-002",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "AR-REM002-001",
+      "description": "REM-001 preservation evidence is current enough to keep the rewrite boundary recoverable before any destructive action.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-001-verification-20260922.txt",
+        ".agent/gates/verified-remediacao-integral-rem-001-20260922.json"
+      ],
+      "confidence": "HIGH",
+      "limitations": "The prohibited blob remains intentionally preserved; no rewrite or push was executed."
+    },
+    {
+      "id": "AR-REM002-002",
+      "description": "The active task, backlog next action and first visible ExecPlan step resolve to one safe wait action.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-002-control-pointer-recovery-20260922.txt",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "This validates pointer integrity only; it does not validate the external decision."
+    },
+    {
+      "id": "AR-REM002-003",
+      "description": "The history rewrite/removal/push boundary has explicit human authority and is not inferred from local evidence.",
+      "required": true,
+      "status": "BLOCKED",
+      "evidence_refs": [
+        ".agent/authority.jsonl",
+        ".agent/evidence/rem-002-control-pointer-recovery-20260922.txt"
+      ],
+      "confidence": "HIGH",
+      "limitations": "No CONFIRMED authority record exists in the current ledger; execution remains forbidden."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-002-control-pointer-recovery-20260922.txt",
+    ".agent/evidence/rem-001-verification-20260922.txt",
+    ".agent/plans/remediacao-integral-20260921.md",
+    ".agent/state.json",
+    ".agent/backlog.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [
+    "No CONFIRMED human authority for history rewrite/removal/push.",
+    "The prohibited .gauntlet/state.json blob remains reachable in the public interval.",
+    "CI/release, target, UAT, independent critique and go/no-go remain unproven."
+  ],
+  "conditions": [],
+  "authority": {
+    "required": true,
+    "state": "PENDING",
+    "actor": "named owner/release authority not yet supplied",
+    "scope": "REM-002 history rewrite/removal of the prohibited blob from the publishable interval; local preparation is preserved and external/destructive authority is unresolved.",
+    "decision": "Await explicit CONFIRMED authority before any destructive or external action.",
+    "evidence_ref": ".agent/authority.jsonl",
+    "expires_or_revalidates": "Revalidate immediately after a new authority decision or any source/control mutation."
+  },
+  "residual_risk": "CRITICAL",
+  "decision": "BLOCKED",
+  "next_action": "REM-002:WAIT-AUTHORITY",
+  "revalidation_triggers": [
+    "A CONFIRMED authority record for the exact REM-002 scope is appended.",
+    "The source/control worktree or backup/recovery evidence changes.",
+    "The public push interval, refs or prohibited blob inventory changes."
+  ],
+  "supersedes": null
+}

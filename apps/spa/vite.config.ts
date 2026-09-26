@@ -165,6 +165,10 @@ export default defineConfig(({ mode }) => {
           __dirname,
           '../../packages/shared/config/src/index.ts'
         ),
+        '@cvg-his-v2/shared-contracts': resolve(
+          __dirname,
+          '../../packages/shared/contracts/src/index.ts'
+        ),
         ...(isE2EVisualRuntime
           ? {
               'virtual:pwa-register/vue': resolve(

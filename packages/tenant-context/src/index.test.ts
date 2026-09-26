@@ -10,8 +10,8 @@ import {
   runWithTenantContext
 } from './index.js';
 
-function createRequest(headers: Record<string, string> = {}): IncomingMessage {
-  return { headers } as IncomingMessage;
+function createRequest(headers: Record<string, string> = {}, correlationId?: string): IncomingMessage {
+  return { headers, correlationId } as unknown as IncomingMessage;
 }
 
 describe('tenant context', () => {
@@ -45,7 +45,7 @@ describe('tenant context', () => {
         'x-tenant-id': 'tenant-2',
         'x-branch-id': 'branch-2',
         'x-correlation-id': 'corr-2'
-      }),
+      }, 'api_abc123_0123456789abcdef03'),
       {
         fallbackAccountId: 'account-2',
         fallbackUserId: 'user-2',
@@ -58,8 +58,23 @@ describe('tenant context', () => {
       accountId: 'account-2',
       branchId: 'branch-2',
       userId: 'user-2',
-      correlationId: 'corr-2'
+      correlationId: 'api_abc123_0123456789abcdef03'
     });
+  });
+
+  it('does not resolve correlation IDs from caller-controlled headers', () => {
+    const ctx = resolveTenantFromRequest(
+      createRequest({
+        'x-tenant-id': 'tenant-2',
+        'x-correlation-id': 'patient@example.com'
+      }),
+      {
+        fallbackAccountId: 'account-2',
+        allowHeaderIdentity: true
+      }
+    );
+
+    expect(ctx.correlationId).toBe('unknown');
   });
 
   it('ignores identity headers when header identity is not explicitly allowed', () => {

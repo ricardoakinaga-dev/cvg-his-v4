@@ -104,6 +104,10 @@ function createHandlers(service: PrescriptionsService, accountId = 'acc-1') {
   return {
     prescriptions: service,
     audit: { write: () => ({}) } as never,
+    patients: {
+      getAuthoritativeOrThrow: async (scopedAccountId: string, patientId: string) =>
+        ({ id: patientId, accountId: scopedAccountId }) as never
+    },
     requirePrincipal: () => createPrincipal(accountId)
   };
 }

@@ -1,0 +1,112 @@
+{
+  "evidence_id": "M21-METRICS-READ-ROUTE-LOCAL-20260924",
+  "recorded_at_utc": "2026-09-24T10:16:03Z",
+  "scope": "M-21/M-23 extraction of authenticated GET /metrics and /internal/metrics from the API dispatcher.",
+  "repository_identity": {
+    "head_sha": "ad2f0373f68635f2579253b013a4382219906921",
+    "worktree_clean": false,
+    "candidate_sha": null,
+    "note": "Evidence is bound to this dirty worktree at the recorded HEAD; it is not candidate or release evidence."
+  },
+  "extraction": {
+    "source_path": "apps/api/src/server.ts",
+    "server_lines_before": 3842,
+    "server_lines_after": 3815,
+    "server_line_delta": -27,
+    "dispatch_placement": "The synchronous exact path/method gate remains at the prior collector branch position before tenant/session authorization.",
+    "behavior_preserved": [
+      "Only exact /metrics and /internal/metrics GET requests are handled.",
+      "Dedicated metrics-token authorization and the same 401 Bearer challenge and JSON body occur before refresh or operational reads.",
+      "Clinical snapshot refresh, database pool update, app-state read, Redis probe, active-chaos lookup, and app gauge update retain their original order and arguments.",
+      "The Prometheus registry and chaos registry are collected together with Promise.all; the 200 text/plain content type and joined response body are unchanged."
+    ],
+    "dependency_boundary": "Runtime refresh, pool, Redis, chaos, state, gauge, uptime, and metrics-text dependencies are passed from server composition; route tests inject local stubs."
+  },
+  "changed_paths": [
+    {
+      "path": "apps/api/src/routes/metrics-read-route.ts",
+      "sha256": "87ccf1cd705582f354867e4578ede42b2e69f2228cb90718448edad4801a6aa9",
+      "physical_lines": 91
+    },
+    {
+      "path": "apps/api/src/routes/metrics-read-route.test.ts",
+      "sha256": "a19a6c849e4cd974b669902f3721bbce0d783f2ed010505b0e928b8df370a91e",
+      "physical_lines": 234
+    },
+    {
+      "path": "apps/api/src/server.ts",
+      "sha256": "3de2a91c9fd687f2b874d19b44d4091d812d2b678e422e6aa19ea0593f72ed99",
+      "physical_lines": 3815
+    },
+    {
+      "path": "docs/engineering/complexity-hotspots.json",
+      "sha256": "d0e4e453be169f6c35a1ceaa0ca552254271a0c56a6961cfad7ccbbed812687b",
+      "server_budget": {
+        "current_lines": 3815,
+        "max_lines": 8323,
+        "previous_max_lines": 8335
+      }
+    }
+  ],
+  "checks": [
+    {
+      "command": "export PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH; unset DATABASE_URL TEST_DATABASE_URL DATABASE_URL_TEST; node --import tsx --test apps/api/src/routes/metrics-read-route.test.ts",
+      "result": "PASS, 3/3 focused tests for exact path/method matching, unauthorized no-work behavior, and authorized refresh order, gauges, and response.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "export PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH; unset DATABASE_URL TEST_DATABASE_URL DATABASE_URL_TEST; NODE_ENV=test node --import tsx --test --test-name-pattern='operational metrics classify forbidden|clinical operational metrics use|collector surfaces fail closed|chaos operations expose effective runtime state' apps/api/src/server.test.ts",
+      "result": "PASS, 4/4 selected in-process server tests covering collector dispatch/auth, clinical metrics, cached refresh, and operational/chaos gauges.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "export PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH; unset DATABASE_URL TEST_DATABASE_URL DATABASE_URL_TEST; pnpm --filter @cvg-his-v2/api exec tsc -p tsconfig.json --noEmit",
+      "result": "PASS. Workspace dependencies had been built by the initial API typecheck command; the final direct API no-emit typecheck completed without diagnostics.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "export PATH=/home/ricardo/.nvm/versions/node/v22.23.2/bin:$PATH; pnpm complexity:check",
+      "result": "PASS; server.ts=3,815, cap=8,323, previous maximum=8,335.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    },
+    {
+      "command": "pnpm exec prettier --check apps/api/src/server.ts apps/api/src/routes/metrics-read-route.ts apps/api/src/routes/metrics-read-route.test.ts docs/engineering/complexity-hotspots.json; git diff --check -- apps/api/src/server.ts apps/api/src/routes/metrics-read-route.ts apps/api/src/routes/metrics-read-route.test.ts docs/engineering/complexity-hotspots.json",
+      "result": "PASS; all files conform to Prettier and scoped tracked-diff whitespace check is clean.",
+      "exit_code": 0,
+      "runtime": "Node 22.23.2"
+    }
+  ],
+  "independent_review": {
+    "result": "PASS",
+    "critic_id": "critic_m21_metrics_read_i1",
+    "independence": "Fresh read-only I1 source audit, hash-checked before and after; the reviewer did not modify files or rerun tests.",
+    "reviewed_sha256": [
+      {
+        "path": "apps/api/src/server.ts",
+        "sha256": "3de2a91c9fd687f2b874d19b44d4091d812d2b678e422e6aa19ea0593f72ed99"
+      },
+      {
+        "path": "apps/api/src/routes/metrics-read-route.ts",
+        "sha256": "87ccf1cd705582f354867e4578ede42b2e69f2228cb90718448edad4801a6aa9"
+      },
+      {
+        "path": "apps/api/src/routes/metrics-read-route.test.ts",
+        "sha256": "a19a6c849e4cd974b669902f3721bbce0d783f2ed010505b0e928b8df370a91e"
+      },
+      {
+        "path": "docs/engineering/complexity-hotspots.json",
+        "sha256": "d0e4e453be169f6c35a1ceaa0ca552254271a0c56a6961cfad7ccbbed812687b"
+      }
+    ],
+    "findings": "Exact GET path/method, dispatch placement, authorization-before-work, callback order and values, 401 envelope, Promise.all metrics collection, and 200 text response match the removed inline branch. No external service, database, or listener is needed. The new unit test uses bearer auth; existing server integration coverage exercises X-Metrics-Token."
+  },
+  "limitations": [
+    "Focused server tests dispatch through server.emit and do not open a network listener.",
+    "The route unit test covers bearer authorization directly; the equivalent X-Metrics-Token branch is covered by the existing server integration test.",
+    "The worktree remains dirty and no candidate SHA, CI, target, UAT, external collector, database, or release acceptance is asserted."
+  ]
+}

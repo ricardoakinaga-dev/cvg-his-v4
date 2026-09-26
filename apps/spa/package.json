@@ -11,7 +11,7 @@
     "typecheck": "pnpm --filter @cvg-his-v2/spa^... build && vue-tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
-    "lint": "vue-tsc --noEmit"
+    "lint": "node ../../scripts/run-semantic-lint.mjs"
   },
   "dependencies": {
     "@cvg-his-v2/shared-auth-sdk": "workspace:*",

@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "record_id": "EVID-REM-009-CLEAN-CANDIDATE-20260922",
+  "task": "REM-009",
+  "observed_at": "2026-09-22T01:07:30.000000Z",
+  "scope": "gate local integrado executado em clone candidate-bound descartável com checkout Git limpo",
+  "candidate": {
+    "source_sha": "36d81f47296673f8e89803a95ccbfa3efba10547",
+    "identity_head_sha": "36d81f47296673f8e89803a95ccbfa3efba10547",
+    "candidate_head_sha": "c69667eb9825c7805f0d708da70eb6c37dbfecef",
+    "candidate_id": "CVG-HIS-V4-36d81f472966",
+    "clone_path": "/tmp/cvg-rem009-candidate.JEHctq",
+    "worktree_clean": true,
+    "shared_worktree_untouched": true,
+    "source_after_identity": "somente commits documentais de identidade, snapshots Triple-A/P0 e evidência; nenhuma mudança de código, lockfile, workflow ou configuração após o source_sha"
+  },
+  "environment": "Linux local; Node v22.23.2; pnpm 10.33.0; Helm v3.15.4; PostgreSQL descartável; dados sintéticos; sem secrets reais, provider, target, OCI, deploy, push, UAT ou release",
+  "commands": [
+    {"id": "clean-checkout", "command": "node scripts/assert-clean-checkout.mjs", "result": "PASS", "log": "/tmp/rem009-clean-logs-run2/final-clean-checkout-rebound-2.log"},
+    {"id": "candidate-identity", "command": "CI=1 pnpm validate:candidate-identity", "result": "PASS", "log": "/tmp/rem009-clean-logs-run2/final-candidate-identity-rebound-2.log"},
+    {"id": "install", "command": "CI=1 DOTENV_CONFIG_PATH=/dev/null pnpm install --frozen-lockfile", "result": "PASS", "log": "/tmp/rem009-clean-logs-run2/install.log"},
+    {"id": "build", "command": "CI=1 DOTENV_CONFIG_PATH=/dev/null pnpm build", "result": "PASS", "log": "/tmp/rem009-clean-logs-run2/build.log"},
+    {"id": "typecheck", "command": "CI=1 DOTENV_CONFIG_PATH=/dev/null pnpm typecheck", "result": "PASS", "log": "/tmp/rem009-clean-logs-run2/typecheck.log"},
+    {"id": "lint", "command": "CI=1 DOTENV_CONFIG_PATH=/dev/null pnpm lint", "result": "PASS", "log": "/tmp/rem009-clean-logs-run2/lint.log"},
+    {"id": "test", "command": "CI=1 DOTENV_CONFIG_PATH=/dev/null pnpm test", "result": "PASS", "log": "/tmp/rem009-clean-logs-run2/test.log"},
+    {"id": "coverage", "command": "CI=1 DOTENV_CONFIG_PATH=/dev/null pnpm test:coverage", "result": "PASS", "log": "/tmp/rem009-clean-logs-run2/coverage.log"},
+    {"id": "critical-bootstrap", "command": "CI=1 DOTENV_CONFIG_PATH=/dev/null pnpm test:critical:bootstrap", "result": "PASS", "log": "/tmp/rem009-clean-logs-run2/critical-bootstrap.log"},
+    {"id": "complexity", "command": "CI=1 DOTENV_CONFIG_PATH=/dev/null pnpm complexity:check", "result": "PASS", "log": "/tmp/rem009-clean-logs-run2/complexity.log"},
+    {"id": "security", "command": "CI=1 DOTENV_CONFIG_PATH=/dev/null pnpm security:enterprise && pnpm security:secrets", "result": "PASS", "log": "/tmp/rem009-clean-logs-run2/security-enterprise.log; /tmp/rem009-clean-logs-run2/security-secrets.log"},
+    {"id": "validators", "command": "OpenAPI/RLS/Helm/supply-chain/dependencies/P0/skip/deploy/environment/production/observability/identity/behavioral/registry/loyalty/clinical/prompt/migration/namespaces", "result": "PASS", "log": "/tmp/rem009-clean-logs-run2/*-rebound.log"},
+    {"id": "event-catalog", "command": "REQUIRE_TEST_DB=1 TEST_DB_EPHEMERAL=1 pnpm test:event-catalog", "result": "PASS (3 files/31 tests)", "log": "/tmp/rem009-clean-logs-run2/event-catalog-rebound.log"},
+    {"id": "migration-harness", "command": "CI=1 DOTENV_CONFIG_PATH=/dev/null pnpm test:migration-harness (retry after transient connection termination)", "result": "PASS", "log": "/tmp/rem009-clean-logs-run2/migration-harness-rebound-retry.log"},
+    {"id": "control-checker", "command": "python3 /home/ricardo/.agents/skills/engineering-framework/scripts/check_state.py candidate", "result": "PASS (11/11)", "log": "external temporary log retained at /tmp/rem009-clean-logs-run2/final-check-state-rebound-2.log"}
+  ],
+  "results": {
+    "tests": {"files_passed": 285, "files_skipped": 1, "tests_passed": 3028, "tests_skipped": 3},
+    "coverage": {"statements": "87.25% (10521/12058)", "branches": "82.09% (8241/10038)", "functions": "88.93% (2346/2638)", "lines": "88.70% (9927/11191)"},
+    "critical_bootstrap": {"postgres_files": 68, "postgres_tests": 623, "process_scenarios": "11/11", "migrations": "0000-0177", "result": "PASS"},
+    "contracts": {"openapi_paths": 431, "rls_tenant_tables": "171/172 plus 1 documented exception", "supply_chain": "132 actions, 14 workflow images, 15 Compose images, 6 Docker bases, 4 runtime images; immutable", "dependencies": 69, "test_skips": "36 allowlisted", "p0_registry": "14 items; 11 open, 3 closed"}
+  },
+  "notes": [
+    "The first migration-harness attempt ended with Connection terminated unexpectedly; the disposable environment was inspected and the immediate retry passed all scenarios and cleanup.",
+    "The first docs gate exposed a stale Triple-A snapshot because the shared worktree's source changes were uncommitted. In the disposable candidate, current snapshots and P0 registry were rebound to the source SHA and committed as documentation-only descendants; docs, P0 registry, identity and checker then passed.",
+    "The initial clean candidate lacked ignored historical artifacts required only by the append-only control-plane checker. The referenced artifacts were copied from the shared worktree into the disposable clone; Git checkout status remained clean and the checker passed 11/11. No shared artifact was modified."
+  ],
+  "limitations": [
+    "The candidate is a disposable local snapshot, not a published or remote candidate; no CI/OCI/SBOM/scan/attestation, target, restore/rollback/RPO/RTO, soak, provider, UAT, accessibility sign-off or release authority was proven.",
+    "The runtime matrix ran on the immutable source SHA; subsequent candidate commits were documentation/control-only and are explicitly permitted by the candidate identity contract.",
+    "The shared worktree remains dirty by design and was not cleaned, stashed, reset, committed, pushed or deployed."
+  ],
+  "result": "PASS_WITH_CONDITIONS",
+  "freshness": "CURRENT"
+}

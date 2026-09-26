@@ -1,4 +1,11 @@
-import { expect, loginViaToken, test } from './fixtures/spa-fixture';
+import { randomUUID } from 'node:crypto';
+import {
+  expect,
+  loginViaToken,
+  test,
+  type ApiCall,
+  type CleanupTracker
+} from './fixtures/spa-fixture';
 
 const SPA_URL = process.env.SPA_URL || 'http://127.0.0.1:3112';
 const viewports = [
@@ -6,22 +13,71 @@ const viewports = [
   { name: 'tablet-768', width: 768, height: 1024 },
   { name: 'landscape-1024', width: 1024, height: 768 }
 ] as const;
-const routes = [
-  '/owners',
-  '/appointments',
-  '/medical-records',
-  '/billing',
-  '/reports/engine',
-  '/access-control'
+const surfaces = [
+  { label: '/owners', path: '/owners' },
+  { label: '/appointments', path: '/appointments' },
+  { label: '/medical-records', path: '/medical-records' },
+  { label: '/patients/:id', fixture: 'patient-detail' },
+  { label: '/medical-records/:id', fixture: 'medical-record-detail' },
+  { label: '/counter-sales', path: '/counter-sales' },
+  { label: '/billing', path: '/billing' },
+  { label: '/reports/engine', path: '/reports/engine' },
+  { label: '/access-control', path: '/access-control' }
 ] as const;
+
+async function resolveSurfacePath(
+  surface: (typeof surfaces)[number],
+  apiCall: ApiCall,
+  cleanup: CleanupTracker
+): Promise<string> {
+  if ('path' in surface) return surface.path;
+
+  const suffix = randomUUID();
+  const owner = await apiCall.post('/owners', {
+    fullName: `Responsive Tutor ${suffix}`,
+    documentId: `RESP-${suffix}`,
+    contacts: [{ label: 'Celular', type: 'phone', value: '11999999999', primary: true }],
+    financialResponsible: false,
+    status: 'active'
+  }) as { id: string };
+  cleanup.track({ type: 'owner', id: owner.id });
+
+  const patient = await apiCall.post('/patients', {
+    name: `Responsive Paciente ${suffix}`,
+    species: 'canine',
+    sex: 'female',
+    primaryOwnerId: owner.id,
+    status: 'active'
+  }) as { id: string };
+  cleanup.track({ type: 'patient', id: patient.id });
+
+  if (surface.fixture === 'patient-detail') {
+    return `/patients/${patient.id}`;
+  }
+
+  const encounter = await apiCall.post('/encounters', {
+    patientId: patient.id,
+    ownerId: owner.id,
+    visitType: 'walk_in',
+    origin: 'reception',
+    reason: 'Auditoria E2E responsiva'
+  }) as { id: string };
+  cleanup.track({ type: 'encounter', id: encounter.id });
+  return `/medical-records/${encounter.id}`;
+}
 
 for (const viewport of viewports) {
   test.describe(`Matriz responsiva ${viewport.name}`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
 
-    for (const path of routes) {
-      test(`${path} permanece contida e operável`, async ({ page }) => {
+    for (const surface of surfaces) {
+      test(`${surface.label} permanece contida e operável`, async ({
+        page,
+        apiCall,
+        cleanup
+      }) => {
         await loginViaToken(page);
+        const path = await resolveSurfacePath(surface, apiCall, cleanup);
         await page.goto(`${SPA_URL}${path}`, { waitUntil: 'domcontentloaded' });
         await expect(page.getByRole('main')).toBeVisible();
         await expect(page.getByRole('heading').first()).toBeVisible({ timeout: 15_000 });

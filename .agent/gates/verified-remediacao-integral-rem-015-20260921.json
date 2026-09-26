@@ -1,0 +1,98 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-015-20260921",
+  "timestamp": "2026-09-21T20:56:20.000000+00:00",
+  "gate_id": "VERIFIED",
+  "scope": "Helm v3.15.4 real lint/template e known-bads para dev/staging/prod; escopo somente local de REM-015",
+  "scope_ref": "REM-015",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-ACCEPTANCE-EVIDENCE",
+      "description": "O binário Helm v3.15.4 foi verificado por SHA e executou lint/template reais nos overlays dev, staging e prod.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-015-HELM-REAL-20260921",
+        ".agent/evidence/rem-015-helm-real-validation-20260921.txt"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Aceite limitado à renderização local; nenhum release foi instalado no target."
+    },
+    {
+      "id": "V-002-REGRESSION-RISK",
+      "description": "Os known-bads de values/schema e os contratos de validator/superfície de deploy passaram sem aceitar configuração inválida.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-015-HELM-REAL-20260921",
+        ".agent/evidence/rem-015-helm-real-validation-20260921.txt",
+        "tests/unit/infra/validate-helm-script.test.mjs",
+        "tests/unit/infra/deploy-surface-of-truth.test.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A regressão coberta é local e sintética; não substitui readiness, migration ou rollback observado."
+    },
+    {
+      "id": "V-003-LIMITATIONS-AUTHORITY",
+      "description": "A ausência de autorização para cluster, target, credentials, providers, UAT, recovery e release está explicitamente registrada.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-015-HELM-REAL-20260921",
+        ".agent/evidence/rem-015-helm-real-validation-20260921.txt",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Este gate não é aprovação humana, prova de deploy ou decisão de release."
+    }
+  ],
+  "evidence": [
+    ".agent/verification.jsonl#VER-REM-015-HELM-REAL-20260921",
+    ".agent/evidence/rem-015-helm-real-validation-20260921.txt",
+    ".github/workflows/ci.yml",
+    "infra/scripts/validate-helm.mjs",
+    "infra/helm/cvg-his-v2/Chart.yaml",
+    "infra/helm/cvg-his-v2/values.dev.yaml",
+    "infra/helm/cvg-his-v2/values.staging.yaml",
+    "infra/helm/cvg-his-v2/values.prod.yaml"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-REM-015-TARGET-BOUNDARY",
+      "description": "O fechamento prova somente lint/template e guardrails locais; install/upgrade/rollback/readiness/migrations no target, cluster, secrets e imagens reais permanecem não executados.",
+      "non_blocking": true,
+      "impact": "Não bloqueia a conclusão local de REM-015; bloqueia qualquer claim de deploy, target ou release readiness.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de qualquer Helm action em target real ou do gate integrado REM-009",
+      "due_at": "2026-09-22T12:00:00.000000+00:00",
+      "verification_method": "Obter target/credential/owner autorizados e anexar evidência de install/upgrade/rollback antes de superseder este gate.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-015-HELM-REAL-20260921",
+        ".agent/evidence/rem-015-helm-real-validation-20260921.txt"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "Helm v3.15.4 real lint/template e known-bads para dev/staging/prod; escopo somente local de REM-015",
+    "decision": "A instrução do usuário autoriza validações locais reversíveis; nenhuma ação Kubernetes, credential ou release está incluída.",
+    "evidence_ref": ".agent/plans/remediacao-integral-20260921.md",
+    "expires_or_revalidates": "Revalidar antes de Helm install/upgrade/rollback, target, credentials, deployment, UAT ou release."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "Preparar REM-014; reabrir REM-015 somente se chart, pin, overlays ou validação real regredirem.",
+  "revalidation_triggers": [
+    "Chart, overlays, schema, validator ou pin Helm mudarem.",
+    "Lint/template real ou known-bad regressarem.",
+    "O escopo avançar para cluster, target, credentials, deployment, rollback, UAT ou release."
+  ],
+  "supersedes": null
+}

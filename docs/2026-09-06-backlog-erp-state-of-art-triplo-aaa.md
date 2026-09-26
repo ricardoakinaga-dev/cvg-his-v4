@@ -4,7 +4,7 @@ document_kind: backlog
 effective_date: 2026-09-07
 owner: PMO, Produto e Liderança técnica CVG-HIS
 review_cycle: weekly
-superseded_by: docs/2026-09-20-backlog-nova-rodada-melhorias.md
+superseded_by: docs/2026-09-26-backlog-rodada-2.md
 ---
 
 # Backlog executivo — ERP State of Art / Triplo AAA

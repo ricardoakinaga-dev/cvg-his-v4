@@ -1,0 +1,36 @@
+REM-002 control-pointer recovery and wait gate
+Observed at: 2026-09-22T12:07:36.000000Z
+Operator: primary agent / Direct mode
+Scope: active ExecPlan pointer, REM-002 wait boundary and current state reconciliation
+
+STATUS=RECOVERED_POINTER_BLOCKED_AUTHORITY
+
+Observed drift:
+- state.active_task=REM-002 and state.active_action_id=REM-002:WAIT-AUTHORITY.
+- backlog REM-002 owns the same next_action and remains BLOCKED.
+- The first visible item under the ExecPlan's Concrete Steps was a historical
+  REM-028 item, so it did not identify the current action.
+- The last control-plane event from the prior target-pack preparation used a
+  task group, not the active backlog task, and the prior state used WAIT values
+  not present in the canonical activity/gate enums.
+
+Recovery performed:
+- Added one authoritative first Concrete Steps item for
+  REM-002:WAIT-AUTHORITY and moved the prior numbered history under
+  Completed Concrete Steps without rewriting ledger history.
+- Prepared a scope-bound AUDIT_RESOLVED gate for REM-002 with decision BLOCKED;
+  no history rewrite, blob deletion, push or external action is authorized.
+- The recovery will set the canonical current state to lifecycle_stage=AUDIT,
+  active_activity=REVIEW, status=BLOCKED and next_gate=AUDIT_RESOLVED.
+
+Pointer verification before ledger append:
+- plan marker, state pointer and backlog next_action all resolved to
+  REM-002:WAIT-AUTHORITY.
+- exactly one visible `## Concrete Steps` heading remained.
+- its first ordered item contained REM-002:WAIT-AUTHORITY.
+
+Boundary and limitations:
+- This is control-plane reconciliation, not completion of REM-002.
+- Human authority is still required for history rewrite/removal/push.
+- Existing historical ledger defects remain preserved for separate remediation;
+  this recovery does not rewrite or delete prior events.

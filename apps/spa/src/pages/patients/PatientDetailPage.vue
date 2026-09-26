@@ -31,11 +31,16 @@
             <div class="patient-header-context__item patient-header-context__item--identity">
               <span class="patient-header-context__label">Paciente</span>
               <strong class="patient-header-context__value">{{ patient.name }}</strong>
-              <small>{{ speciesLabel(patient.species) }} · {{ sexLabel(patient.sex) }} · {{ ageLabel }}</small>
+              <small
+                >{{ speciesLabel(patient.species) }} · {{ sexLabel(patient.sex) }} ·
+                {{ ageLabel }}</small
+              >
             </div>
             <div class="patient-header-context__item">
               <span class="patient-header-context__label">Tutor principal</span>
-              <strong class="patient-header-context__value">{{ ownerSnapshot?.fullName || ownerName }}</strong>
+              <strong class="patient-header-context__value">{{
+                ownerSnapshot?.fullName || ownerName
+              }}</strong>
               <small>{{ patientStatusLabel(patient.status) }} · {{ currentWeightLabel }}</small>
             </div>
             <div
@@ -78,8 +83,8 @@
       >
         <DsAlert variant="warning" title="Contexto parcial do paciente">
           Alguns módulos não puderam ser consultados:
-          <strong>{{ relatedWarnings.join(', ') }}</strong>.
-          Os dados exibidos podem estar incompletos; tente novamente para atualizar o prontuário.
+          <strong>{{ relatedWarnings.join(', ') }}</strong
+          >. Os dados exibidos podem estar incompletos; tente novamente para atualizar o prontuário.
         </DsAlert>
       </section>
 
@@ -181,23 +186,7 @@
         </DsCard>
       </section>
 
-      <section class="patient-360-timeline" aria-label="Timeline 360 unificada do paciente">
-        <DsCard title="Timeline 360 unificada">
-          <div v-if="combinedTimeline.length" class="timeline-list timeline-list--360">
-            <div v-for="item in combinedTimeline" :key="item.id" class="timeline-list__item">
-              <div>
-                <strong>{{ item.source }} · {{ item.title }}</strong>
-                <p>{{ item.description }}</p>
-              </div>
-              <div class="timeline-list__meta">
-                <span>{{ formatDateTime(item.occurredAt) }}</span>
-                <RouterLink v-if="item.href" :to="item.href">Abrir</RouterLink>
-              </div>
-            </div>
-          </div>
-          <p v-else class="muted">Sem eventos consolidados para a timeline 360.</p>
-        </DsCard>
-      </section>
+      <PatientTimeline360 :items="combinedTimeline" />
 
       <section class="vetus-animal-layout">
         <article class="vetus-profile-card" aria-label="Ficha do animal">
@@ -394,8 +383,14 @@
               @click="togglePatientCard('encounters')"
               @keydown="handlePatientCardTriggerKeydown($event, 'encounters')"
             >
-              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="stethoscope" size="sm" /></span>Últimos Atendimentos</span>
-              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('encounters') ? 'minus' : 'plus'" size="sm" /></span>
+              <span
+                ><span class="vetus-module-icon" aria-hidden="true"
+                  ><DsIcon name="stethoscope" size="sm" /></span
+                >Últimos Atendimentos</span
+              >
+              <span aria-hidden="true"
+                ><DsIcon :name="isPatientCardExpanded('encounters') ? 'minus' : 'plus'" size="sm"
+              /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ sortedEncounters.length }} atendimento(s)</strong>
@@ -442,8 +437,14 @@
               @click="togglePatientCard('anamnesis')"
               @keydown="handlePatientCardTriggerKeydown($event, 'anamnesis')"
             >
-              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="clipboard" size="sm" /></span>Anamneses</span>
-              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('anamnesis') ? 'minus' : 'plus'" size="sm" /></span>
+              <span
+                ><span class="vetus-module-icon" aria-hidden="true"
+                  ><DsIcon name="clipboard" size="sm" /></span
+                >Anamneses</span
+              >
+              <span aria-hidden="true"
+                ><DsIcon :name="isPatientCardExpanded('anamnesis') ? 'minus' : 'plus'" size="sm"
+              /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ anamnesisEntries.length }} registro(s)</strong>
@@ -506,8 +507,14 @@
               @click="togglePatientCard('preventive')"
               @keydown="handlePatientCardTriggerKeydown($event, 'preventive')"
             >
-              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="shield" size="sm" /></span>Vacinas e Vermífugos</span>
-              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('preventive') ? 'minus' : 'plus'" size="sm" /></span>
+              <span
+                ><span class="vetus-module-icon" aria-hidden="true"
+                  ><DsIcon name="shield" size="sm" /></span
+                >Vacinas e Vermífugos</span
+              >
+              <span aria-hidden="true"
+                ><DsIcon :name="isPatientCardExpanded('preventive') ? 'minus' : 'plus'" size="sm"
+              /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ preventiveSummaryLabel }}</strong>
@@ -597,8 +604,14 @@
               @click="togglePatientCard('agenda')"
               @keydown="handlePatientCardTriggerKeydown($event, 'agenda')"
             >
-              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="calendar" size="sm" /></span>Agenda</span>
-              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('agenda') ? 'minus' : 'plus'" size="sm" /></span>
+              <span
+                ><span class="vetus-module-icon" aria-hidden="true"
+                  ><DsIcon name="calendar" size="sm" /></span
+                >Agenda</span
+              >
+              <span aria-hidden="true"
+                ><DsIcon :name="isPatientCardExpanded('agenda') ? 'minus' : 'plus'" size="sm"
+              /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ agendaSummaryLabel }}</strong>
@@ -710,8 +723,14 @@
               @click="togglePatientCard('billing')"
               @keydown="handlePatientCardTriggerKeydown($event, 'billing')"
             >
-              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="receipt" size="sm" /></span>Comanda</span>
-              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('billing') ? 'minus' : 'plus'" size="sm" /></span>
+              <span
+                ><span class="vetus-module-icon" aria-hidden="true"
+                  ><DsIcon name="receipt" size="sm" /></span
+                >Comanda</span
+              >
+              <span aria-hidden="true"
+                ><DsIcon :name="isPatientCardExpanded('billing') ? 'minus' : 'plus'" size="sm"
+              /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ patientBillingRecords.length }} comanda(s)</strong>
@@ -805,8 +824,14 @@
               @click="togglePatientCard('exams')"
               @keydown="handlePatientCardTriggerKeydown($event, 'exams')"
             >
-              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="flask" size="sm" /></span>Exames</span>
-              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('exams') ? 'minus' : 'plus'" size="sm" /></span>
+              <span
+                ><span class="vetus-module-icon" aria-hidden="true"
+                  ><DsIcon name="flask" size="sm" /></span
+                >Exames</span
+              >
+              <span aria-hidden="true"
+                ><DsIcon :name="isPatientCardExpanded('exams') ? 'minus' : 'plus'" size="sm"
+              /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ examItems.length }} item(ns)</strong>
@@ -874,8 +899,14 @@
               @click="togglePatientCard('inpatient')"
               @keydown="handlePatientCardTriggerKeydown($event, 'inpatient')"
             >
-              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="bed" size="sm" /></span>Internação</span>
-              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('inpatient') ? 'minus' : 'plus'" size="sm" /></span>
+              <span
+                ><span class="vetus-module-icon" aria-hidden="true"
+                  ><DsIcon name="bed" size="sm" /></span
+                >Internação</span
+              >
+              <span aria-hidden="true"
+                ><DsIcon :name="isPatientCardExpanded('inpatient') ? 'minus' : 'plus'" size="sm"
+              /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ inpatientSummaryLabel }}</strong>
@@ -976,8 +1007,16 @@
               @click="togglePatientCard('prescriptions')"
               @keydown="handlePatientCardTriggerKeydown($event, 'prescriptions')"
             >
-              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="file" size="sm" /></span>Receituário</span>
-              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('prescriptions') ? 'minus' : 'plus'" size="sm" /></span>
+              <span
+                ><span class="vetus-module-icon" aria-hidden="true"
+                  ><DsIcon name="file" size="sm" /></span
+                >Receituário</span
+              >
+              <span aria-hidden="true"
+                ><DsIcon
+                  :name="isPatientCardExpanded('prescriptions') ? 'minus' : 'plus'"
+                  size="sm"
+              /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ patientPrescriptions.length }} receita(s)</strong>
@@ -1081,8 +1120,14 @@
               @click="togglePatientCard('weight')"
               @keydown="handlePatientCardTriggerKeydown($event, 'weight')"
             >
-              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="chart" size="sm" /></span>Gráfico de peso</span>
-              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('weight') ? 'minus' : 'plus'" size="sm" /></span>
+              <span
+                ><span class="vetus-module-icon" aria-hidden="true"
+                  ><DsIcon name="chart" size="sm" /></span
+                >Gráfico de peso</span
+              >
+              <span aria-hidden="true"
+                ><DsIcon :name="isPatientCardExpanded('weight') ? 'minus' : 'plus'" size="sm"
+              /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>Peso atual: {{ currentWeightLabel }}</strong>
@@ -1163,8 +1208,14 @@
               @click="togglePatientCard('images')"
               @keydown="handlePatientCardTriggerKeydown($event, 'images')"
             >
-              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="file" size="sm" /></span>Imagens</span>
-              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('images') ? 'minus' : 'plus'" size="sm" /></span>
+              <span
+                ><span class="vetus-module-icon" aria-hidden="true"
+                  ><DsIcon name="file" size="sm" /></span
+                >Imagens</span
+              >
+              <span aria-hidden="true"
+                ><DsIcon :name="isPatientCardExpanded('images') ? 'minus' : 'plus'" size="sm"
+              /></span>
             </button>
             <div class="vetus-accordion-card__summary">
               <strong>{{ imageAttachments.length }} imagem(ns)</strong>
@@ -1206,73 +1257,18 @@
             </div>
           </article>
 
-          <article
-            class="vetus-accordion-card"
-            :class="{ 'vetus-accordion-card--open': isPatientCardExpanded('clinical-history') }"
-          >
-            <button
-              :id="patientCardTriggerId('clinical-history')"
-              type="button"
-              class="vetus-accordion-card__header"
-              :aria-expanded="isPatientCardExpanded('clinical-history')"
-              :aria-controls="patientCardPanelId('clinical-history')"
-              @click="togglePatientCard('clinical-history')"
-              @keydown="handlePatientCardTriggerKeydown($event, 'clinical-history')"
-            >
-              <span><span class="vetus-module-icon" aria-hidden="true"><DsIcon name="clipboard" size="sm" /></span>Histórico Clinico</span>
-              <span aria-hidden="true"><DsIcon :name="isPatientCardExpanded('clinical-history') ? 'minus' : 'plus'" size="sm" /></span>
-            </button>
-            <div class="vetus-accordion-card__summary">
-              <strong>{{
-                clinicalHistoryDraft.trim() ? 'Histórico preenchido' : 'Sem histórico consolidado'
-              }}</strong>
-              <p>{{ clinicalHistorySummary }}</p>
-            </div>
-            <div
-              v-if="isPatientCardExpanded('clinical-history')"
-              :id="patientCardPanelId('clinical-history')"
-              class="vetus-accordion-card__body"
-              role="region"
-              :aria-labelledby="patientCardTriggerId('clinical-history')"
-            >
-              <p v-if="clinicalHistoryDraft.trim()" class="clinical-history-preview">
-                {{ clinicalHistoryDraft }}
-              </p>
-              <textarea
-                v-model="clinicalHistoryDraft"
-                class="clinical-history-field"
-                placeholder="Escreva aqui o histórico clínico do animal"
-                :disabled="!canWriteClinicalHistory"
-              />
-              <p v-if="!focalEncounter" class="muted">
-                Abra um atendimento para registrar o histórico clínico longitudinal.
-              </p>
-              <p v-else-if="!canWriteClinicalHistory" class="muted">
-                O atendimento está encerrado; o histórico clínico permanece disponível somente para leitura.
-              </p>
-              <div class="quick-actions">
-                <DsButton
-                  variant="secondary"
-                  size="sm"
-                  :loading="savingClinicalHistory"
-                  :disabled="!canWriteClinicalHistory"
-                  @click="saveClinicalHistory"
-                >
-                  Salvar Histórico Clínico
-                </DsButton>
-                <DsButton
-                  tag="a"
-                  :to="
-                    focalEncounter ? `/medical-records/${focalEncounter.id}` : '/medical-records'
-                  "
-                  variant="ghost"
-                  size="sm"
-                >
-                  Abrir histórico completo
-                </DsButton>
-              </div>
-            </div>
-          </article>
+          <PatientClinicalHistoryCard
+            :draft="clinicalHistoryDraft"
+            :summary="clinicalHistorySummary"
+            :expanded="isPatientCardExpanded('clinical-history')"
+            :can-write="canWriteClinicalHistory"
+            :saving="savingClinicalHistory"
+            :encounter-id="focalEncounter?.id ?? null"
+            @update:draft="clinicalHistoryDraft = $event"
+            @toggle="togglePatientCard('clinical-history')"
+            @header-keydown="handlePatientCardTriggerKeydown($event, 'clinical-history')"
+            @save="saveClinicalHistory"
+          />
         </section>
       </section>
     </template>
@@ -1282,6 +1278,9 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
 import { usePatientCards } from './usePatientCards';
+import PatientTimeline360, { type PatientTimelineFeedItem } from './PatientTimeline360.vue';
+import PatientClinicalHistoryCard from './PatientClinicalHistoryCard.vue';
+import { usePatientClinicalHistory } from './usePatientClinicalHistory';
 import { usePatientWeightHistory } from './usePatientWeightHistory';
 import { usePatientRelationship } from './usePatientRelationship';
 import { RouterLink, useRoute } from 'vue-router';
@@ -1329,17 +1328,12 @@ import { useEntityCache } from '@/composables/useEntityCache';
 import type { AttachmentSummary, DiagnosticOrderSummary } from '@cvg-his-v2/shared-types';
 import type { AppointmentSummary } from '@/types/appointment';
 import type { BillingItemSummary, BillingRecordSummary } from '@/types/billing';
-import type {
-  EncounterSummary,
-  EncounterTimelineEventSummary
-} from '@/types/encounter';
+import type { EncounterSummary, EncounterTimelineEventSummary } from '@/types/encounter';
 import type { InpatientStaySummary } from '@/types/inpatient';
 import type {
-  CreateClinicalEntryRequest,
   ClinicalEntrySummary,
   ClinicalTimelineEventSummary,
-  MedicalRecordListSummary,
-  UpdateClinicalEntryRequest
+  MedicalRecordListSummary
 } from '@/types/medicalRecords';
 import type { OwnerSummary } from '@/types/owner';
 import type { PatientSummary, PatientSummaryResponse } from '@/types/patient';
@@ -1360,15 +1354,6 @@ interface PatientAlert {
   title: string;
   message: string;
   variant: 'info' | 'success' | 'warning' | 'danger';
-}
-
-interface TimelineFeedItem {
-  id: string;
-  title: string;
-  description: string;
-  occurredAt: string;
-  source: string;
-  href?: string;
 }
 
 interface ExamFeedItem {
@@ -1420,39 +1405,27 @@ const actionError = ref('');
 const actionMessage = ref('');
 const selectedPrescriptionDocumentText = ref('');
 const creatingPackageQuote = ref(false);
-const savingClinicalHistory = ref(false);
-const clinicalHistoryDraft = ref('');
+const {
+  draft: clinicalHistoryDraft,
+  saving: savingClinicalHistory,
+  reset: resetClinicalHistory,
+  save: persistClinicalHistory
+} = usePatientClinicalHistory();
 const patientId = computed(() => String(route.params.id ?? ''));
-interface StableClinicalHistoryMutationAttempt {
-  readonly payloadSignature: string;
-  readonly idempotencyKey: string;
-}
-
-let clinicalHistoryMutationAttempt: StableClinicalHistoryMutationAttempt | null = null;
 let active = true;
 let pageGeneration = 0;
 
 function isCurrentLoad(requestPatientId: string, requestGeneration: number): boolean {
-  return (
-    active &&
-    pageGeneration === requestGeneration &&
-    patientId.value === requestPatientId
-  );
+  return active && pageGeneration === requestGeneration && patientId.value === requestPatientId;
 }
 
-function requireClinicalHistoryResponse(value: ClinicalEntrySummary): ClinicalEntrySummary {
-  if (!value || typeof value.id !== 'string' || !value.id.trim()) {
-    throw new Error('O histórico clínico não retornou um identificador confirmável');
-  }
-  return value;
-}
 const {
   expandedPatientCards,
   isPatientCardExpanded,
   togglePatientCard,
   patientCardTriggerId,
   patientCardPanelId,
-  handlePatientCardTriggerKeydown,
+  handlePatientCardTriggerKeydown
 } = usePatientCards();
 
 const animalAvatarInitial = computed(
@@ -1652,8 +1625,8 @@ const currentMedicalRecord = computed<MedicalRecordListSummary | null>(() => {
   );
 });
 
-const canWriteClinicalHistory = computed(
-  () => Boolean(focalEncounter.value && focalEncounter.value.status !== 'closed')
+const canWriteClinicalHistory = computed(() =>
+  Boolean(focalEncounter.value && focalEncounter.value.status !== 'closed')
 );
 
 const sortedPatientClinicalEntries = computed(() =>
@@ -1768,7 +1741,7 @@ const {
   currentWeightLabel,
   weightMeasurements,
   weightChartPointList,
-  weightChartPoints,
+  weightChartPoints
 } = usePatientWeightHistory(patient, sortedPatientClinicalEntries);
 
 const ageLabel = computed(() => {
@@ -1990,7 +1963,7 @@ const {
   ownerOpenBillingAmount,
   ownerActiveQuotes,
   suggestedPackage,
-  contextualMessages,
+  contextualMessages
 } = usePatientRelationship({
   patient,
   ownerSnapshot,
@@ -2001,7 +1974,7 @@ const {
   sortedEncounters,
   upcomingAppointments,
   focalInpatientStay,
-  formatCurrency,
+  formatCurrency
 });
 
 const clinicalSearchText = computed(() =>
@@ -2176,7 +2149,7 @@ const patientAlerts = computed<PatientAlert[]>(() => {
   return alerts;
 });
 
-const combinedTimeline = computed<TimelineFeedItem[]>(() => {
+const combinedTimeline = computed<PatientTimelineFeedItem[]>(() => {
   const encounterItems = focalEncounterTimeline.value.map((event) => ({
     id: `enc-${event.id}`,
     title: event.summary,
@@ -2284,9 +2257,7 @@ function resetRelatedState() {
   focalBillingItems.value = [];
   actionError.value = '';
   actionMessage.value = '';
-  clinicalHistoryDraft.value = '';
-  clinicalHistoryMutationAttempt = null;
-  savingClinicalHistory.value = false;
+  resetClinicalHistory();
 }
 
 function preventiveEventMeta(event: PreventiveEventSummary): string {
@@ -2408,79 +2379,31 @@ async function saveClinicalHistory() {
   const requestGeneration = pageGeneration;
   const currentEncounter = focalEncounter.value;
   const currentPatient = patient.value;
-  savingClinicalHistory.value = true;
   actionError.value = '';
   actionMessage.value = '';
 
   try {
-    const content = clinicalHistoryDraft.value.trim();
-    const existing = clinicalHistoryEntry.value;
-    const updatePayload: UpdateClinicalEntryRequest = {
-      content,
-      reason: 'Atualização do histórico clínico longitudinal',
-      expectedVersion: existing?.version
-    };
-    const createPayload: CreateClinicalEntryRequest = {
-      encounterId: currentEncounter.id,
-      patientId: currentPatient.id,
-      entryType: 'progress_note',
-      title: 'Histórico clínico longitudinal',
-      content
-    };
-    const mutationPayload = existing ? updatePayload : createPayload;
-    const payloadSignature = JSON.stringify(mutationPayload);
-    if (clinicalHistoryMutationAttempt?.payloadSignature !== payloadSignature) {
-      const uuid = globalThis.crypto?.randomUUID?.();
-      clinicalHistoryMutationAttempt = {
-        payloadSignature,
-        idempotencyKey: uuid
-          ? `patient-clinical-history-${uuid}`
-          : `patient-clinical-history-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`
-      };
-    }
-    const idempotencyKey = clinicalHistoryMutationAttempt.idempotencyKey;
-    const saved = requireClinicalHistoryResponse(existing
-      ? await medicalRecordsService.updateEntry(existing.id, updatePayload, { idempotencyKey })
-      : await medicalRecordsService.createEntry(createPayload, { idempotencyKey }));
-
-    if (!isCurrentLoad(requestPatientId, requestGeneration)) return;
-
-    const confirmationEncounterId = existing?.encounterId ?? currentEncounter.id;
-    const rereadEntries = await medicalRecordsService.listEntries(confirmationEncounterId);
-    if (!isCurrentLoad(requestPatientId, requestGeneration)) return;
-    const confirmed = rereadEntries.find(
-      (entry) =>
-        entry.id === saved.id &&
-        entry.patientId === currentPatient.id &&
-        entry.encounterId === confirmationEncounterId &&
-        entry.medicalRecordId === (existing?.medicalRecordId ?? currentMedicalRecord.value?.record.id) &&
-        entry.entryType === 'progress_note' &&
-        entry.title === (existing?.title ?? createPayload.title) &&
-        entry.content === content &&
-        !entry.deletedAt &&
-        (!existing || entry.version > existing.version)
+    const confirmed = await persistClinicalHistory(
+      {
+        patientId: requestPatientId,
+        patient: currentPatient,
+        encounter: currentEncounter,
+        existingEntry: clinicalHistoryEntry.value ?? null,
+        medicalRecordId: currentMedicalRecord.value?.record.id
+      },
+      () => isCurrentLoad(requestPatientId, requestGeneration)
     );
-    if (!confirmed) {
-      throw new Error(
-        'Histórico clínico enviado, mas não foi confirmado na releitura do prontuário. O rascunho foi preservado.'
-      );
-    }
+    if (!confirmed) return;
 
     patientClinicalEntries.value = uniqueById([confirmed, ...patientClinicalEntries.value]);
     if (confirmed.encounterId === currentEncounter.id) {
       focalRecordEntries.value = uniqueById([confirmed, ...focalRecordEntries.value]);
     }
-    clinicalHistoryDraft.value = confirmed.content;
-    clinicalHistoryMutationAttempt = null;
     actionMessage.value = 'Histórico clínico atualizado.';
   } catch (caughtError) {
     if (isCurrentLoad(requestPatientId, requestGeneration)) {
       actionError.value =
         caughtError instanceof Error ? caughtError.message : 'Erro ao salvar histórico clínico';
-    }
-  } finally {
-    if (isCurrentLoad(requestPatientId, requestGeneration)) {
-      savingClinicalHistory.value = false;
     }
   }
 }
@@ -2795,7 +2718,8 @@ async function loadPage() {
     }
   } catch (caughtError) {
     if (isCurrent()) {
-      error.value = caughtError instanceof Error ? caughtError.message : 'Falha ao carregar paciente';
+      error.value =
+        caughtError instanceof Error ? caughtError.message : 'Falha ao carregar paciente';
     }
   } finally {
     if (isCurrent()) {
@@ -2876,7 +2800,7 @@ onBeforeUnmount(() => {
   gap: 8px;
 }
 
-.quick-actions {
+.patient-detail-page :deep(.quick-actions) {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -3185,7 +3109,7 @@ onBeforeUnmount(() => {
   border-color: #cbd5e1;
   box-shadow: 0 8px 18px rgba(30, 41, 59, 0.08);
 }
-.vetus-accordion-card__header {
+.patient-detail-page :deep(.vetus-accordion-card__header) {
   display: flex;
   width: 100%;
   min-height: 46px;
@@ -3202,14 +3126,14 @@ onBeforeUnmount(() => {
   cursor: pointer;
 }
 
-.vetus-accordion-card__header > span:first-child {
+.patient-detail-page :deep(.vetus-accordion-card__header > span:first-child) {
   display: inline-flex;
   min-width: 0;
   align-items: center;
   gap: 10px;
 }
 
-.vetus-module-icon {
+.patient-detail-page :deep(.vetus-module-icon) {
   display: inline-grid;
   width: 24px;
   height: 24px;
@@ -3217,7 +3141,7 @@ onBeforeUnmount(() => {
   color: #a2a8b3;
   font-weight: 800;
 }
-.vetus-accordion-card__header span:last-child {
+.patient-detail-page :deep(.vetus-accordion-card__header span:last-child) {
   display: inline-grid;
   flex-shrink: 0;
   width: 22px;
@@ -3231,31 +3155,31 @@ onBeforeUnmount(() => {
   line-height: 1;
 }
 
-.vetus-accordion-card__header:focus-visible {
+.patient-detail-page :deep(.vetus-accordion-card__header:focus-visible) {
   outline: 3px solid rgba(37, 99, 235, 0.3);
   outline-offset: -3px;
 }
 
-.vetus-accordion-card__summary {
+.patient-detail-page :deep(.vetus-accordion-card__summary) {
   display: grid;
   gap: 4px;
   min-height: 58px;
   padding: 10px 14px 8px;
 }
 
-.vetus-accordion-card__summary strong,
-.vetus-accordion-card__summary p {
+.patient-detail-page :deep(.vetus-accordion-card__summary strong),
+.patient-detail-page :deep(.vetus-accordion-card__summary p) {
   min-width: 0;
   overflow-wrap: anywhere;
 }
-.vetus-accordion-card__summary p {
+.patient-detail-page :deep(.vetus-accordion-card__summary p) {
   margin: 0;
   color: var(--color-text-secondary, #475569);
   font-size: 0.875rem;
   line-height: 1.45;
 }
 
-.vetus-accordion-card__body {
+.patient-detail-page :deep(.vetus-accordion-card__body) {
   display: grid;
   gap: 14px;
   padding: 0 18px 18px;
@@ -3479,7 +3403,7 @@ onBeforeUnmount(() => {
   background: #f9fafb;
 }
 
-.clinical-history-field {
+.patient-detail-page :deep(.clinical-history-field) {
   width: 100%;
   min-height: 180px;
   resize: vertical;
@@ -3490,13 +3414,13 @@ onBeforeUnmount(() => {
   font: inherit;
   line-height: 1.5;
 }
-.clinical-history-preview {
+.patient-detail-page :deep(.clinical-history-preview) {
   margin: 0 0 10px;
   color: #374151;
   line-height: 1.5;
 }
 
-.clinical-history-field:disabled {
+.patient-detail-page :deep(.clinical-history-field:disabled) {
   background: #f9fafb;
   color: #6b7280;
 }
@@ -3905,9 +3829,17 @@ onBeforeUnmount(() => {
 }
 
 .patient-package-offer :deep(.ds-card) {
-  border-color: color-mix(in srgb, var(--color-primary-400, #27bdc8) 42%, var(--color-border, #d7e2df));
+  border-color: color-mix(
+    in srgb,
+    var(--color-primary-400, #27bdc8) 42%,
+    var(--color-border, #d7e2df)
+  );
   background:
-    radial-gradient(circle at 96% 0%, color-mix(in srgb, var(--color-primary-100, #c9f1f1) 70%, transparent), transparent 38%),
+    radial-gradient(
+      circle at 96% 0%,
+      color-mix(in srgb, var(--color-primary-100, #c9f1f1) 70%, transparent),
+      transparent 38%
+    ),
     var(--color-surface, #ffffff);
 }
 .patient-package-offer :deep(.ds-card__body) {

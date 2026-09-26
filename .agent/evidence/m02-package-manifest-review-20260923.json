@@ -1,0 +1,990 @@
+{
+  "evidence_id": "M02-PACKAGE-MANIFEST-REVIEW-20260923-01",
+  "recorded_at_utc": "2026-09-23T11:54:32+00:00",
+  "reviewer": "m02_package_manifest_review (read-only independent agent lane)",
+  "review_type": "per-path semantic source review; not candidate approval",
+  "snapshot_ref": ".agent/evidence/m02-worktree-reconciliation-20260923.json",
+  "snapshot_path_count": 430,
+  "dirty_package_json_count": 69,
+  "workspace_manifest_count": 68,
+  "root_manifest_count": 1,
+  "parse_errors": [],
+  "classification_counts": {
+    "tsc_lint_replaced": 57,
+    "eslint_lint_replaced": 2,
+    "semantic_lint_added": 9,
+    "test_script_changed": 6,
+    "typecheck_added": 2
+  },
+  "summary": {
+    "all_manifests_parse": true,
+    "all_dirty_statuses_modified_tracked": true,
+    "only_top_level_scripts_changed": true,
+    "all_68_workspace_semantic_lint_targets_exist": true,
+    "all_68_have_src_directories": true,
+    "CI_keeps_typecheck_and_lint_separate": true,
+    "runtime_lint_and_test_dispatch_validation": "PARTIAL: full root/workspace test suites not run; safe lint, typecheck, and runner-contract checks passed; .vue remains outside the semantic-lint extension set"
+  },
+  "findings": [
+    {
+      "id": "M02-PACKAGE-COUNT-OFF-BY-ONE",
+      "classification": "RECONCILED",
+      "note": "The previous 69-package wording means 69 dirty package.json files: 68 workspace manifests plus root package.json."
+    },
+    {
+      "id": "M02-VUE-SEMANTIC-LINT-GAP",
+      "classification": "HOLD_TOOLING_SCOPE",
+      "note": "scripts/run-semantic-lint.mjs enumerates .ts,.tsx,.js,.jsx,.mjs,.cjs, not .vue. The SPA and design-system typecheck scripts still invoke vue-tsc separately; this preserves type checking but does not establish Vue SFC lint coverage."
+    },
+    {
+      "id": "M02-MANIFEST-TEST-DISPATCH-RUNTIME",
+      "classification": "HOLD_RUNTIME_VALIDATION",
+      "note": "Package test entrypoints/root dispatch changed in root, API, worker, chaos, shared/contracts, shared/types; script target existence was checked, but runtime validation remains pending."
+    }
+  ],
+  "checks": [
+    "git status --porcelain=v1 -z --untracked-files=all",
+    "git diff --stat -- package.json **/package.json",
+    "git diff --unified=1 -- package.json **/package.json",
+    "JSON parse and field comparison against HEAD for every dirty package.json",
+    "static path existence checks for changed test and lint targets"
+  ],
+  "paths": [
+    {
+      "path": "apps/api/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "f494a56bd37efa60b0ad30544ed51608a703a8db897dc263021ba82e164961ec",
+      "sha256_current": "f494a56bd37efa60b0ad30544ed51608a703a8db897dc263021ba82e164961ec",
+      "changed_script_names": [
+        "lint",
+        "test"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": true,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "apps/spa/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "ba0a8b115a55dbd85d8e028a32dc6eb3ad15a1f31ef8a6af4e239c84da4ae0c4",
+      "sha256_current": "ba0a8b115a55dbd85d8e028a32dc6eb3ad15a1f31ef8a6af4e239c84da4ae0c4",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "apps/worker/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "bb21f0a07eebe18851821422a854fc9d338990228db01dbd2b80cdc8e7b44550",
+      "sha256_current": "bb21f0a07eebe18851821422a854fc9d338990228db01dbd2b80cdc8e7b44550",
+      "changed_script_names": [
+        "lint",
+        "test"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": true,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "bf8780af15a54cc586c2ca0b4dcf362c9c40a56aaa3e3b8629fb37d399742c41",
+      "sha256_current": "bf8780af15a54cc586c2ca0b4dcf362c9c40a56aaa3e3b8629fb37d399742c41",
+      "changed_script_names": [
+        "artifacts:retention:dry-run",
+        "test",
+        "test:migration-harness",
+        "test:redis",
+        "test:root",
+        "test:workspaces",
+        "validate:openapi",
+        "validate:remediation-target-pack",
+        "validate:test-skips"
+      ],
+      "lint_disposition": "UNCHANGED",
+      "test_script_changed": true,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/chaos/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "7dc7e849dd87adae749ad8acb76992c5aefe02ca0fc88638e49ba8a06c9bdbbf",
+      "sha256_current": "7dc7e849dd87adae749ad8acb76992c5aefe02ca0fc88638e49ba8a06c9bdbbf",
+      "changed_script_names": [
+        "lint",
+        "test"
+      ],
+      "lint_disposition": "ADDED_SEMANTIC_LINT",
+      "test_script_changed": true,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/contracts/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "a5d2682dc968a44870fd0214f837aaf861d157ddec3ee9cefb8f08341ad08032",
+      "sha256_current": "a5d2682dc968a44870fd0214f837aaf861d157ddec3ee9cefb8f08341ad08032",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_ESLINT_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/db/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "e4c351f5020a5c9c5283cfd2bb1177a2a9709f955bedf5543726d8a1db211aea",
+      "sha256_current": "e4c351f5020a5c9c5283cfd2bb1177a2a9709f955bedf5543726d8a1db211aea",
+      "changed_script_names": [
+        "lint",
+        "typecheck"
+      ],
+      "lint_disposition": "REPLACED_ESLINT_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": true,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/design-system/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "9cfaf7762278fd34f3ebf4103ed522fedf929d0dd00fbd9089eb428f77ed8c6b",
+      "sha256_current": "9cfaf7762278fd34f3ebf4103ed522fedf929d0dd00fbd9089eb428f77ed8c6b",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/access-control/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "bbe94b17674942c9b72b39f0d4795c142232d0b6ca8f5078630039b373978caa",
+      "sha256_current": "bbe94b17674942c9b72b39f0d4795c142232d0b6ca8f5078630039b373978caa",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/api-keys/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "c37e62806155e967444e73aa030786f20299cf89f481a6efa5d11fc995aed7f9",
+      "sha256_current": "c37e62806155e967444e73aa030786f20299cf89f481a6efa5d11fc995aed7f9",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "ADDED_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/attachments/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "5bc9ceea9cd5618ab82d5e414991b2d98850a4a985c5098db72d6aeec0b33689",
+      "sha256_current": "5bc9ceea9cd5618ab82d5e414991b2d98850a4a985c5098db72d6aeec0b33689",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/audit/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "04baa2d8981ae1d134d22120957b9e208cf70a1885f5e6c7ba92b540245bfb37",
+      "sha256_current": "04baa2d8981ae1d134d22120957b9e208cf70a1885f5e6c7ba92b540245bfb37",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/auth/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "4ea6cfb8fee8b27d097388a7e9e575b8f7b846e774349c2ca56b590a162153eb",
+      "sha256_current": "4ea6cfb8fee8b27d097388a7e9e575b8f7b846e774349c2ca56b590a162153eb",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/billing/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "b705e2bbdf49251567b8c052383b35e6f4d6361e8622b909353d9ba26f399b9a",
+      "sha256_current": "b705e2bbdf49251567b8c052383b35e6f4d6361e8622b909353d9ba26f399b9a",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/cash/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "1a6d8da60de9df1be193732dc5f2f9e7ca23ee2396e055773448d8953ef87811",
+      "sha256_current": "1a6d8da60de9df1be193732dc5f2f9e7ca23ee2396e055773448d8953ef87811",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/commercial/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "99d60285e2c5033e648a3a141cf20b8af77f814ba54922687819e26639398d4a",
+      "sha256_current": "99d60285e2c5033e648a3a141cf20b8af77f814ba54922687819e26639398d4a",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/commissions/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "04f87b740d914d7f5054c5aa44d42eae5254526cd1cd6a2a8652f249b54341a0",
+      "sha256_current": "04f87b740d914d7f5054c5aa44d42eae5254526cd1cd6a2a8652f249b54341a0",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/counter-sales/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "27bf4a1b1ab78e88e38925c601ef977eb233dae4bf6091bdfa605a3383156bdd",
+      "sha256_current": "27bf4a1b1ab78e88e38925c601ef977eb233dae4bf6091bdfa605a3383156bdd",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/diagnostics/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "1852562fa54e6ee025ca5f54a8dfc1794a32b22001c0d85f61278ec4d6088c91",
+      "sha256_current": "1852562fa54e6ee025ca5f54a8dfc1794a32b22001c0d85f61278ec4d6088c91",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/discharges/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "5d8797cad8ea507ae87c404e29264564e5e16ceb26ea7c92d733b5ed126589fd",
+      "sha256_current": "5d8797cad8ea507ae87c404e29264564e5e16ceb26ea7c92d733b5ed126589fd",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/encounters/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "b206f27e2da06a44e7c6d102878067a749ad15cd7c339a8519790f260af82525",
+      "sha256_current": "b206f27e2da06a44e7c6d102878067a749ad15cd7c339a8519790f260af82525",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/event-bus/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "5b2eca3d0bdfd12aff766e8df207136f3314b1089ee74517a86cee9306685697",
+      "sha256_current": "5b2eca3d0bdfd12aff766e8df207136f3314b1089ee74517a86cee9306685697",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "ADDED_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/event-consumers/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "6b7d7ff8a43f4f856dbb32e0d847341fc9784f1dbb2f3f648274763e8d24db72",
+      "sha256_current": "6b7d7ff8a43f4f856dbb32e0d847341fc9784f1dbb2f3f648274763e8d24db72",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/feature-flags/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "a941da1122edf3c68ebf946a5012c1afc4b1469caaea15e56d7ef809f10e2546",
+      "sha256_current": "a941da1122edf3c68ebf946a5012c1afc4b1469caaea15e56d7ef809f10e2546",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/financial/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "56f79c4429a02467d255502d171b082d621b9bf0ee59ece9279cec728fb12433",
+      "sha256_current": "56f79c4429a02467d255502d171b082d621b9bf0ee59ece9279cec728fb12433",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/fiscal/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "d8188e75c5471f5a9e39dd6cbfed8e02de9a47938076bd88e7a63d33982af28c",
+      "sha256_current": "d8188e75c5471f5a9e39dd6cbfed8e02de9a47938076bd88e7a63d33982af28c",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "ADDED_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/inpatient/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "f26727d7e1156a44bcf83d9a6496d96a00ea4a1afaf138ded170394b45b03410",
+      "sha256_current": "f26727d7e1156a44bcf83d9a6496d96a00ea4a1afaf138ded170394b45b03410",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/inventory/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "5b2638d9d95c19de796443ba916f4de86090f7a53ba47eb716fb0541100d82b2",
+      "sha256_current": "5b2638d9d95c19de796443ba916f4de86090f7a53ba47eb716fb0541100d82b2",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/lgpd/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "875d1dc56cfa2445cac96a20cbcfc2a8164dd1728e22cb80137797cef7cecd35",
+      "sha256_current": "875d1dc56cfa2445cac96a20cbcfc2a8164dd1728e22cb80137797cef7cecd35",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "ADDED_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/marketing/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "3dfb98b6161c7b6d874bbc325a720097a5706dc8f2765e987523351909837847",
+      "sha256_current": "3dfb98b6161c7b6d874bbc325a720097a5706dc8f2765e987523351909837847",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/medical-records/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "d52af115f09a78b48c2a3fb1ec0f42220bdefd4f837a202bdf580c481dcecefb",
+      "sha256_current": "d52af115f09a78b48c2a3fb1ec0f42220bdefd4f837a202bdf580c481dcecefb",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/mfa/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "a2b41d3a74d9bde90933ea098cb84aa5c3fd76fca41e370945d7cea65f3fb1f2",
+      "sha256_current": "a2b41d3a74d9bde90933ea098cb84aa5c3fd76fca41e370945d7cea65f3fb1f2",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "ADDED_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/ml/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "d2f15952e1c9bf4630a08ea1fa4ecf2a5c3073847dd96d65984c1ac20ffabd1e",
+      "sha256_current": "d2f15952e1c9bf4630a08ea1fa4ecf2a5c3073847dd96d65984c1ac20ffabd1e",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/notifications-whatsapp/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "590e0c3ab29ba22ccf337e4322d85342ff273cf93b315447fea68f4d2729c117",
+      "sha256_current": "590e0c3ab29ba22ccf337e4322d85342ff273cf93b315447fea68f4d2729c117",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "ADDED_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/notifications/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "1901116dafc1d341d89f8990e9f507a34ae56764c6f4d6b318b269ea5b19a7a3",
+      "sha256_current": "1901116dafc1d341d89f8990e9f507a34ae56764c6f4d6b318b269ea5b19a7a3",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/owners/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "f1923634b4294d7dd80ba07a23d0dd279e702eb3c12f608ee2a08cc1a9a63d5c",
+      "sha256_current": "f1923634b4294d7dd80ba07a23d0dd279e702eb3c12f608ee2a08cc1a9a63d5c",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/packages/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "cf393d79a3fbf3cb186c8db75f3bb50de2d0810b51fbc76e3d2c2e43968255f5",
+      "sha256_current": "cf393d79a3fbf3cb186c8db75f3bb50de2d0810b51fbc76e3d2c2e43968255f5",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/patients/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "cdfc298f9a2152fe0a47110645e68e23283154fb388d5e8ef6ce2c9d53cbc705",
+      "sha256_current": "cdfc298f9a2152fe0a47110645e68e23283154fb388d5e8ef6ce2c9d53cbc705",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/payments/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "d8ba85aa8109bf74dda6d927bf524ecd61682328594ccf4cbee5da52d8718e03",
+      "sha256_current": "d8ba85aa8109bf74dda6d927bf524ecd61682328594ccf4cbee5da52d8718e03",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/pix/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "767706f4855b3f1328ab7578438efe68270a986f3ba51a2873618419bfcfb7a2",
+      "sha256_current": "767706f4855b3f1328ab7578438efe68270a986f3ba51a2873618419bfcfb7a2",
+      "changed_script_names": [
+        "lint",
+        "typecheck"
+      ],
+      "lint_disposition": "ADDED_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": true,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/prescription-executions/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "d09f6e8c0913a38807e418409c0e400e67f5d582db6023836342db2e76d0b892",
+      "sha256_current": "d09f6e8c0913a38807e418409c0e400e67f5d582db6023836342db2e76d0b892",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/prescriptions/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "dd60257e524e4bf3ae1e5c5c61bb7e1c01a5ac1517b1e86957b5d93a0a24835c",
+      "sha256_current": "dd60257e524e4bf3ae1e5c5c61bb7e1c01a5ac1517b1e86957b5d93a0a24835c",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/products/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "b570ed08bedeb767f8dc3ffefc08acbe82fc4b20cafedbbd41b158d2fd20649b",
+      "sha256_current": "b570ed08bedeb767f8dc3ffefc08acbe82fc4b20cafedbbd41b158d2fd20649b",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/quotes/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "4ea2e81a319475bc679432379827d2c70f6f8e4d71f1a5033cde6bf22bd66a56",
+      "sha256_current": "4ea2e81a319475bc679432379827d2c70f6f8e4d71f1a5033cde6bf22bd66a56",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/reports/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "6c0a26d4d6d2f323fb2eb730bf25ac7ea0a8907c8d75369d653b1c391b1acdf4",
+      "sha256_current": "6c0a26d4d6d2f323fb2eb730bf25ac7ea0a8907c8d75369d653b1c391b1acdf4",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/scheduling/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "2b867d19c4d7c552147f8d11927f9dd9013fca2a7eeb9009871e2ea16ecb8cbc",
+      "sha256_current": "2b867d19c4d7c552147f8d11927f9dd9013fca2a7eeb9009871e2ea16ecb8cbc",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/services/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "eb9bffc5f5668fb315cade88d399f57e56820100b227f6bceb9c0cd321e40450",
+      "sha256_current": "eb9bffc5f5668fb315cade88d399f57e56820100b227f6bceb9c0cd321e40450",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/soc2/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "83a45e743c453a03626f69247dfd8bb95e9389a0463ea3f20db22389dc75e90e",
+      "sha256_current": "83a45e743c453a03626f69247dfd8bb95e9389a0463ea3f20db22389dc75e90e",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/staff/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "27b2c549d84f74f436025230c9470d7699552248a3a99b7727c93b474d72398f",
+      "sha256_current": "27b2c549d84f74f436025230c9470d7699552248a3a99b7727c93b474d72398f",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/surgery/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "95ae854c0d67164a0e1e4aff15bed323b8aaeabeaacb73c52b9266371cbc5ad9",
+      "sha256_current": "95ae854c0d67164a0e1e4aff15bed323b8aaeabeaacb73c52b9266371cbc5ad9",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/triage/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "5f64cf08670cf060097caab81e76f910f5d7e499191ee14eae96f617f9a394fa",
+      "sha256_current": "5f64cf08670cf060097caab81e76f910f5d7e499191ee14eae96f617f9a394fa",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/users/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "9d62eac7e9cbaef33b675b48ce305c4a91592a57de17589eba412ad0f4e72de8",
+      "sha256_current": "9d62eac7e9cbaef33b675b48ce305c4a91592a57de17589eba412ad0f4e72de8",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/webhooks/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "faa4878ba62dd3edc90b3d4e311cb2a79d282467b950eed2d1788634f34f236d",
+      "sha256_current": "faa4878ba62dd3edc90b3d4e311cb2a79d282467b950eed2d1788634f34f236d",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/modules/workflows/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "e9da11d6353204b9bf9711f8c13ce6cae90e27fe66826cde816ca3dcbfd33326",
+      "sha256_current": "e9da11d6353204b9bf9711f8c13ce6cae90e27fe66826cde816ca3dcbfd33326",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/rbac/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "89d01018e4a207ea3cb54130e1de96483c14e24bb094a72ff2c6baf9c7e293e5",
+      "sha256_current": "89d01018e4a207ea3cb54130e1de96483c14e24bb094a72ff2c6baf9c7e293e5",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/secrets/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "b395792aa9c89e06f319f150eaf10a166b4c80a451e72cf9db44faad4faf3bae",
+      "sha256_current": "b395792aa9c89e06f319f150eaf10a166b4c80a451e72cf9db44faad4faf3bae",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/security/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "7dfa5275722bfd084259d1d289ad7be92f41d0fc6ee09cc3cbc627607740c4d6",
+      "sha256_current": "7dfa5275722bfd084259d1d289ad7be92f41d0fc6ee09cc3cbc627607740c4d6",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/shared/auth-sdk/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "de8ffb1db2191890783d027d477e0f2fcb4baab7233fe345427ddcc81088a14c",
+      "sha256_current": "de8ffb1db2191890783d027d477e0f2fcb4baab7233fe345427ddcc81088a14c",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/shared/config/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "68d13525070f625eccd165c5c75be0f62c670ecfb079db83bbb6c83ee1119a15",
+      "sha256_current": "68d13525070f625eccd165c5c75be0f62c670ecfb079db83bbb6c83ee1119a15",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/shared/contracts/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "63816063317e84b087f2a70d292daecb9f4521b1ebf186dfb05925cea3725e45",
+      "sha256_current": "63816063317e84b087f2a70d292daecb9f4521b1ebf186dfb05925cea3725e45",
+      "changed_script_names": [
+        "lint",
+        "test"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": true,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/shared/database/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "84cf075aeb01b0ce666430ce757e9a974f85254d018eaafa2755bb025bac61f1",
+      "sha256_current": "84cf075aeb01b0ce666430ce757e9a974f85254d018eaafa2755bb025bac61f1",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/shared/errors/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "dab25587d6981308226c2da6bd69fe33045b225dc710fd49f5e2355d1fabd799",
+      "sha256_current": "dab25587d6981308226c2da6bd69fe33045b225dc710fd49f5e2355d1fabd799",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/shared/feature-flags/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "acdaae85b9da217de11a9766763a460f18c2e6acbc2db78956f59d56b9f8f124",
+      "sha256_current": "acdaae85b9da217de11a9766763a460f18c2e6acbc2db78956f59d56b9f8f124",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/shared/logging/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "746be7db75d5b348019e4e9eb138cb85938e31b02ff0f50428576c21f9965440",
+      "sha256_current": "746be7db75d5b348019e4e9eb138cb85938e31b02ff0f50428576c21f9965440",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/shared/rate-limiter/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "12671d1678cf7484b3e4eac34e3f77d4a54a123d599f880883cd8d5ae0660bc4",
+      "sha256_current": "12671d1678cf7484b3e4eac34e3f77d4a54a123d599f880883cd8d5ae0660bc4",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/shared/types/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "ce77212a71e63fe5713b81abd8eb1855da82d8c514c4ed1152601d05687827f1",
+      "sha256_current": "ce77212a71e63fe5713b81abd8eb1855da82d8c514c4ed1152601d05687827f1",
+      "changed_script_names": [
+        "lint",
+        "test"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": true,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/shared/utils/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "abe9044cb17f6210a84b115c8d303c0d66ed092dcb8ec293a6cdf5d802c754b0",
+      "sha256_current": "abe9044cb17f6210a84b115c8d303c0d66ed092dcb8ec293a6cdf5d802c754b0",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/shared/validation/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "80f252ba967cf4e1d46ff1bcc54b282119e9823fa95f5f077b1772737714333e",
+      "sha256_current": "80f252ba967cf4e1d46ff1bcc54b282119e9823fa95f5f077b1772737714333e",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "REPLACED_TYPECHECK_WITH_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    },
+    {
+      "path": "packages/tenant-context/package.json",
+      "git_status": " M",
+      "sha256_at_430_snapshot": "5b550c73dddc54161700bb5d04f9c1a7879d0b90b6a3e212d9c375998252261b",
+      "sha256_current": "5b550c73dddc54161700bb5d04f9c1a7879d0b90b6a3e212d9c375998252261b",
+      "changed_script_names": [
+        "lint"
+      ],
+      "lint_disposition": "ADDED_SEMANTIC_LINT",
+      "test_script_changed": false,
+      "typecheck_added": false,
+      "top_level_non_script_fields_unchanged": true
+    }
+  ],
+  "followup_validation": {
+    "lint_command": "pnpm lint",
+    "lint_result": "PASS; 68 of 69 workspace projects; exit 0 with existing warnings and no errors",
+    "semantic_lint_extensions": [
+      ".ts",
+      ".tsx",
+      ".js",
+      ".jsx",
+      ".mjs",
+      ".cjs"
+    ],
+    "vue_semantic_lint": "not covered by scripts/run-semantic-lint.mjs",
+    "typecheck_added_targets": {
+      "packages/db": "PASS: tsc -p tsconfig.json --noEmit",
+      "packages/modules/pix": "PASS: tsc -p tsconfig.json --noEmit"
+    },
+    "separate_vue_typechecks": {
+      "apps/spa": "PASS: vue-tsc --noEmit",
+      "packages/design-system": "PASS: tsc and vue-tsc noEmit"
+    },
+    "test_dispatch_contract": "PASS: root-test-runner-contract.test.ts, 5 tests; executed with no database global setup",
+    "full_test_dispatch": "NOT RUN: root test:root loads tests/setup/global-setup.ts, which can create/reset/seed/drop a database according to environment; workspace tests can include DB-backed suites, and the user prohibits touching shared DBs",
+    "candidate_bound_repeat_required": true
+  }
+}

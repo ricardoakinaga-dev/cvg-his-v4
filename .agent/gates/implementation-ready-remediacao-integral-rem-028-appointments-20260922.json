@@ -1,0 +1,140 @@
+{
+  "record_id": "GATE-IR-REMEDIACAO-INTEGRAL-REM-028-APPOINTMENTS-20260922",
+  "timestamp": "2026-09-22T04:54:03.000000Z",
+  "gate_id": "IMPLEMENTATION_READY",
+  "scope": "preparação candidate-bound da agenda e contrato do primeiro seam read-only list/day/week/month",
+  "scope_ref": "REM-028",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "IR-APPT-001",
+      "description": "Topologia, métricas físicas, helpers puros, teste focal e dependências da agenda foram inspecionados no runtime oficial local.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-preparation-20260922.txt",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+        "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts",
+        "apps/spa/src/pages/appointments/agendaContext.ts",
+        "apps/spa/src/pages/appointments/agendaPresentation.ts",
+        "apps/spa/src/pages/appointments/appointmentCalendar.ts"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A inspeção é estática e não substitui renderização interativa."
+    },
+    {
+      "id": "IR-APPT-002",
+      "description": "Ownership de URL/query, server state, stale-response, permission fail-closed, workflows e modais foi explicitamente preservado na page boundary.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-preparation-20260922.txt",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue:878",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue:932",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue:1367",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.vue:1478"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A preservação será confirmada por auditoria de imports e regressão após a implementação."
+    },
+    {
+      "id": "IR-APPT-003",
+      "description": "O seam AgendaCalendarOrList tem contrato candidato de props readonly e emits de intenção para apresentação list/day/week/month, sem services/router/stores ou ownership de workflow.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-preparation-20260922.txt",
+        "apps/spa/src/pages/appointments/agendaPresentation.ts",
+        "apps/spa/src/pages/appointments/appointmentCalendar.ts"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Contrato é de preparação; a implementação poderá refiná-lo apenas sem cruzar as fronteiras registradas."
+    },
+    {
+      "id": "IR-APPT-004",
+      "description": "Known-bads e verificação proporcional foram registrados: loading/empty/error, controles nativos, dense slots, foco, responsive/dark tokens e fallback de enriquecimento não podem ser removidos.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-preparation-20260922.txt",
+        "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts",
+        "apps/spa/src/pages/appointments/AppointmentsListPage.css"
+      ],
+      "confidence": "MEDIUM",
+      "limitations": "Browser/visual e owners ainda não foram provados."
+    }
+  ],
+  "evidence": [
+    ".agent/evidence/rem-028-appointments-preparation-20260922.txt",
+    ".agent/plans/remediacao-integral-20260921.md",
+    ".agent/backlog.json",
+    "apps/spa/src/pages/appointments/AppointmentsListPage.vue",
+    "apps/spa/src/pages/appointments/__tests__/AppointmentsListPage.test.ts",
+    "apps/spa/src/pages/appointments/agendaContext.ts",
+    "apps/spa/src/pages/appointments/agendaPresentation.ts",
+    "apps/spa/src/pages/appointments/appointmentCalendar.ts",
+    "apps/spa/src/pages/appointments/AppointmentsListPage.css"
+  ],
+  "confidence": "MEDIUM",
+  "gaps": [
+    "Nenhuma extração de código foi implementada nesta preparação.",
+    "Browser/visual/a11y real continua bloqueado pelo /health da API local unhealthy.",
+    "Crítica adversarial E7, revisão de owners e suíte SPA integral pós-seam permanecem abertos."
+  ],
+  "conditions": [
+    {
+      "id": "COND-REM-028-APPOINTMENTS-BROWSER",
+      "description": "Executar browser/visual após o seam com API saudável, incluindo list/day/week/month, empty/error/partial, teclado/foco, dark/mobile e largura intermediária.",
+      "non_blocking": true,
+      "impact": "Bloqueia claim visual/a11y e fechamento integral, mas não a implementação local reversível.",
+      "owner": "frontend/design",
+      "due_or_trigger": "Antes do gate VERIFIED do seam ou atualização de snapshot.",
+      "verification_method": "Playwright focal/interação e inspeção de artefatos atuais.",
+      "due_at": "2026-09-23T18:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-preparation-20260922.txt",
+        "playwright-spa.config.ts",
+        "e2e/spa/visual/visual-regression.spec.ts"
+      ],
+      "status": "OPEN",
+      "residual_risk": "HIGH",
+      "authority_state": "NOT_REQUIRED"
+    },
+    {
+      "id": "COND-REM-028-APPOINTMENTS-OWNER",
+      "description": "A classificação e contrato candidate-bound da agenda ainda aguardam revisão identificada dos owners de scheduling/frontend/design.",
+      "non_blocking": true,
+      "impact": "Não bloqueia implementação local reversível; bloqueia compromisso organizacional ou aceite de contrato de domínio.",
+      "owner": "lead",
+      "due_or_trigger": "Antes de promover a ordem a roadmap aprovado ou aceitar mudança de workflow.",
+      "verification_method": "Registrar revisão/decisão do owner e superseder a condição.",
+      "due_at": "2026-09-24T12:00:00.000000Z",
+      "evidence_refs": [
+        ".agent/evidence/rem-028-appointments-preparation-20260922.txt",
+        "docs/engineering/OWNERSHIP_AND_COMPLEXITY.md"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "inspeção e implementação local reversível do seam candidate-bound da agenda",
+    "decision": "A instrução autoriza inspeção e implementação local; não autoriza aceite visual humano, target, UAT, release ou autoridade externa.",
+    "evidence_ref": ".agent/evidence/rem-028-appointments-preparation-20260922.txt",
+    "expires_or_revalidates": "Revalidar se o seam tocar URL, server contract, auth/permission, workflow ou nova fronteira visual."
+  },
+  "residual_risk": "HIGH",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "REM-028:IMPLEMENT-APPOINTMENTS-CALENDAR-SEAM",
+  "revalidation_triggers": [
+    "O filho importar services, router, stores ou mover permission/query/generation/action ownership.",
+    "A extração remover loading/empty/error, fallback de enriquecimento, controles nativos, foco, dense slots ou responsive/dark behavior.",
+    "Alteração de tokens/breakpoints ou snapshots sem browser saudável.",
+    "Avanço para owner acceptance, CI remoto, target, UAT ou release."
+  ],
+  "supersedes": ".agent/gates/verified-remediacao-integral-rem-028-reports-summary-20260922.json"
+}

@@ -1,0 +1,31 @@
+# REM-006 — rerun de coverage após sincronizar REM-004/REM-005
+
+timestamp_utc=2026-09-21T17:27:15+00:00
+repository=/home/ricardo/cvg-his-v4
+head=ad2f0373f68635f2579253b013a4382219906921
+runtime=node-v22.23.2
+package_manager=pnpm-10.33.0
+command=`pnpm test:coverage`
+exit_status=1
+duration=276.01s
+
+## Resultado agregado
+
+- Test files: 1 failed, 278 passed, 1 skipped (280).
+- Tests: 1 failed, 3005 passed, 3 skipped (3009).
+- Statements: 87.10% (10476/12027).
+- Branches: 81.83% (8181/9997), ainda abaixo do threshold global congelado de 82%; faltam 17 branches para atingir pelo menos 8198.
+- Functions: 88.86% (2339/2632).
+- Lines: 88.58% (9887/11161).
+
+## Residual reproduzido
+
+- Único arquivo falho: `tests/unit/infra/complexity-hotspots.test.ts`.
+- Mensagem: `apps/api/src/server.ts: 8406 linhas excedem o limite 8335` — excesso de 71 linhas.
+- Os cinco failures stale de REM-004/REM-005 desapareceram; o contrato correction delta elevou branch coverage de 81.79% para 81.83%.
+
+## Decisão
+
+O comando manteve threshold e excludes inalterados. REM-006 continua aberto: precisa de casos comportamentais que cubram pelo menos 17 branches e depois de nova execução; o hotspot de `server.ts` segue separado para REM-026. Este resultado não é release readiness.
+
+result=FAIL

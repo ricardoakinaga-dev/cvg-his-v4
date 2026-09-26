@@ -24,6 +24,7 @@ e a reconciliação em
 | `cvg_worker` | Sim | Jobs duráveis, consumidores e tarefas explicitamente atribuídas ao worker | mesmas restrições; sem DML de autenticação sensível, sem `cvg_installer`, sem bypass de RLS | Política e contratos locais PASS; execução real sob credencial dedicada NOT PROVEN |
 | `cvg_runtime` | Sim | Compatibilidade controlada com instalações legadas e rollback | nunca deve ser usado como credencial compartilhada de API e worker; mesmas flags restritivas | Provisionado para compatibilidade; uso efetivo em produção NOT PROVEN |
 | `cvg_installer` | Não | Capacidade estreita para instalação/reconciliação, concedida ao API somente com `SET` explícito | `NOLOGIN`, `NOINHERIT`, sem credencial de serviço; não é runtime comum | Contrato estático e reconciliação cobertos; execução de migração alvo NOT PROVEN |
+| Login de migração dedicado por alvo | Sim | Executar migrations aprovadas fora dos processos API/worker | identidade separada; sem `SUPERUSER`, `CREATEDB`, `CREATEROLE`, `REPLICATION`, `BYPASSRLS` ou herança privilegiada; ownership/grants limitados aos objetos exigidos pela migration | Login sintético e restrito aplicou 0175 em PostgreSQL descartável; `NOINHERIT` e memberships não foram registrados nessa prova; identidade, provisionamento e canal de segredo aprovados para um alvo NOT PROVEN |
 | `cvg_api_key_auth` | Não | Funções mínimas de resolução de API key | `NOLOGIN`, `NOINHERIT`, `NOBYPASSRLS`, sem memberships; sem leitura ampla | Contrato ACL e funções coberto; probe alvo NOT PROVEN |
 | `cvg_pix_dlq_operator` | Não | Operação limitada do DLQ PIX, com identidade e auditoria | sem login interativo; somente tabelas/funções explicitamente concedidas | Contrato de ACL coberto; entrega de operação humana NOT PROVEN |
 | `cvg_test_rls` | Não | Testes automatizados de isolamento em banco descartável | nunca usar em staging/produção; credencial não é evidência de runtime comum | Testes de RLS locais/CI; não é papel produtivo |
@@ -61,6 +62,15 @@ anexar, para o SHA exato, as consultas `current_user`, flags de role, ACLs,
 RLS e um smoke do worker sob `cvg_worker`; sem isso o critério permanece
 `NOT PROVEN`.
 
+O login usado pelo job de migration ainda precisa ser configurado e aprovado
+pelo owner do ambiente. `cvg_installer` é `NOLOGIN` e não substitui esse login.
+A prova local REM-057 usa identidade e segredo sintéticos em banco descartável;
+ela registra as flags `SUPERUSER`, `CREATEDB`, `CREATEROLE`, `REPLICATION` e
+`BYPASSRLS`, mas não registra `NOINHERIT` nem memberships do login de migration.
+Essas verificações continuam abertas para uma repetição vinculada ao candidato.
+A prova não altera a política executável de provisionamento nem comprova o canal
+de credenciais de produção.
+
 ## Comandos de verificação alvo
 
 Em banco descartável e autorizado, coletar sem exportar senhas:
@@ -69,7 +79,15 @@ Em banco descartável e autorizado, coletar sem exportar senhas:
 SELECT rolname, rolcanlogin, rolsuper, rolinherit, rolbypassrls,
        rolcreatedb, rolcreaterole, rolreplication
   FROM pg_roles
- WHERE rolname IN ('cvg_api', 'cvg_worker', 'cvg_runtime', 'cvg_installer');
+ WHERE rolname IN ('cvg_api', 'cvg_worker', 'cvg_runtime', 'cvg_installer',
+                   'cvg_migration_0175');
+
+SELECT member.rolname AS member, granted_role.rolname AS granted_role,
+       memberships.admin_option
+  FROM pg_auth_members AS memberships
+  JOIN pg_roles AS member ON member.oid = memberships.member
+  JOIN pg_roles AS granted_role ON granted_role.oid = memberships.roleid
+ WHERE member.rolname = 'cvg_migration_0175';
 
 SELECT current_user, session_user;
 SELECT has_table_privilege(current_user, 'public.clinical_workflow_tasks', 'SELECT');

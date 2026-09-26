@@ -1,0 +1,27 @@
+# REM-006 — rerun integral após casos comportamentais
+
+timestamp_utc=2026-09-21T17:44:20+00:00
+repository=/home/ricardo/cvg-his-v4
+head=ad2f0373f68635f2579253b013a4382219906921
+runtime=node-v22.23.2
+package_manager=pnpm-10.33.0
+command=pnpm test:coverage
+thresholds=preservados; branch global >=82%; excludes congelados
+
+## Resultado
+
+- exit=1 após 300.60s.
+- 278 arquivos passaram; 1 arquivo falhou; 1 arquivo foi skipped.
+- 3.009 testes passaram; 1 falhou; 3 foram skipped.
+- Statements 87.17% (10.485/12.027).
+- Branches 81.96% (8.194/9.997), faltando 4 branches para atingir 82%.
+- Functions 88.90% (2.340/2.632).
+- Lines 88.65% (9.895/11.161).
+- O único teste falho foi `tests/unit/infra/complexity-hotspots.test.ts`: `apps/api/src/server.ts` ficou em 8.406 linhas contra orçamento congelado de 8.335 (71 acima), residual REM-026.
+- Os contratos REM-004/REM-005 e os novos casos comportamentais não falharam.
+
+## Decisão operacional
+
+Esta rodada confirma o ganho de 81.83% para 81.96% e deixa quatro branches para REM-006. O orçamento de complexity, threshold e excludes não serão alterados; o próximo passo é localizar e cobrir os quatro branches restantes, mantendo o residual de `server.ts` separado em REM-026.
+
+result=FAIL

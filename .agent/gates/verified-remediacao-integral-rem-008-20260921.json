@@ -1,0 +1,92 @@
+{
+  "record_id": "GATE-VERIFIED-REMEDIACAO-INTEGRAL-REM-008-20260921",
+  "timestamp": "2026-09-21T20:02:00.000000+00:00",
+  "gate_id": "VERIFIED",
+  "scope": "matriz crypto/runtime no Node oficial 22.23.2/pnpm 10.33.0 para REM-008",
+  "scope_ref": "REM-008",
+  "version": 1,
+  "criteria": [
+    {
+      "id": "V-001-ACCEPTANCE-EVIDENCE",
+      "description": "A matriz crypto/runtime de REM-008 foi executada no Node oficial e os caminhos estáveis de criptografia passaram seus testes focais.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-008-CRYPTO-RUNTIME-20260921",
+        ".agent/evidence/rem-008-crypto-runtime-20260921.txt"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A aceitação é local e limitada à matriz Node 22.23.2/pnpm 10.33.0 descrita no registro; nenhuma fronteira externa foi executada."
+    },
+    {
+      "id": "V-002-REGRESSION-RISK",
+      "description": "O smoke nativo e os testes de MFA, TOTP, WebAuthn, tracing e verificadores HMAC passaram sem alterar thresholds ou habilitar flags experimentais.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-008-CRYPTO-RUNTIME-20260921",
+        ".agent/evidence/rem-008-crypto-runtime-20260921.txt"
+      ],
+      "confidence": "HIGH",
+      "limitations": "A regressão coberta é focal; a suíte composta, CI e comportamento em target não são substituídos por esta matriz."
+    },
+    {
+      "id": "V-003-LIMITATIONS-AUTHORITY",
+      "description": "As limitações e a ausência de autorização para cruzar CI, target, providers reais, UAT ou release estão explicitamente registradas.",
+      "required": true,
+      "status": "PASS",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-008-CRYPTO-RUNTIME-20260921",
+        ".agent/plans/remediacao-integral-20260921.md"
+      ],
+      "confidence": "HIGH",
+      "limitations": "Este gate não é aprovação humana nem decisão de release; as fronteiras externas permanecem fora da autorização atual."
+    }
+  ],
+  "evidence": [
+    ".agent/verification.jsonl#VER-REM-008-CRYPTO-RUNTIME-20260921",
+    ".agent/evidence/rem-008-crypto-runtime-20260921.txt",
+    ".node-version",
+    "package.json",
+    "packages/modules/mfa/package.json"
+  ],
+  "confidence": "HIGH",
+  "gaps": [],
+  "conditions": [
+    {
+      "id": "COND-REM-008-EXTERNAL-BOUNDARIES",
+      "description": "CI/OCI identity, Node 24 compatibility, target runtime, real providers, UAT, recovery, release and human authority remain unexecuted and must stay outside any local completion claim.",
+      "non_blocking": true,
+      "impact": "Does not block completion of the bounded local REM-008 matrix; it blocks release-readiness or external-runtime claims.",
+      "owner": "lead",
+      "due_or_trigger": "Before REM-009 integrated local gate or when the supported runtime baseline changes",
+      "due_at": "2026-09-22T12:00:00.000000+00:00",
+      "verification_method": "Run the separately authorized external or integrated boundary and append a current typed verification record before superseding this condition.",
+      "evidence_refs": [
+        ".agent/verification.jsonl#VER-REM-008-CRYPTO-RUNTIME-20260921",
+        ".agent/evidence/rem-008-crypto-runtime-20260921.txt"
+      ],
+      "status": "OPEN",
+      "residual_risk": "MEDIUM",
+      "authority_state": "NOT_REQUIRED"
+    }
+  ],
+  "authority": {
+    "required": false,
+    "state": "NOT_REQUIRED",
+    "actor": "local remediation executor",
+    "scope": "matriz crypto/runtime no Node oficial 22.23.2/pnpm 10.33.0 para REM-008",
+    "decision": "A instrução do usuário autoriza inspeção e verificação local reversível; nenhuma ação externa ou destrutiva está incluída.",
+    "evidence_ref": ".agent/plans/remediacao-integral-20260921.md",
+    "expires_or_revalidates": "Revalidar antes de mudar o baseline runtime ou cruzar CI, target, providers, UAT, credentials, deployment ou release."
+  },
+  "residual_risk": "MEDIUM",
+  "decision": "PASS_WITH_CONDITIONS",
+  "next_action": "Preparar REM-009 somente depois de suas dependências, inclusive REM-015, possuírem evidência current.",
+  "revalidation_triggers": [
+    "O baseline Node/pnpm, a superfície crypto/runtime ou os testes focais mudarem.",
+    "A matriz local falhar, for pulada ou cruzar uma fronteira externa.",
+    "O escopo for ampliado para CI, target, providers reais, UAT, recovery ou release."
+  ],
+  "supersedes": null
+}

@@ -1,0 +1,35 @@
+REM-027 — reconciliação current_lines/max_lines dos hotspots SPA
+observed_at: 2026-09-22T09:09:58.000000Z
+task: REM-027 / condição de complexidade observada em REM-029
+agent_mode: Direct; agente primário único; sem crítica independente disponível
+
+Drift observado
+O guard `pnpm complexity:check` rejeitava quatro entradas porque o manifesto
+conservava medições anteriores às decomposições SPA já presentes no worktree:
+
+| path | manifesto anterior | medição real |
+| --- | ---: | ---: |
+| `apps/spa/src/pages/sales/CounterSalesPage.vue` | 3468 | 2779 |
+| `apps/spa/src/pages/patients/PatientDetailPage.vue` | 4075 | 4051 |
+| `apps/spa/src/pages/appointments/AppointmentsListPage.vue` | 3082 | 2379 |
+| `apps/spa/src/pages/reports/ReportWorkbenchPage.vue` | 3142 | 2750 |
+
+Correção
+- `current_lines` foi reconciliado à medição física real para as quatro entradas.
+- `max_lines` foi reduzido ao novo current_lines; nenhum limite foi aumentado.
+- `previous_max_lines` foi preservado como histórico de comparação.
+- owners, risk_rank, risk_level, risk_reason e decomposition_plan não foram
+  alterados nesta reconciliação.
+- Nenhum código de produção foi alterado nesta ação; a fonte da medição é o
+  checker canônico e o manifesto não mascara crescimento.
+
+Verificação
+- `pnpm complexity:check`: PASS — hotspots, owners e limites conferidos.
+- `tests/unit/infra/complexity-hotspots.test.ts`: 1 arquivo / 4 testes PASS.
+- `git diff --check`: PASS.
+
+Limites
+A reconciliação fecha somente a divergência mecânica do guard. Não prova revisão
+dos owners, browser/visual/a11y, E7, CI/OCI, target, UAT, release ou go/no-go.
+O resultado é local e condicional; qualquer mudança posterior nas páginas exige
+nova medição e gate superseding.
