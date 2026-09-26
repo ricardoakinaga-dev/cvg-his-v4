@@ -1882,6 +1882,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PersonalDataExport'
+        '404':
+          description: The data subject does not exist in the authenticated account (code SUBJECT_NOT_FOUND)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
 
   /master-search:
     get:

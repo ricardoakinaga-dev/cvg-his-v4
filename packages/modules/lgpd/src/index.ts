@@ -1,5 +1,6 @@
 export {
   LgpdDsrStateError,
+  LgpdSubjectNotFoundError,
   LgpdService,
   getLgpdRetentionEvidence,
   type LgpdErasureEvidence,
@@ -9,6 +10,7 @@ export {
   type LgpdProviderEvidence,
   type LgpdRetentionEvidence,
   type LgpdServiceOptions,
+  type LgpdSubjectResolver,
   type PersonalDataExport
 } from './service.js';
 

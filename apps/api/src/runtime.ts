@@ -1,4 +1,5 @@
 import { AccessControlService } from '@cvg-his-v2/module-access-control';
+import { NotFoundError } from '@cvg-his-v2/shared-errors';
 import {
   AttachmentsService,
   type AttachmentRepository,
@@ -1262,6 +1263,24 @@ export function createApiRuntime(options: ApiRuntimeOptions) {
   const lgpd = new LgpdService({
     consentRepository: repos.consent,
     dsrRepository: repos.dsr,
+    // R2-LGPD-04: exports for unknown subjects are refused (404) instead of
+    // returning an empty package. Lookups are authoritative (repository first).
+    subjectResolver: async (accountId, subjectId, subjectType) => {
+      try {
+        if (subjectType === 'owner') {
+          await owners.getAuthoritativeOrThrow(accountId as AccountId, subjectId as never);
+          return true;
+        }
+        if (subjectType === 'patient') {
+          await patients.getAuthoritativeOrThrow(accountId as AccountId, subjectId as never);
+          return true;
+        }
+        return (await users.resolveById(subjectId as UserId, accountId as AccountId)) !== undefined;
+      } catch (error) {
+        if (error instanceof NotFoundError) return false;
+        throw error;
+      }
+    },
     dataProviders: {
       owners: (async (_subjectId, context) => {
         const ownerRows =
