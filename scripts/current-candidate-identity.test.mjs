@@ -202,6 +202,8 @@ test.afterEach(() => {
 });
 
 function createEvidenceFixture({ commitSha = evidenceIdentity.head_sha, observedAt = new Date().toISOString(), tamper = false, environment = 'test-disposable-postgres' } = {}) {
+  // artifacts/ is git-ignored: a clean CI checkout does not have it.
+  mkdirSync(resolve(root, 'artifacts/triple-a'), { recursive: true });
   const directory = mkdtempSync(resolve(root, 'artifacts/triple-a/graph-import-test-'));
   temporaryEvidenceDirectories.push(directory);
   const fixturePath = resolve(directory, 'proof.log');

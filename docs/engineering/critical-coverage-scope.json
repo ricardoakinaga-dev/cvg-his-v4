@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "ticket": "R05-010",
   "status": "frozen-proposal-not-certified",
-  "head": "ad2f0373f68635f2579253b013a4382219906921",
+  "head": "a609daf9c59e6c33af97267027e40e5f556a67ca",
   "thresholds": {
     "lines": 85,
     "statements": 85,
@@ -61,16 +61,26 @@
       "apps/api/src/laboratory-provider-ingress.test.ts",
       "apps/api/src/laboratory-provider-keyring.test.ts",
       "apps/api/src/laboratory-result-import-repository.test.ts",
+      "apps/api/src/lgpd-erasure-executor.test.ts",
       "apps/api/src/payment-gateway.test.ts",
+      "apps/api/src/production-provider-readiness.test.ts",
       "apps/api/src/production-runtime-contract.test.ts",
       "apps/api/src/registry-request-boundaries.test.ts",
       "apps/api/src/routes/access-control-audit-events.test.ts",
       "apps/api/src/routes/administrative-reports-routes.test.ts",
       "apps/api/src/routes/advance-payments-routes.test.ts",
       "apps/api/src/routes/agenda-config-routes.test.ts",
+      "apps/api/src/routes/attachment-content-read-route.test.ts",
+      "apps/api/src/routes/attachment-upload-route.test.ts",
       "apps/api/src/routes/auth-routes.test.ts",
       "apps/api/src/routes/billing-routes.test.ts",
       "apps/api/src/routes/cash-routes.test.ts",
+      "apps/api/src/routes/cep-lookup-route.test.ts",
+      "apps/api/src/routes/chaos-experiment-list-route.test.ts",
+      "apps/api/src/routes/clinical-handoff-acknowledge-route.test.ts",
+      "apps/api/src/routes/clinical-handoff-send-route.test.ts",
+      "apps/api/src/routes/clinical-handoff-workflow-routes.test.ts",
+      "apps/api/src/routes/clinical-handoffs-read-routes.test.ts",
       "apps/api/src/routes/commercial-routes.test.ts",
       "apps/api/src/routes/commission-routes.test.ts",
       "apps/api/src/routes/company-sectors-routes.test.ts",
@@ -79,10 +89,12 @@
       "apps/api/src/routes/discharges-routes.test.ts",
       "apps/api/src/routes/email-routes.test.ts",
       "apps/api/src/routes/encounter-cash-receipt-routes.test.ts",
+      "apps/api/src/routes/encounter-list-route.test.ts",
       "apps/api/src/routes/expenses-catalog-routes.test.ts",
       "apps/api/src/routes/financial-routes-payables.test.ts",
       "apps/api/src/routes/fiscal-routes.test.ts",
       "apps/api/src/routes/google-calendar-routes.test.ts",
+      "apps/api/src/routes/health-routes.test.ts",
       "apps/api/src/routes/inpatient-routes.test.ts",
       "apps/api/src/routes/internal-events-routes.test.ts",
       "apps/api/src/routes/inventory-manufacturers-routes.test.ts",
@@ -94,16 +106,22 @@
       "apps/api/src/routes/lgpd-routes.test.ts",
       "apps/api/src/routes/marketing-routes.test.ts",
       "apps/api/src/routes/measurement-units-routes.test.ts",
+      "apps/api/src/routes/metrics-read-route.test.ts",
       "apps/api/src/routes/ml-routes.test.ts",
+      "apps/api/src/routes/notification-read-routes.test.ts",
+      "apps/api/src/routes/notification-write-routes.test.ts",
       "apps/api/src/routes/openapi-routes.test.ts",
       "apps/api/src/routes/owners-routes.test.ts",
+      "apps/api/src/routes/pagarme-pix-webhook-routes.test.ts",
       "apps/api/src/routes/patients-routes.test.ts",
       "apps/api/src/routes/payments-routes.test.ts",
       "apps/api/src/routes/pix-payment-attempt-routes.test.ts",
       "apps/api/src/routes/pix-provider-settlement-routes.test.ts",
       "apps/api/src/routes/prescription-executions-routes.test.ts",
       "apps/api/src/routes/prescription-routes.test.ts",
+      "apps/api/src/routes/reports-export-tenant.test.ts",
       "apps/api/src/routes/reports-routes.test.ts",
+      "apps/api/src/routes/resource-route-path.test.ts",
       "apps/api/src/routes/scheduling-routes.test.ts",
       "apps/api/src/routes/setup-routes.test.ts",
       "apps/api/src/routes/sms-routes.test.ts",
@@ -130,6 +148,8 @@
       "apps/worker/src/fatal-runtime.test.ts",
       "apps/worker/src/feature-flags.test.ts",
       "apps/worker/src/health.test.ts",
+      "apps/worker/src/jobs/appointment-reminder-handler.test.ts",
+      "apps/worker/src/jobs/pagarme-pix-payment-dispatch-provider.test.ts",
       "apps/worker/src/jobs/pix-provider-settlement-consumer.test.ts",
       "apps/worker/src/jobs/scheduled-report-job.test.ts",
       "apps/worker/src/report-delivery-provider.test.ts",
@@ -187,7 +207,7 @@
     },
     {
       "path": "apps/api/src/commands/request-encounter-pix-payment.ts",
-      "sha256": "036e4f220b06a18a72b54de09789b8bf14c5d406931dfc8f8ce28c35bd07abfb",
+      "sha256": "157defd0cfabd98541fff7a67cfb5e9d2b8ad56f3ac9d51ebf1061e3a1cee2da",
       "components": [
         "records",
         "pix"
@@ -273,7 +293,7 @@
     },
     {
       "path": "apps/api/src/encounter-pix-payment-attempt-repository.ts",
-      "sha256": "2d699713ea8a0376c74fdc1ee9eb67ed1abeb8bd58def60d6fcba02d27c79feb",
+      "sha256": "130f6f2b20cfd6d20533f54d6959cd1787aba5f330a69363731882a158e8fe14",
       "components": [
         "records",
         "pix",
@@ -347,7 +367,7 @@
     },
     {
       "path": "apps/api/src/payment-gateway.ts",
-      "sha256": "f5bdbacdd0636e696f3c37dc6e9fe75c1e765f401762423b6cd53cde0bec36b2",
+      "sha256": "37e97838a83727ed3c0a4917903e1dc68c1d5e468b42b0a7579f8a6013a9619d",
       "components": [
         "pix"
       ],
@@ -367,7 +387,7 @@
     },
     {
       "path": "apps/api/src/pix-provider-event-ingress-repository.ts",
-      "sha256": "fc219c8d833f0115142dff0e29bf707e7b7a1ddb0c3f9a33535727d757ab779b",
+      "sha256": "08d2ec0429cbe1e421db4bd202f523628647f4fcb2a33194b13eb7413196216e",
       "components": [
         "pix",
         "repositories"
@@ -747,7 +767,7 @@
     },
     {
       "path": "apps/api/src/routes/inpatient-routes.ts",
-      "sha256": "7a2fdbdc7124ff0ccb0a4d6f6d26fe03a3505c4bc4da0ae2b3ddb7bdeb68c1cd",
+      "sha256": "32ecae61b2ef452d5e20ecc9794b781f0250251177530ae98992cc2ae08558bd",
       "components": [
         "inpatient",
         "http-routes"
@@ -828,7 +848,7 @@
     },
     {
       "path": "apps/api/src/routes/lgpd-routes.ts",
-      "sha256": "0e7a9fe0afcd5993f9fb06e96ddcd6ca6da9448c60e915460f6ee38b922fd989",
+      "sha256": "e5b89a28b1ea7f8cc60e3ea86c7e9134b471e2e21e5be2552dac86b3cd5e21de",
       "components": [
         "http-routes"
       ],
@@ -888,7 +908,7 @@
     },
     {
       "path": "apps/api/src/routes/patients-routes.ts",
-      "sha256": "9c58085152b1f75b6a31c2a4abdc8db1f0e273a73d93ada028468d84d70ccbc3",
+      "sha256": "ad5d43e7a790d5f62d46905da04f512beb44f2642ef1d40d470ce9de87f03ac9",
       "components": [
         "http-routes"
       ],
@@ -898,7 +918,7 @@
     },
     {
       "path": "apps/api/src/routes/payments-routes.ts",
-      "sha256": "0da789d1980e8fc2f6e8329c686967296a7b610f16c75edf11c1008409a7ba1b",
+      "sha256": "037a3db8d501522e494fecab2daf9598d25516363caac2dc6cdb111e6556423f",
       "components": [
         "billing-cash",
         "http-routes"
@@ -954,7 +974,7 @@
     },
     {
       "path": "apps/api/src/routes/prescription-routes.ts",
-      "sha256": "9c532f1da6334fe33944f209260fd6d8e5fbd5ef74776cbfc922be3d1d116388",
+      "sha256": "51f04d08b0a4032a22a02aea1339a729e921a6d607fdde880fe4ba5674feea0e",
       "components": [
         "prescriptions",
         "http-routes"
@@ -1056,7 +1076,7 @@
     },
     {
       "path": "apps/api/src/routes/whatsapp-routes.ts",
-      "sha256": "172d4cf12bdc3e4d7b2d37c8a421753a515d4a77ddd28029fef9773e653def0a",
+      "sha256": "0e39f394f04609d815a558645cf39d2998061ee1ea813d131dca59d8e1f6502c",
       "components": [
         "http-routes"
       ],
@@ -1076,7 +1096,7 @@
     },
     {
       "path": "apps/api/src/server.ts",
-      "sha256": "6b102f8ef01cc77c8acedef6ad2d429507c985ad00a78698457c94e5c39cb319",
+      "sha256": "bc98c653e85aa5f49ddfb572ac244c49b2f2dba3fbc8ba942053ac8b7948764a",
       "components": [
         "http-routes"
       ],
@@ -1276,7 +1296,7 @@
     },
     {
       "path": "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue",
-      "sha256": "a94dc2c8c0ad9c94bda1e40029f5925ca90cc82ce039d0ce441b88fdb53aa6a5",
+      "sha256": "95c5b315279e5f33e232fd9d8767d03022cbcebea77b4cb9786502957c2f69bf",
       "components": [
         "records"
       ],
@@ -1476,7 +1496,7 @@
     },
     {
       "path": "apps/spa/src/services/pix.ts",
-      "sha256": "f77ec2b3c9809b73f740ea017241ccdb2d5c0fb0341d46c70d218ae67e05c491",
+      "sha256": "cc3ef1d4cb0bc03c73ef2d5752d2974f1495001257e0b1de242453fff700f72f",
       "components": [
         "pix"
       ],
@@ -1496,7 +1516,7 @@
     },
     {
       "path": "apps/spa/src/services/prescriptions.ts",
-      "sha256": "039ae7619350701ef4c9c5797d84a35fe55621e9ebcc5f8a8602998bba6f177a",
+      "sha256": "6e88efdecbdb585c72653874301d85bb30e60390d5499ba3a5d33d88933b3f8e",
       "components": [
         "prescriptions"
       ],
@@ -3563,7 +3583,7 @@
     },
     {
       "path": "packages/db/src/migration-query.ts",
-      "sha256": "ffbd1f0ddd70e8a419d5235f70b60fc7365cd785e488c6c55712371cd50197c8",
+      "sha256": "a6212a87ff15e5b372bd3c3f3778e1f395a687ed14627d8b6c2b63c7ef2e8bcd",
       "components": [
         "roles-rls"
       ],
@@ -4684,7 +4704,7 @@
     },
     {
       "path": "packages/modules/auth/src/index.ts",
-      "sha256": "1b4e3c11d2a86c22855c5a7cb97497ae4e4b81b4499cd5d5a12974d345812cbb",
+      "sha256": "f368eb4f9c55b7a53e4d05c54e9bb4d202aaafb66de9cdf7befb73d7ec5a2b1e",
       "components": [
         "auth"
       ],
@@ -4801,7 +4821,7 @@
     },
     {
       "path": "packages/modules/cash/src/index.ts",
-      "sha256": "f2c492cad5bf74578204257a1b35dbca3808e36bf6a64b0069fbb3e56fd019de",
+      "sha256": "762908d60871f920497c9c176afdb1c8376f995448d82dbdfda78147570833b4",
       "components": [
         "billing-cash"
       ],
@@ -4967,7 +4987,7 @@
     },
     {
       "path": "packages/modules/event-consumers/src/payments.consumer.ts",
-      "sha256": "b356eac5860a21b9336b1c8a5b67f748b7fe7f32a9b9a232b66ab3d0dad03fab",
+      "sha256": "51db80db3b4fc74f7cf53ba34bb4db0ab61a031f4282c0fc7e179fa4f0badfaf",
       "components": [
         "billing-cash"
       ],
@@ -5336,7 +5356,7 @@
     },
     {
       "path": "packages/modules/owners/src/repositories/database-owner.repository.ts",
-      "sha256": "664839ba38651ed620ce7f88003ff465e06381b199f7fd9a87427e23054bfb69",
+      "sha256": "a1f6d64651f530abf79a5a55276c6711ea530b1d14489330c3101ab4fb6cf32d",
       "components": [
         "repositories"
       ],
@@ -5356,7 +5376,7 @@
     },
     {
       "path": "packages/modules/patients/src/repositories/database-patient.repository.ts",
-      "sha256": "b7296c56ce2cc2768316090c1686b316129f247f229c38e598e9f14e0299251a",
+      "sha256": "fca8d3da6ed5fc84e2fda3b584260da49dae18739649d5c57bced97105f60025",
       "components": [
         "repositories"
       ],
@@ -5419,7 +5439,7 @@
     },
     {
       "path": "packages/modules/pix/src/adapters/pagarme.adapter.ts",
-      "sha256": "c0320508990ab84003c81bfe2b0c4db4c87e190dfa2d9ed627984fc04367afa9",
+      "sha256": "ec122b81f4785190c914cbfb6d286480a00bedddc2c911db0a34b72002ec3cfa",
       "components": [
         "pix"
       ],
@@ -5470,7 +5490,7 @@
     },
     {
       "path": "packages/modules/pix/src/types.ts",
-      "sha256": "57fed92235254cfce3083ca2bb6d528983f60c306495685fa1b83955cfa7b157",
+      "sha256": "5790b097adde56268b07ed3412a64640204957dc41a0cdf964d425cf5b200cb6",
       "components": [
         "pix"
       ],
@@ -5512,7 +5532,7 @@
     },
     {
       "path": "packages/modules/prescriptions/src/index.ts",
-      "sha256": "0c48b226a826895a9dd120b2a35a44eaba9246e42fc6f616083f18a911d3d99b",
+      "sha256": "7d02577045b3c7eb3e83fff71069cee92ae30f9e036013d2fbbb4ca8b4abb2cb",
       "components": [
         "prescriptions"
       ],
@@ -5806,7 +5826,7 @@
     },
     {
       "path": "packages/tenant-context/src/middleware.ts",
-      "sha256": "ea9080e4e25e4fc161c7b49e0d3ba95f48f9d0f2a579105b9affd19bca9bcbf4",
+      "sha256": "3f52d123205bdbe01f8c6b4bc95309db4111c3cbe92a6e00059dae2689c3d4db",
       "components": [
         "roles-rls"
       ],
@@ -5842,6 +5862,16 @@
       "justification": "Forward SQL migration executed and verified by the specialized migration evidence producer.",
       "review": null,
       "sha256": "e39e60a0555e8ab4eb22f4234ff9c269dbd2764fc3af58106687162d37c0ef32",
+      "applicability": "sql-migration-evidence"
+    },
+    {
+      "path": "packages/db/migrations/0178_pix_provider_events_pagarme.sql",
+      "components": [
+        "roles-rls"
+      ],
+      "justification": "Forward SQL migration executed and verified by the specialized migration evidence producer.",
+      "review": null,
+      "sha256": "3bdf52e21d360751fb0638bb80a63450d261267a954ab35ac76fd9ee96b70cce",
       "applicability": "sql-migration-evidence"
     }
   ],
@@ -6225,7 +6255,11 @@
     "tests/unit/api/security-headers.test.ts",
     "packages/modules/auth/src/database-session.repository.test.ts",
     "tests/integration/database/runtime-timeline-immutability.test.ts",
-    "tests/unit/infra/api-server-boundaries.test.ts"
+    "tests/unit/infra/api-server-boundaries.test.ts",
+    "apps/spa/src/pages/patients/__tests__/usePatientClinicalHistory.test.ts",
+    "packages/modules/patients/src/repositories/database-patient.repository.test.ts",
+    "tests/integration/database/lgpd-owner-erasure-postgres.test.ts",
+    "tests/integration/database/pix-pagarme-encounter-flow-postgres.test.ts"
   ],
   "executionInputs": [
     ".eslintrc.cjs",
@@ -8443,7 +8477,31 @@
     "apps/worker/src/health.test.ts",
     "apps/worker/src/runtime-lifecycle.test.ts",
     "apps/worker/src/scheduled-report-sources.test.ts",
-    "tests/unit/infra/api-server-boundaries.test.ts"
+    "tests/unit/infra/api-server-boundaries.test.ts",
+    "apps/api/src/lgpd-erasure-executor.test.ts",
+    "apps/api/src/production-provider-readiness.test.ts",
+    "apps/api/src/routes/attachment-content-read-route.test.ts",
+    "apps/api/src/routes/attachment-upload-route.test.ts",
+    "apps/api/src/routes/cep-lookup-route.test.ts",
+    "apps/api/src/routes/chaos-experiment-list-route.test.ts",
+    "apps/api/src/routes/clinical-handoff-acknowledge-route.test.ts",
+    "apps/api/src/routes/clinical-handoff-send-route.test.ts",
+    "apps/api/src/routes/clinical-handoff-workflow-routes.test.ts",
+    "apps/api/src/routes/clinical-handoffs-read-routes.test.ts",
+    "apps/api/src/routes/encounter-list-route.test.ts",
+    "apps/api/src/routes/health-routes.test.ts",
+    "apps/api/src/routes/metrics-read-route.test.ts",
+    "apps/api/src/routes/notification-read-routes.test.ts",
+    "apps/api/src/routes/notification-write-routes.test.ts",
+    "apps/api/src/routes/pagarme-pix-webhook-routes.test.ts",
+    "apps/api/src/routes/reports-export-tenant.test.ts",
+    "apps/api/src/routes/resource-route-path.test.ts",
+    "apps/worker/src/jobs/appointment-reminder-handler.test.ts",
+    "apps/worker/src/jobs/pagarme-pix-payment-dispatch-provider.test.ts",
+    "apps/spa/src/pages/patients/__tests__/usePatientClinicalHistory.test.ts",
+    "packages/modules/patients/src/repositories/database-patient.repository.test.ts",
+    "tests/integration/database/lgpd-owner-erasure-postgres.test.ts",
+    "tests/integration/database/pix-pagarme-encounter-flow-postgres.test.ts"
   ],
   "scopeHistory": [
     {
@@ -12088,6 +12146,213 @@
         "tests/unit/infra/api-server-boundaries.test.ts"
       ],
       "vitestRemoved": []
+    },
+    {
+      "manifestRevision": 90,
+      "observedAt": "2026-09-26T14:15:19.992Z",
+      "collectionCommit": "a609daf9c59e6c33af97267027e40e5f556a67ca",
+      "previousManifestSha256": "25f856028b2e08e598d178b6128d03daeae09d4bcafcaf370bae8c0b1557556e",
+      "preservedManifest": "artifacts/remediation/MA-02/refresh/critical-scope-before-25f856028b2e08e598d178b6128d03daeae09d4bcafcaf370bae8c0b1557556e.json",
+      "previousSourceSetSha256": "ff696e9e39cafc11f9ea537977074ff584cdf1ad3a61cda3bde93f4ccf3f28be",
+      "sourceSetSha256": "52caeb30dc6ee1603436d48ba79896b448484b63994385649da7e8d8c33800cb",
+      "reason": "R2 round-2 (2026-09-26): LGPD erasure executor, durable appointment reminders, real Pagar.me encounter PIX (migration 0178), Fable lote A and previously unregistered route tests",
+      "added": [
+        "packages/db/migrations/0178_pix_provider_events_pagarme.sql"
+      ],
+      "removed": [],
+      "changed": [
+        {
+          "path": "apps/api/src/commands/request-encounter-pix-payment.ts",
+          "before": "036e4f220b06a18a72b54de09789b8bf14c5d406931dfc8f8ce28c35bd07abfb",
+          "after": "157defd0cfabd98541fff7a67cfb5e9d2b8ad56f3ac9d51ebf1061e3a1cee2da"
+        },
+        {
+          "path": "apps/api/src/encounter-pix-payment-attempt-repository.ts",
+          "before": "2d699713ea8a0376c74fdc1ee9eb67ed1abeb8bd58def60d6fcba02d27c79feb",
+          "after": "130f6f2b20cfd6d20533f54d6959cd1787aba5f330a69363731882a158e8fe14"
+        },
+        {
+          "path": "apps/api/src/payment-gateway.ts",
+          "before": "f5bdbacdd0636e696f3c37dc6e9fe75c1e765f401762423b6cd53cde0bec36b2",
+          "after": "37e97838a83727ed3c0a4917903e1dc68c1d5e468b42b0a7579f8a6013a9619d"
+        },
+        {
+          "path": "apps/api/src/pix-provider-event-ingress-repository.ts",
+          "before": "fc219c8d833f0115142dff0e29bf707e7b7a1ddb0c3f9a33535727d757ab779b",
+          "after": "08d2ec0429cbe1e421db4bd202f523628647f4fcb2a33194b13eb7413196216e"
+        },
+        {
+          "path": "apps/api/src/routes/inpatient-routes.ts",
+          "before": "7a2fdbdc7124ff0ccb0a4d6f6d26fe03a3505c4bc4da0ae2b3ddb7bdeb68c1cd",
+          "after": "32ecae61b2ef452d5e20ecc9794b781f0250251177530ae98992cc2ae08558bd"
+        },
+        {
+          "path": "apps/api/src/routes/lgpd-routes.ts",
+          "before": "0e7a9fe0afcd5993f9fb06e96ddcd6ca6da9448c60e915460f6ee38b922fd989",
+          "after": "e5b89a28b1ea7f8cc60e3ea86c7e9134b471e2e21e5be2552dac86b3cd5e21de"
+        },
+        {
+          "path": "apps/api/src/routes/patients-routes.ts",
+          "before": "9c58085152b1f75b6a31c2a4abdc8db1f0e273a73d93ada028468d84d70ccbc3",
+          "after": "ad5d43e7a790d5f62d46905da04f512beb44f2642ef1d40d470ce9de87f03ac9"
+        },
+        {
+          "path": "apps/api/src/routes/payments-routes.ts",
+          "before": "0da789d1980e8fc2f6e8329c686967296a7b610f16c75edf11c1008409a7ba1b",
+          "after": "037a3db8d501522e494fecab2daf9598d25516363caac2dc6cdb111e6556423f"
+        },
+        {
+          "path": "apps/api/src/routes/prescription-routes.ts",
+          "before": "9c532f1da6334fe33944f209260fd6d8e5fbd5ef74776cbfc922be3d1d116388",
+          "after": "51f04d08b0a4032a22a02aea1339a729e921a6d607fdde880fe4ba5674feea0e"
+        },
+        {
+          "path": "apps/api/src/routes/whatsapp-routes.ts",
+          "before": "172d4cf12bdc3e4d7b2d37c8a421753a515d4a77ddd28029fef9773e653def0a",
+          "after": "0e39f394f04609d815a558645cf39d2998061ee1ea813d131dca59d8e1f6502c"
+        },
+        {
+          "path": "apps/api/src/server.ts",
+          "before": "6b102f8ef01cc77c8acedef6ad2d429507c985ad00a78698457c94e5c39cb319",
+          "after": "bc98c653e85aa5f49ddfb572ac244c49b2f2dba3fbc8ba942053ac8b7948764a"
+        },
+        {
+          "path": "apps/spa/src/pages/medical-records/MedicalRecordsDetailPage.vue",
+          "before": "a94dc2c8c0ad9c94bda1e40029f5925ca90cc82ce039d0ce441b88fdb53aa6a5",
+          "after": "95c5b315279e5f33e232fd9d8767d03022cbcebea77b4cb9786502957c2f69bf"
+        },
+        {
+          "path": "apps/spa/src/services/pix.ts",
+          "before": "f77ec2b3c9809b73f740ea017241ccdb2d5c0fb0341d46c70d218ae67e05c491",
+          "after": "cc3ef1d4cb0bc03c73ef2d5752d2974f1495001257e0b1de242453fff700f72f"
+        },
+        {
+          "path": "apps/spa/src/services/prescriptions.ts",
+          "before": "039ae7619350701ef4c9c5797d84a35fe55621e9ebcc5f8a8602998bba6f177a",
+          "after": "6e88efdecbdb585c72653874301d85bb30e60390d5499ba3a5d33d88933b3f8e"
+        },
+        {
+          "path": "packages/db/src/migration-query.ts",
+          "before": "ffbd1f0ddd70e8a419d5235f70b60fc7365cd785e488c6c55712371cd50197c8",
+          "after": "a6212a87ff15e5b372bd3c3f3778e1f395a687ed14627d8b6c2b63c7ef2e8bcd"
+        },
+        {
+          "path": "packages/modules/auth/src/index.ts",
+          "before": "1b4e3c11d2a86c22855c5a7cb97497ae4e4b81b4499cd5d5a12974d345812cbb",
+          "after": "f368eb4f9c55b7a53e4d05c54e9bb4d202aaafb66de9cdf7befb73d7ec5a2b1e"
+        },
+        {
+          "path": "packages/modules/cash/src/index.ts",
+          "before": "f2c492cad5bf74578204257a1b35dbca3808e36bf6a64b0069fbb3e56fd019de",
+          "after": "762908d60871f920497c9c176afdb1c8376f995448d82dbdfda78147570833b4"
+        },
+        {
+          "path": "packages/modules/event-consumers/src/payments.consumer.ts",
+          "before": "b356eac5860a21b9336b1c8a5b67f748b7fe7f32a9b9a232b66ab3d0dad03fab",
+          "after": "51db80db3b4fc74f7cf53ba34bb4db0ab61a031f4282c0fc7e179fa4f0badfaf"
+        },
+        {
+          "path": "packages/modules/owners/src/repositories/database-owner.repository.ts",
+          "before": "664839ba38651ed620ce7f88003ff465e06381b199f7fd9a87427e23054bfb69",
+          "after": "a1f6d64651f530abf79a5a55276c6711ea530b1d14489330c3101ab4fb6cf32d"
+        },
+        {
+          "path": "packages/modules/patients/src/repositories/database-patient.repository.ts",
+          "before": "b7296c56ce2cc2768316090c1686b316129f247f229c38e598e9f14e0299251a",
+          "after": "fca8d3da6ed5fc84e2fda3b584260da49dae18739649d5c57bced97105f60025"
+        },
+        {
+          "path": "packages/modules/pix/src/adapters/pagarme.adapter.ts",
+          "before": "c0320508990ab84003c81bfe2b0c4db4c87e190dfa2d9ed627984fc04367afa9",
+          "after": "ec122b81f4785190c914cbfb6d286480a00bedddc2c911db0a34b72002ec3cfa"
+        },
+        {
+          "path": "packages/modules/pix/src/types.ts",
+          "before": "57fed92235254cfce3083ca2bb6d528983f60c306495685fa1b83955cfa7b157",
+          "after": "5790b097adde56268b07ed3412a64640204957dc41a0cdf964d425cf5b200cb6"
+        },
+        {
+          "path": "packages/modules/prescriptions/src/index.ts",
+          "before": "0c48b226a826895a9dd120b2a35a44eaba9246e42fc6f616083f18a911d3d99b",
+          "after": "7d02577045b3c7eb3e83fff71069cee92ae30f9e036013d2fbbb4ca8b4abb2cb"
+        },
+        {
+          "path": "packages/tenant-context/src/middleware.ts",
+          "before": "ea9080e4e25e4fc161c7b49e0d3ba95f48f9d0f2a579105b9affd19bca9bcbf4",
+          "after": "3f52d123205bdbe01f8c6b4bc95309db4111c3cbe92a6e00059dae2689c3d4db"
+        }
+      ],
+      "inputsReplaced": [],
+      "inputsAdded": [
+        "apps/api/src/lgpd-erasure-executor.test.ts",
+        "apps/api/src/production-provider-readiness.test.ts",
+        "apps/api/src/routes/attachment-content-read-route.test.ts",
+        "apps/api/src/routes/attachment-upload-route.test.ts",
+        "apps/api/src/routes/cep-lookup-route.test.ts",
+        "apps/api/src/routes/chaos-experiment-list-route.test.ts",
+        "apps/api/src/routes/clinical-handoff-acknowledge-route.test.ts",
+        "apps/api/src/routes/clinical-handoff-send-route.test.ts",
+        "apps/api/src/routes/clinical-handoff-workflow-routes.test.ts",
+        "apps/api/src/routes/clinical-handoffs-read-routes.test.ts",
+        "apps/api/src/routes/encounter-list-route.test.ts",
+        "apps/api/src/routes/health-routes.test.ts",
+        "apps/api/src/routes/metrics-read-route.test.ts",
+        "apps/api/src/routes/notification-read-routes.test.ts",
+        "apps/api/src/routes/notification-write-routes.test.ts",
+        "apps/api/src/routes/pagarme-pix-webhook-routes.test.ts",
+        "apps/api/src/routes/reports-export-tenant.test.ts",
+        "apps/api/src/routes/resource-route-path.test.ts",
+        "apps/worker/src/jobs/appointment-reminder-handler.test.ts",
+        "apps/worker/src/jobs/pagarme-pix-payment-dispatch-provider.test.ts",
+        "apps/spa/src/pages/patients/__tests__/usePatientClinicalHistory.test.ts",
+        "packages/modules/patients/src/repositories/database-patient.repository.test.ts",
+        "tests/integration/database/lgpd-owner-erasure-postgres.test.ts",
+        "tests/integration/database/pix-pagarme-encounter-flow-postgres.test.ts"
+      ],
+      "inputsRemoved": [],
+      "previousExecutionInputsSha256": "efa160d6805ac84048e5851a39638a716b875792ccad501f29c5fb40b7def546",
+      "executionInputsSha256": "e8bdd7a443a4a42ae98bf1e9fd1e7e9fc6f7f3ba572c8367ca1c032b856081c8",
+      "nativeChanged": [
+        {
+          "shard": "native-api",
+          "added": [
+            "apps/api/src/lgpd-erasure-executor.test.ts",
+            "apps/api/src/production-provider-readiness.test.ts",
+            "apps/api/src/routes/attachment-content-read-route.test.ts",
+            "apps/api/src/routes/attachment-upload-route.test.ts",
+            "apps/api/src/routes/cep-lookup-route.test.ts",
+            "apps/api/src/routes/chaos-experiment-list-route.test.ts",
+            "apps/api/src/routes/clinical-handoff-acknowledge-route.test.ts",
+            "apps/api/src/routes/clinical-handoff-send-route.test.ts",
+            "apps/api/src/routes/clinical-handoff-workflow-routes.test.ts",
+            "apps/api/src/routes/clinical-handoffs-read-routes.test.ts",
+            "apps/api/src/routes/encounter-list-route.test.ts",
+            "apps/api/src/routes/health-routes.test.ts",
+            "apps/api/src/routes/metrics-read-route.test.ts",
+            "apps/api/src/routes/notification-read-routes.test.ts",
+            "apps/api/src/routes/notification-write-routes.test.ts",
+            "apps/api/src/routes/pagarme-pix-webhook-routes.test.ts",
+            "apps/api/src/routes/reports-export-tenant.test.ts",
+            "apps/api/src/routes/resource-route-path.test.ts"
+          ],
+          "removed": []
+        },
+        {
+          "shard": "native-worker",
+          "added": [
+            "apps/worker/src/jobs/appointment-reminder-handler.test.ts",
+            "apps/worker/src/jobs/pagarme-pix-payment-dispatch-provider.test.ts"
+          ],
+          "removed": []
+        }
+      ],
+      "vitestAdded": [
+        "apps/spa/src/pages/patients/__tests__/usePatientClinicalHistory.test.ts",
+        "packages/modules/patients/src/repositories/database-patient.repository.test.ts",
+        "tests/integration/database/lgpd-owner-erasure-postgres.test.ts",
+        "tests/integration/database/pix-pagarme-encounter-flow-postgres.test.ts"
+      ],
+      "vitestRemoved": []
     }
   ],
   "retiredGeneratedArtifacts": [
@@ -13021,14 +13286,14 @@
       "archiveSha256": "72b1179da7ef0e039242b0ae9b53e5f8bcceb4e893e5d8f5e6977f692fbe7cf3"
     }
   ],
-  "manifestRevision": 89,
-  "sourceSetSha256": "ff696e9e39cafc11f9ea537977074ff584cdf1ad3a61cda3bde93f4ccf3f28be",
-  "executionInputsSha256": "efa160d6805ac84048e5851a39638a716b875792ccad501f29c5fb40b7def546",
+  "manifestRevision": 90,
+  "sourceSetSha256": "52caeb30dc6ee1603436d48ba79896b448484b63994385649da7e8d8c33800cb",
+  "executionInputsSha256": "e8bdd7a443a4a42ae98bf1e9fd1e7e9fc6f7f3ba572c8367ca1c032b856081c8",
   "specializedEvidence": {
     "sql": {
       "schemaVersion": 1,
       "sourceDirectory": "packages/db/migrations",
-      "expectedMigrationCount": 176,
+      "expectedMigrationCount": 177,
       "contractualMigrationCount": 169,
       "forwardOnlyAdditions": [
         "packages/db/migrations/0171_outbox_event_envelope_backfill_correction.sql",
@@ -13037,9 +13302,10 @@
         "packages/db/migrations/0174_feature_flag_override_tenant_ownership.sql",
         "packages/db/migrations/0175_access_control_change_versions.sql",
         "packages/db/migrations/0176_access_control_change_version_cleanup.sql",
-        "packages/db/migrations/0177_clinical_evidence_cascade_immutability.sql"
+        "packages/db/migrations/0177_clinical_evidence_cascade_immutability.sql",
+        "packages/db/migrations/0178_pix_provider_events_pagarme.sql"
       ],
-      "expectedArtifactCount": 183,
+      "expectedArtifactCount": 184,
       "historicalArtifactCount": 7,
       "acceptedArtifactPath": "artifacts/remediation/PROD-011/sql-migration-evidence/accepted/evidence.json",
       "requiredPhases": [

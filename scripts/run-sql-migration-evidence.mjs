@@ -44,7 +44,8 @@ const LEGACY_FORWARD_TARGETS = [
   '0174_feature_flag_override_tenant_ownership',
   '0175_access_control_change_versions',
   '0176_access_control_change_version_cleanup',
-  '0177_clinical_evidence_cascade_immutability'
+  '0177_clinical_evidence_cascade_immutability',
+  '0178_pix_provider_events_pagarme'
 ];
 const QUERY_TIMEOUT_MS = 30000;
 const MIGRATION_TIMEOUT_MS = 300000;
