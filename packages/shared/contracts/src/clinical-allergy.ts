@@ -261,3 +261,15 @@ export function normalizeStructuredAllergies(
   }
   return { allergies };
 }
+
+// ---------------------------------------------------------------------------
+// Weight-based dosing (R2-CLI-02)
+// ---------------------------------------------------------------------------
+
+export const PATIENT_WEIGHT_REQUIRED_CODE = 'PATIENT_WEIGHT_REQUIRED';
+
+/** True when the dosage is expressed per body weight (e.g. "20 mg/kg", "0,1 ml por kg"). */
+export function requiresWeightBasedDosing(dosage: string | null | undefined): boolean {
+  if (!dosage) return false;
+  return /\/\s*kg\b|\bpor\s+kg\b|\bpor\s+quilo/i.test(normalize(dosage));
+}

@@ -377,6 +377,26 @@ describe('PrescriptionsPage', () => {
       });
     });
 
+    it('shows the recorded weight and blocks per-kg dosages without it', async () => {
+      mockPatientGet.mockResolvedValue({ id: 'pat-1' });
+      const wrapper = await mountPage();
+      await flushPromises();
+      expect(wrapper.get('.weight-note').text()).toContain('Peso não registrado');
+
+      const inputs = wrapper.findAll('form input');
+      await inputs[0]!.setValue('Meloxicam');
+      await inputs[1]!.setValue('0,1 mg/kg SID');
+      await wrapper.find('form').trigger('submit');
+      await flushPromises();
+      expect(mockPrescriptionCreate).not.toHaveBeenCalled();
+      expect(wrapper.text()).toContain('Posologia por kg exige o peso do paciente');
+
+      mockPatientGet.mockResolvedValue({ id: 'pat-1', baseWeightKg: 18.3 });
+      const weighed = await mountPage();
+      await flushPromises();
+      expect(weighed.get('.weight-note').text()).toContain('Peso registrado: 18,3 kg');
+    });
+
     it('shows the server-side allergy conflict inline instead of a page error', async () => {
       const { ApiError } = await import('@/services/api');
       mockPatientGet.mockRejectedValue(new Error('offline'));

@@ -147,6 +147,7 @@ export const ERROR_CATALOG: Readonly<Record<string, ErrorCodeEntry>> = {
   SUBJECT_NOT_FOUND: { httpStatus: 404, category: 'not_found', ptBR: 'Titular não encontrado nesta clínica.' },
   ALLERGY_ACKNOWLEDGEMENT_REQUIRED: { httpStatus: 409, category: 'state', ptBR: 'O medicamento coincide com uma alergia registrada do paciente. Informe a justificativa clínica para prosseguir.' },
   ALLERGY_ANAPHYLAXIS_CONFIRMATION_REQUIRED: { httpStatus: 409, category: 'state', ptBR: 'O medicamento coincide com uma alergia com risco de anafilaxia. Confirme o risco e informe uma justificativa detalhada.' },
+  PATIENT_WEIGHT_REQUIRED: { httpStatus: 409, category: 'state', ptBR: 'A posologia é por peso e o paciente não tem peso registrado. Registre o peso antes de prescrever.' },
   DSR_NOT_OPEN: { httpStatus: 409, category: 'state', ptBR: 'Esta solicitação do titular já foi encerrada e não pode mudar de estado.' },
   DSR_ERASURE_EXECUTOR_UNAVAILABLE: { httpStatus: 409, category: 'unavailable', ptBR: 'A eliminação de dados não pode ser concluída agora. A solicitação continua aberta.' },
   DSR_ERASURE_NOT_EXECUTED: { httpStatus: 409, category: 'state', ptBR: 'A eliminação de dados não foi executada. A solicitação continua aberta.' },

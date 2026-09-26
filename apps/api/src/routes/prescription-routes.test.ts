@@ -80,7 +80,7 @@ function createPrincipal(): AuthenticatedPrincipal {
 function createPatients(allergy?: string) {
   return {
     getAuthoritativeOrThrow: async (accountId: string, patientId: string) =>
-      ({ id: patientId, accountId, allergy }) as never
+      ({ id: patientId, accountId, allergy, baseWeightKg: 18 }) as never
   };
 }
 
@@ -397,6 +397,7 @@ test('handlePrescriptionRoutes screens structured allergies by class and hard-st
       ({
         id: patientId,
         accountId,
+        baseWeightKg: 18,
         allergies: [{ substance: 'Penicilina', severity: 'anaphylaxis' }]
       }) as never
   };
@@ -456,4 +457,57 @@ test('handlePrescriptionRoutes screens structured allergies by class and hard-st
     String(response.bodyJson<{ content?: string }>().content),
     /Alerta de alergia confirmado \(risco de anafilaxia confirmado\)/
   );
+});
+
+test('handlePrescriptionRoutes requires a recorded weight for per-kg dosages', async () => {
+  const service = createPrescriptionsService();
+  const withWeight = (baseWeightKg?: number) => ({
+    prescriptions: service,
+    audit: { write: () => ({}) } as never,
+    patients: {
+      getAuthoritativeOrThrow: async (accountId: string, patientId: string) =>
+        ({ id: patientId, accountId, baseWeightKg }) as never
+    },
+    requirePrincipal: () => createPrincipal()
+  });
+  const payload = {
+    medicalRecordId: 'mr-1',
+    encounterId: 'enc-1',
+    patientId: 'pat-1',
+    medicationName: 'Meloxicam',
+    dosage: '0,1 mg/kg SID'
+  };
+
+  await assert.rejects(
+    () =>
+      handlePrescriptionRoutes(
+        '/prescriptions',
+        createMockRequest('POST', '/prescriptions', payload) as never,
+        new MockResponse() as never,
+        'corr-rx-weight',
+        withWeight(undefined)
+      ),
+    (error: { code?: string; statusCode?: number }) =>
+      error.code === 'PATIENT_WEIGHT_REQUIRED' && error.statusCode === 409
+  );
+
+  const response = new MockResponse();
+  await handlePrescriptionRoutes(
+    '/prescriptions',
+    createMockRequest('POST', '/prescriptions', payload) as never,
+    response as never,
+    'corr-rx-weight-ok',
+    withWeight(18.3)
+  );
+  assert.equal(response.statusCode, 201);
+
+  const fixedDose = new MockResponse();
+  await handlePrescriptionRoutes(
+    '/prescriptions',
+    createMockRequest('POST', '/prescriptions', { ...payload, dosage: '1 comprimido SID' }) as never,
+    fixedDose as never,
+    'corr-rx-fixed-dose',
+    withWeight(undefined)
+  );
+  assert.equal(fixedDose.statusCode, 201);
 });

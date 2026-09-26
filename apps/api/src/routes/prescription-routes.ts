@@ -13,10 +13,11 @@ import {
   ALLERGY_ANAPHYLAXIS_ACKNOWLEDGEMENT_MIN_LENGTH,
   DRUG_CLASSES,
   findAllergyConflicts,
-  findStructuredAllergyConflicts
+  findStructuredAllergyConflicts,
+  requiresWeightBasedDosing
 } from '@cvg-his-v2/shared-contracts';
 import { AppError } from '@cvg-his-v2/shared-errors';
-import type { AuthenticatedPrincipal } from '@cvg-his-v2/shared-types';
+import type { AuthenticatedPrincipal, PatientSummary } from '@cvg-his-v2/shared-types';
 import { requireNonEmptyString } from '@cvg-his-v2/shared-validation';
 
 import { appendAudit } from '../helpers/audit-helper.js';
@@ -124,11 +125,20 @@ export async function handlePrescriptionRoutes(
     const principal = await requirePrincipal(request, 'prescriptions.write');
     const payload = (await readJsonBody(request)) as CreatePrescriptionRequest;
     prescriptions.assertValidCreateRequest(payload);
-    const allergyOverride = await screenPrescriptionAllergy(
-      patients,
-      principal.user.accountId,
-      payload
+    const patient = await patients.getAuthoritativeOrThrow(
+      principal.user.accountId as never,
+      payload.patientId as never
     );
+    // R2-CLI-02: a per-kg dosage cannot be checked without a recorded weight.
+    if (requiresWeightBasedDosing(payload.dosage) && !(Number(patient.baseWeightKg) > 0)) {
+      throw new AppError(
+        'PATIENT_WEIGHT_REQUIRED',
+        'A posologia é por peso e o paciente não tem peso registrado. Registre o peso antes de prescrever.',
+        409,
+        { field: 'baseWeightKg', reason: 'required' }
+      );
+    }
+    const allergyOverride = screenPrescriptionAllergy(patient, payload);
     const rx = prescriptions.create(principal.user.accountId, principal.user.id, {
       ...payload,
       allergyAcknowledgement: allergyOverride?.justification,
@@ -285,18 +295,12 @@ export async function handlePrescriptionRoutes(
  * with the prescriber's justification; it is never silently created nor
  * hard-blocked (free-text allergies make the match advisory).
  */
-async function screenPrescriptionAllergy(
-  patients: PrescriptionRoutesHandlers['patients'],
-  accountId: string,
+function screenPrescriptionAllergy(
+  patient: { readonly allergy?: string; readonly allergies?: PatientSummary['allergies'] },
   payload: CreatePrescriptionRequest
-): Promise<
+):
   | { readonly matchedTerms: string[]; readonly justification: string; readonly anaphylaxis: boolean }
-  | undefined
-> {
-  const patient = await patients.getAuthoritativeOrThrow(
-    accountId as never,
-    payload.patientId as never
-  );
+  | undefined {
   const textMatches = findAllergyConflicts(payload.medicationName, patient.allergy);
   const structuredMatches = findStructuredAllergyConflicts(payload.medicationName, patient.allergies);
   if (textMatches.length === 0 && structuredMatches.length === 0) return undefined;

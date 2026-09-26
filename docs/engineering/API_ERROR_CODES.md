@@ -19,7 +19,7 @@ em português desta tabela; `message` é texto técnico em inglês e nunca vai p
 | `too_short` | Texto muito curto. |
 | `mismatch` | Os valores informados não conferem. |
 
-## Códigos (176)
+## Códigos (177)
 
 | Código | HTTP | Categoria | Mensagem ao usuário |
 |---|---:|---|---|
@@ -143,6 +143,7 @@ em português desta tabela; `message` é texto técnico em inglês e nunca vai p
 | `PATIENTS_REPORT_INVALID_FILTER` | 400 | Validação | Os filtros do relatório são inválidos. Revise os parâmetros e tente novamente. |
 | `PATIENTS_REPORT_RESULT_LIMIT` | 400 | Limite | O relatório excede o limite de linhas. Restrinja o período ou os filtros. |
 | `PATIENTS_REPORT_TENANT_MISMATCH` | 403 | Autenticação e autorização | O relatório solicitado não pertence a esta clínica. |
+| `PATIENT_WEIGHT_REQUIRED` | 409 | Estado inválido | A posologia é por peso e o paciente não tem peso registrado. Registre o peso antes de prescrever. |
 | `PAYLOAD_TOO_LARGE` | 413 | Limite | O conteúdo enviado é grande demais. |
 | `PAYMENT_ALREADY_CAPTURED` | 409 | Estado inválido | Este pagamento já foi capturado. |
 | `PAYMENT_ALREADY_SETTLED` | 409 | Estado inválido | Este pagamento já foi liquidado. |

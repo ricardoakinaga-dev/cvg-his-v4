@@ -65,3 +65,13 @@ test('structured allergy input is validated and normalized', async () => {
   assert.ok('error' in normalizeStructuredAllergies([{ substance: 'Dipirona', severity: 'mild', drugClass: 'unknown' }]));
   assert.ok('error' in normalizeStructuredAllergies('dipirona'));
 });
+
+test('weight-based dosing is detected from the dosage text', async () => {
+  const { requiresWeightBasedDosing } = await import('./clinical-allergy.js');
+  for (const dosage of ['20 mg/kg', '0,2 mg / kg SC', '0,1 ml por kg', '5 mg por quilo']) {
+    assert.equal(requiresWeightBasedDosing(dosage), true, dosage);
+  }
+  for (const dosage of ['1 comprimido 12/12h', '250 mg', '', undefined]) {
+    assert.equal(requiresWeightBasedDosing(dosage), false, String(dosage));
+  }
+});

@@ -68,6 +68,9 @@
             @click="allergyExpanded = !allergyExpanded"
           >{{ allergyExpanded ? 'recolher' : 'ver tudo' }}</button>
         </p>
+        <p class="weight-note" :class="{ 'weight-note--missing': !patientWeightLabel }" role="note">
+          {{ patientWeightLabel ? `Peso registrado: ${patientWeightLabel}` : 'Peso não registrado — obrigatório para posologia por kg.' }}
+        </p>
         <form @submit.prevent="submitPrescription">
           <fieldset class="form-grid" :disabled="submitting">
             <DsInput v-model="form.medicationName" label="Medicamento" required />
@@ -89,7 +92,7 @@
                 <span>Confirmo o risco de anafilaxia e que o protocolo de emergência está disponível.</span>
               </label>
             </div>
-            <DsInput v-model="form.dosage" label="Posologia" required />
+            <DsInput v-model="form.dosage" label="Posologia" required :error="dosageError" />
             <DsInput v-model="form.route" label="Via" placeholder="Oral, IV, IM..." />
             <DsInput v-model="form.frequency" label="Frequência" placeholder="Ex: 12/12h" />
             <DsInput v-model="form.notes" type="textarea" label="Observações" :rows="3" />
@@ -181,6 +184,7 @@ import {
   findAllergyConflicts,
   findStructuredAllergyConflicts,
   hasRecordedAllergy,
+  requiresWeightBasedDosing,
   type StructuredAllergy
 } from '@cvg-his-v2/shared-contracts';
 import { ApiError } from '@/services/api';
@@ -233,6 +237,13 @@ watch(allergyTextEl, (element) => {
 });
 const serverAllergyTerms = ref<string[]>([]);
 const patientAllergies = ref<StructuredAllergy[]>([]);
+const patientWeightKg = ref<number | undefined>(undefined);
+const dosageError = ref('');
+const patientWeightLabel = computed(() =>
+  patientWeightKg.value && patientWeightKg.value > 0
+    ? `${patientWeightKg.value.toLocaleString('pt-BR', { maximumFractionDigits: 2 })} kg`
+    : ''
+);
 const anaphylaxisConfirmed = ref(false);
 const serverAnaphylaxis = ref(false);
 const allergyReminder = computed(() =>
@@ -408,6 +419,7 @@ function clearContext() {
   executions.value = [];
   patientAllergy.value = '';
   patientAllergies.value = [];
+  patientWeightKg.value = undefined;
   allergyExpanded.value = false;
   resetForm();
 }
@@ -475,6 +487,7 @@ async function refreshEncounterData() {
     executions.value = loadedExecutions;
     patientAllergy.value = hasRecordedAllergy(patient?.allergy) ? patient!.allergy!.trim() : '';
     patientAllergies.value = patient?.allergies ?? [];
+    patientWeightKg.value = patient?.baseWeightKg;
     contextState.value = 'ready';
   } catch (err: unknown) {
     if (requestVersion !== contextRequestVersion || selectedEncounterId.value !== encounterId) return;
@@ -489,6 +502,11 @@ async function submitPrescription() {
     return;
   }
 
+  dosageError.value =
+    requiresWeightBasedDosing(form.value.dosage) && !patientWeightLabel.value
+      ? 'Posologia por kg exige o peso do paciente. Registre o peso no cadastro ou na triagem.'
+      : '';
+  if (dosageError.value) return;
   if (
     allergyMatches.value.length &&
     allergyJustification.value.trim().length < justificationMinLength.value
@@ -716,6 +734,17 @@ function shortId(value?: string): string {
   border: 1px solid var(--color-danger-border, #fecaca);
   border-radius: 8px;
   background: var(--color-danger-bg, #fef2f2);
+}
+
+.weight-note {
+  margin: 0 0 12px;
+  color: var(--color-text-secondary, #475569);
+  font-size: 14px;
+}
+
+.weight-note--missing {
+  color: var(--color-warning-text, #92400e);
+  font-weight: 600;
 }
 
 .allergy-match__confirm {
