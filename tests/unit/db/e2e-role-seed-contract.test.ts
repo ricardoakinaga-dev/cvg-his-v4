@@ -23,7 +23,9 @@ describe('E2E role matrix seed contract', () => {
   });
 
   it('forwards an explicitly supplied Redis endpoint in the external database harness', () => {
-    expect(runner).toContain('REDIS_URL_E2E="${E2E_REDIS_URL:-redis://127.0.0.1:6381}"');
+    // R2-TOOL-01: the Redis host port is configurable and falls back to a free port.
+    expect(runner).toContain('REDIS_URL_E2E="${E2E_REDIS_URL:-redis://127.0.0.1:${E2E_REDIS_HOST_PORT}}"');
+    expect(runner).toContain('E2E_REDIS_HOST_PORT="$(resolve_host_port Redis "${E2E_REDIS_HOST_PORT:-}" 6381)"');
     expect(runner).toContain('E2E_REDIS_URL="$REDIS_URL_E2E"');
     expect(runner).not.toContain('E2E_REDIS_URL="redis://127.0.0.1:6381"');
   });
