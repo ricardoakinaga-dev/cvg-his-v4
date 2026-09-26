@@ -352,11 +352,13 @@ export class CashService {
 
   async findOpenRegister(accountId: AccountId): Promise<CashRegisterSummary | null> {
     if (this.#repository) {
+      // The repository is authoritative: a register closed by another replica
+      // must not resurface from this process's cache.
       const reg = await this.#repository.findOpenRegister(accountId);
       if (reg) {
         this.#registers.set(reg.id, reg);
-        return reg;
       }
+      return reg;
     }
 
     const regs = Array.from(this.#registers.values());

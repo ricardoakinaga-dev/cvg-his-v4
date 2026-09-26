@@ -294,3 +294,40 @@ test('CashService uses the balance derived under the repository close lock', asy
   assert.equal(result.register.expectedClosingAmount, 150);
   assert.equal(result.difference, -10);
 });
+
+test('CashService findOpenRegister trusts the repository over a stale cached open register', async () => {
+  const now = new Date().toISOString();
+  const cachedOpen = {
+    id: 'reg-stale',
+    accountId: ACCOUNT_ID,
+    openedByUserId: USER_ID,
+    closedByUserId: null,
+    openingAmount: 100,
+    closingAmount: null,
+    expectedClosingAmount: null,
+    difference: null,
+    status: 'open' as const,
+    openedAt: now,
+    closedAt: null,
+    notes: null,
+    createdAt: now,
+    updatedAt: now
+  };
+  const service = new CashService({
+    repository: {
+      async findRegistersByAccount() {
+        return [cachedOpen];
+      },
+      async findMovementsByRegister() {
+        return [];
+      },
+      // Closed by another replica after this process hydrated its cache.
+      async findOpenRegister() {
+        return null;
+      }
+    } as never
+  });
+  await service.hydrateFromDatabase(ACCOUNT_ID);
+
+  assert.equal(await service.findOpenRegister(ACCOUNT_ID), null);
+});
