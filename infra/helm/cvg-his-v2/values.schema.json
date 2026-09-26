@@ -47,9 +47,14 @@
     },
     "api": {
       "type": "object",
-      "required": ["service", "probes", "env", "auth", "setup", "vault"],
+      "required": ["service", "probes", "env", "auth", "setup", "vault", "crossReplicaCache"],
       "properties": {
         "replicaCount": { "type": "integer", "minimum": 1 },
+        "crossReplicaCache": {
+          "type": "object",
+          "required": ["enabled"],
+          "properties": { "enabled": { "type": "boolean" } }
+        },
         "service": {
           "type": "object",
           "required": ["type", "port"],

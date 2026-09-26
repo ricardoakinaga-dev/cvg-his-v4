@@ -3,7 +3,9 @@ global:
   environment: production
 
 api:
-  replicaCount: 3
+  # R2-ARC-01: single API replica until cross-replica cache invalidation
+  # (R2-ARC-03) exists. Scale vertically via resources until then.
+  replicaCount: 1
   revisionHistoryLimit: 10
   image:
     registry: ghcr.io

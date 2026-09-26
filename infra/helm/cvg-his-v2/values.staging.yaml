@@ -3,7 +3,8 @@ global:
   environment: staging
 
 api:
-  replicaCount: 2
+  # R2-ARC-01: single API replica until cross-replica cache invalidation exists.
+  replicaCount: 1
   revisionHistoryLimit: 5
   image:
     pullPolicy: Always

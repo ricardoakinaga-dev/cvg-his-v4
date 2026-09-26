@@ -16,6 +16,14 @@ fullnameOverride: ""
 # ──────────────────────────────────────────────
 api:
   replicaCount: 1
+  # R2-ARC-01: the API keeps per-process account caches without cross-replica
+  # invalidation (audit finding A1). The chart fails closed when replicaCount > 1
+  # unless crossReplicaCache.enabled is explicitly true, which only R2-ARC-03
+  # (read-through + LISTEN/NOTIFY invalidation) may set. The same values are
+  # exported to the API as CVG_API_EXPECTED_REPLICAS and
+  # CVG_API_CROSS_REPLICA_CACHE so the process refuses an unsafe topology too.
+  crossReplicaCache:
+    enabled: false
   revisionHistoryLimit: 5
   podAnnotations: {}
 
