@@ -2227,8 +2227,21 @@ test('scheduling hardening: cancel appointment, time conflict, and queue transit
   assert.equal(apptAfterCancel.status, 'cancelled');
 });
 
-function futureIso(hoursAhead: number): string {
-  return new Date(Date.now() + hoursAhead * 60 * 60 * 1000).toISOString();
+// Fixed weekday slots inside clinic hours: relative "now + N hours" times
+// drift outside the agenda depending on when the suite runs.
+const REMINDER_SLOTS: Readonly<Record<number, string>> = {
+  72: '2030-01-07T13:00:00.000Z',
+  73: '2030-01-07T14:00:00.000Z',
+  74: '2030-01-07T15:00:00.000Z',
+  75: '2030-01-07T16:00:00.000Z',
+  96: '2030-01-08T13:00:00.000Z',
+  120: '2030-01-09T13:00:00.000Z'
+};
+
+function futureIso(slot: number): string {
+  const iso = REMINDER_SLOTS[slot];
+  if (!iso) throw new Error(`Unknown reminder test slot ${slot}`);
+  return iso;
 }
 
 async function asUser<T>(

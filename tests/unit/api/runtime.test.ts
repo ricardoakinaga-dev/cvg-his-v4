@@ -66,7 +66,9 @@ describe('runtime', () => {
       notificationsWhatsappRemindersEnabled: true,
       workflowTaskService: new WorkflowTaskService()
     });
-    const inFourDays = () => new Date(Date.now() + 96 * 60 * 60 * 1000).toISOString();
+    // Fixed weekday slots inside clinic hours (relative times drift out of the agenda).
+    const slots = ['2030-01-07T13:00:00.000Z', '2030-01-07T14:00:00.000Z'];
+    const inFourDays = () => slots.shift()!;
     const asReception = <T>(operation: () => Promise<T>) =>
       runWithTenantContext(
         {

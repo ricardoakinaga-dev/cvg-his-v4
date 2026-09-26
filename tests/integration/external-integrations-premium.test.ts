@@ -411,7 +411,7 @@ describe('external integrations premium evidence', () => {
           runtime.scheduling.createAppointment(principal.user.accountId, {
             patientId: 'patient_luna',
             ownerId: 'owner_maria_silva',
-            scheduledAt: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString(),
+            scheduledAt: '2030-01-07T13:00:00.000Z',
             visitType: 'scheduled',
             reason: 'WhatsApp premium'
           })
